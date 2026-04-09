@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type Stripe from 'stripe'
 
 export async function POST(req: NextRequest) {
   // Stripe webhook handler — requires STRIPE_SECRET_KEY at runtime
@@ -9,16 +10,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const { stripe } = await import('@/lib/stripe')
-    const { supabaseAdmin } = await import('@/lib/supabase')
-    const Stripe = (await import('stripe')).default
 
+    const { supabaseAdmin } = await import('@/lib/supabase')
     const body = await req.text()
     const sig = req.headers.get('stripe-signature')!
     const event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as InstanceType<typeof Stripe>['checkout']['sessions']['retrieve'] extends (...args: any) => Promise<infer R> ? R : any
-      const { clientId, packageName, sessionsTotal } = (session as any).metadata || {}
+      const session = event.data.object as Stripe.Checkout.Session
+      const { clientId, packageName, sessionsTotal } = session.metadata ?? {}
 
       if (clientId && packageName && sessionsTotal) {
         await supabaseAdmin().from('client_packages').insert({
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
           package_name: packageName,
           sessions_total: parseInt(sessionsTotal),
           sessions_remaining: parseInt(sessionsTotal),
-          stripe_payment_id: (session as any).payment_intent,
+          stripe_payment_id: session.payment_intent,
         })
       }
     }

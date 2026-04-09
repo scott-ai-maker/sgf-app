@@ -16,6 +16,10 @@ create table if not exists clients (
   phone           text,
   stripe_customer_id text unique,
   created_at      timestamptz default now()
+
+-- ── ROLE MIGRATION (run after initial schema) ─────────────
+alter table clients add column if not exists role text default 'client'
+  check (role in ('client', 'coach'));
 );
 
 -- ── PACKAGES ──────────────────────────────────────────────
@@ -71,3 +75,34 @@ create policy "Client sees own sessions" on sessions
 create index if not exists sessions_client_id_idx on sessions(client_id);
 create index if not exists sessions_scheduled_at_idx on sessions(scheduled_at);
 create index if not exists packages_client_id_idx on client_packages(client_id);
+
+-- ── COACH POLICIES ────────────────────────────────────────
+-- Coach can read all clients
+create policy "Coach reads all clients" on clients
+  for select using (
+    exists (
+      select 1 from clients c where c.id = auth.uid() and c.role = 'coach'
+    )
+  );
+
+-- Coach can read all packages
+create policy "Coach reads all packages" on client_packages
+  for select using (
+    exists (
+      select 1 from clients c where c.id = auth.uid() and c.role = 'coach'
+    )
+  );
+
+-- Coach can read and update all sessions
+create policy "Coach reads all sessions" on sessions
+  for select using (
+    exists (
+      select 1 from clients c where c.id = auth.uid() and c.role = 'coach'
+    )
+  );
+create policy "Coach updates sessions" on sessions
+  for update using (
+    exists (
+      select 1 from clients c where c.id = auth.uid() and c.role = 'coach'
+    )
+  );
