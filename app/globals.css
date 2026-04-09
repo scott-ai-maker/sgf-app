@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Raleway:wght@300;400;600&display=swap');
+
+:root {
+  --navy:     #0D1B2A;
+  --navy-mid: #122336;
+  --navy-lt:  #1C3450;
+  --gold:     #D4A017;
+  --gold-lt:  #F0C040;
+  --white:    #F5F0E8;
+  --gray:     #8A99AA;
+  --success:  #48BB78;
+  --error:    #FF3D57;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Raleway', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
