@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
+function formatAuthErrorMessage(rawMessage: string) {
+  const msg = rawMessage.toLowerCase()
+
+  if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit')) {
+    return 'Email rate limit reached. Please wait a minute and try again.'
+  }
+
+  return rawMessage
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
@@ -34,7 +44,7 @@ export default function ResetPasswordForm() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(formatAuthErrorMessage(error.message))
     } else {
       setSent(true)
     }

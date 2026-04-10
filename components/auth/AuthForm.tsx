@@ -10,6 +10,20 @@ interface AuthFormProps {
   mode: Mode
 }
 
+function formatAuthErrorMessage(rawMessage: string) {
+  const msg = rawMessage.toLowerCase()
+
+  if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit')) {
+    return 'Email rate limit reached. Please wait a minute, then try again. You can also sign in with Google right now.'
+  }
+
+  if (msg.includes('unsupported provider') || msg.includes('provider is not enabled')) {
+    return 'Google sign-in is not enabled in Supabase yet. Enable Google under Authentication -> Providers in Supabase, or use email/password for now.'
+  }
+
+  return rawMessage
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
@@ -52,14 +66,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) {
-        setError(error.message)
+        setError(formatAuthErrorMessage(error.message))
         setLoading(false)
         return
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setError(error.message)
+        setError(formatAuthErrorMessage(error.message))
         setLoading(false)
         return
       }
@@ -71,12 +85,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   async function handleGoogle() {
     const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
+    setError(null)
+
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+
+    if (error) {
+      setError(formatAuthErrorMessage(error.message))
+    }
   }
 
   return (
