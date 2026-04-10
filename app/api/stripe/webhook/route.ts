@@ -19,15 +19,55 @@ export async function POST(req: NextRequest) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
       const { clientId, packageName, sessionsTotal } = session.metadata ?? {}
+      const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
 
       if (clientId && packageName && sessionsTotal) {
-        await supabaseAdmin().from('client_packages').insert({
+        const admin = supabaseAdmin()
+
+        if (paymentIntentId) {
+          const { data: existingPackage, error: existingError } = await admin
+            .from('client_packages')
+            .select('id')
+            .eq('stripe_payment_id', paymentIntentId)
+            .limit(1)
+            .maybeSingle()
+
+          if (existingError) {
+            throw new Error(`Failed checking existing package: ${existingError.message}`)
+          }
+
+          if (existingPackage) {
+            return NextResponse.json({ received: true, duplicate: true })
+          }
+        }
+
+        // Ensure FK target exists before inserting package row.
+        const checkoutEmail = session.customer_details?.email ?? session.customer_email ?? null
+        const { error: clientError } = await admin
+          .from('clients')
+          .upsert(
+            {
+              id: clientId,
+              email: checkoutEmail ?? `${clientId}@placeholder.local`,
+            },
+            { onConflict: 'id' }
+          )
+
+        if (clientError) {
+          throw new Error(`Failed upserting client: ${clientError.message}`)
+        }
+
+        const { error: packageError } = await admin.from('client_packages').insert({
           client_id: clientId,
           package_name: packageName,
           sessions_total: parseInt(sessionsTotal),
           sessions_remaining: parseInt(sessionsTotal),
-          stripe_payment_id: session.payment_intent,
+          stripe_payment_id: paymentIntentId,
         })
+
+        if (packageError) {
+          throw new Error(`Failed inserting package: ${packageError.message}`)
+        }
       }
     }
 

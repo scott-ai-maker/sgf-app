@@ -25,14 +25,21 @@ export default function PurchaseButton({ packageId }: PurchaseButtonProps) {
       return
     }
 
+    const data = await res.json().catch(() => null)
+
     if (!res.ok) {
-      setError('Failed to start checkout. Please try again.')
+      setError(data?.error || 'Failed to start checkout. Please try again.')
       setLoading(false)
       return
     }
 
-    const { url } = await res.json()
-    if (url) window.location.href = url
+    const url = data?.url
+    if (url) {
+      window.location.href = url
+      return
+    }
+
+    setError('Checkout session created but no redirect URL was returned.')
     setLoading(false)
   }
 
