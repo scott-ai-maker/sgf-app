@@ -43,15 +43,32 @@ export async function POST(req: NextRequest) {
 
         // Ensure FK target exists before inserting package row.
         const checkoutEmail = session.customer_details?.email ?? session.customer_email ?? null
-        const { error: clientError } = await admin
+        const fallbackEmail = `${clientId}@placeholder.local`
+
+        let { error: clientError } = await admin
           .from('clients')
           .upsert(
             {
               id: clientId,
-              email: checkoutEmail ?? `${clientId}@placeholder.local`,
+              email: checkoutEmail ?? fallbackEmail,
             },
             { onConflict: 'id' }
           )
+
+        // If the email is already used by another row, preserve FK integrity
+        // by creating this id with a guaranteed-unique placeholder email.
+        if (clientError && clientError.message.includes('clients_email_key')) {
+          const retry = await admin
+            .from('clients')
+            .upsert(
+              {
+                id: clientId,
+                email: fallbackEmail,
+              },
+              { onConflict: 'id' }
+            )
+          clientError = retry.error
+        }
 
         if (clientError) {
           throw new Error(`Failed upserting client: ${clientError.message}`)
