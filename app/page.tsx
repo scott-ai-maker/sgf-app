@@ -1,4 +1,5 @@
 import WaitlistForm from '@/components/WaitlistForm'
+import { Instagram, Youtube, Facebook, Linkedin } from 'lucide-react'
 
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
 
@@ -23,6 +24,13 @@ const PILLARS = [
     title: 'Easy Scheduling',
     desc: 'Book sessions, manage your package, and stay on track — all from one dashboard.',
   },
+]
+
+const SOCIAL_LINKS = [
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
 ]
 
 export default function Home() {
@@ -200,6 +208,30 @@ export default function Home() {
         </div>
         <div style={{ fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--gray)', opacity: 0.6 }}>
           © 2025 Scott Gordon Fitness · scottgordonfitness.com
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          {SOCIAL_LINKS.map(({ name, href, Icon }) => (
+            <a
+              key={name}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={name}
+              style={{
+                width: 34,
+                height: 34,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid var(--navy-lt)',
+                color: 'var(--gray)',
+                background: 'rgba(13,27,42,0.5)',
+                transition: 'all 160ms ease',
+              }}
+            >
+              <Icon size={16} strokeWidth={2} />
+            </a>
+          ))}
         </div>
       </footer>
     </>

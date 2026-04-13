@@ -1,4 +1,12 @@
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm'
+import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react'
+
+const SOCIAL_LINKS = [
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
+]
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +68,29 @@ export default function ResetPasswordPage() {
           }}
         >
           <ResetPasswordForm />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.55rem', marginTop: '1rem' }}>
+          {SOCIAL_LINKS.map(({ name, href, Icon }) => (
+            <a
+              key={name}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={name}
+              style={{
+                width: 32,
+                height: 32,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid var(--navy-lt)',
+                color: 'var(--gray)',
+                background: 'rgba(13,27,42,0.55)',
+              }}
+            >
+              <Icon size={15} strokeWidth={2} />
+            </a>
+          ))}
         </div>
       </div>
     </main>

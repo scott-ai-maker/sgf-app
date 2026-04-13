@@ -1,6 +1,7 @@
 import { PACKAGES } from '@/lib/stripe'
 import PurchaseButton from '@/components/packages/PurchaseButton'
 import Link from 'next/link'
+import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react'
 
 const PACKAGE_IMAGES: Record<string, string> = {
   starter: '/images/package-starter.jpg',
@@ -9,6 +10,13 @@ const PACKAGE_IMAGES: Record<string, string> = {
 }
 
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
+
+const SOCIAL_LINKS = [
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
+]
 
 export default function PackagesPage() {
   return (
@@ -216,6 +224,30 @@ export default function PackagesPage() {
 
               <PurchaseButton packageId={pkg.id} />
             </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 28, display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
+          {SOCIAL_LINKS.map(({ name, href, Icon }) => (
+            <a
+              key={name}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={name}
+              style={{
+                width: 34,
+                height: 34,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid var(--navy-lt)',
+                color: 'var(--gray)',
+                background: 'rgba(13,27,42,0.55)',
+              }}
+            >
+              <Icon size={16} strokeWidth={2} />
+            </a>
           ))}
         </div>
       </div>
