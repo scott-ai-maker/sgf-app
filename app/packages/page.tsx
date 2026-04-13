@@ -1,5 +1,14 @@
 import { PACKAGES } from '@/lib/stripe'
 import PurchaseButton from '@/components/packages/PurchaseButton'
+import Link from 'next/link'
+
+const PACKAGE_IMAGES: Record<string, string> = {
+  starter: '/images/package-starter.jpg',
+  momentum: '/images/package-momentum.jpg',
+  transformation: '/images/package-transformation.jpg',
+}
+
+const BRAND_LOGO = '/images/logo-mark-source.jpg'
 
 export default function PackagesPage() {
   return (
@@ -14,20 +23,31 @@ export default function PackagesPage() {
           justifyContent: 'space-between',
         }}
       >
-        <a
+        <Link
           href="/"
           style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
             textDecoration: 'none',
           }}
         >
-          SGF
-        </a>
+          <div
+            aria-hidden
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 2,
+              border: '1px solid var(--navy-lt)',
+              backgroundImage: `url('${BRAND_LOGO}')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, color: 'var(--gold)', letterSpacing: '0.06em' }}>SGF</span>
+        </Link>
         <div style={{ display: 'flex', gap: 20 }}>
-          <a
+          <Link
             href="/dashboard"
             style={{
               fontFamily: 'Raleway, sans-serif',
@@ -38,8 +58,8 @@ export default function PackagesPage() {
             }}
           >
             Dashboard
-          </a>
-          <a
+          </Link>
+          <Link
             href="/auth/login"
             style={{
               fontFamily: 'Raleway, sans-serif',
@@ -50,7 +70,7 @@ export default function PackagesPage() {
             }}
           >
             Sign In
-          </a>
+          </Link>
         </div>
       </nav>
 
@@ -101,6 +121,17 @@ export default function PackagesPage() {
                 position: 'relative',
               }}
             >
+              <div
+                style={{
+                  height: 140,
+                  margin: '-36px -28px 0',
+                  borderBottom: '1px solid var(--navy-lt)',
+                  backgroundImage: `linear-gradient(180deg, rgba(13,27,42,0.2), rgba(13,27,42,0.6)), url('${PACKAGE_IMAGES[pkg.id] ?? '/images/package-starter.jpg'}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
+
               {pkg.popular && (
                 <div
                   style={{

@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 export default function LoginPage() {
   return (
     <main
+      className="sgf-auth-bg"
       style={{
         minHeight: '100vh',
-        background: 'var(--navy)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -15,6 +15,19 @@ export default function LoginPage() {
       }}
     >
       <div style={{ width: '100%', maxWidth: 420 }}>
+        <div
+          aria-hidden
+          style={{
+            width: 68,
+            height: 68,
+            margin: '0 auto 14px',
+            borderRadius: 2,
+            border: '1px solid var(--navy-lt)',
+            backgroundImage: "url('/images/logo-mark-source.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',
@@ -40,9 +53,10 @@ export default function LoginPage() {
         </p>
         <div
           style={{
-            background: 'var(--navy-mid)',
+            background: 'rgba(18, 35, 54, 0.9)',
             padding: 32,
             border: '1px solid var(--navy-lt)',
+            backdropFilter: 'blur(2px)',
           }}
         >
           <AuthForm mode="login" />

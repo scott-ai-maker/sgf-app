@@ -12,11 +12,10 @@ interface Session {
 }
 
 interface ClientDetailClientProps {
-  clientId: string
   sessions: Session[]
 }
 
-export default function ClientDetailClient({ clientId, sessions }: ClientDetailClientProps) {
+export default function ClientDetailClient({ sessions }: ClientDetailClientProps) {
   const router = useRouter()
 
   function handleUpdate() {

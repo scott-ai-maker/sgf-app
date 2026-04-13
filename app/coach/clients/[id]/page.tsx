@@ -259,7 +259,7 @@ export default async function CoachClientPage({ params }: PageProps) {
           SESSIONS ({(sessions ?? []).length})
         </h2>
 
-        <ClientDetailClient clientId={id} sessions={sessions ?? []} />
+        <ClientDetailClient sessions={sessions ?? []} />
       </div>
     </main>
   )

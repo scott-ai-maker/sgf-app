@@ -43,7 +43,9 @@ export default function SlotPicker({ packages }: SlotPickerProps) {
   }, [selectedDate])
 
   useEffect(() => {
-    fetchSlots()
+    queueMicrotask(() => {
+      void fetchSlots()
+    })
   }, [fetchSlots])
 
   const availableDates = [...new Set(slots.map(s => s.date))]

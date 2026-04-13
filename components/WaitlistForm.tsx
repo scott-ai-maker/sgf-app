@@ -34,15 +34,15 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
         maxWidth: 480,
       }}>
         <p style={{ fontSize: '0.9rem', color: 'var(--white)', lineHeight: 1.6 }}>
-          <span style={{ color: 'var(--success)', fontWeight: 600 }}>You're on the list.</span>
-          {' '}I'll be in touch personally when spots open. — Scott
+          <span style={{ color: 'var(--success)', fontWeight: 600 }}>You&apos;re on the list.</span>
+          {' '}I&apos;ll be in touch personally when spots open. - Scott
         </p>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', gap: 0, maxWidth: 480, width: '100%' }}>
+    <div id={`waitlist-${id}`} style={{ display: 'flex', gap: 0, maxWidth: 480, width: '100%' }}>
       <input
         type="email"
         value={email}

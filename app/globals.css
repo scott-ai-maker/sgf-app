@@ -25,3 +25,36 @@ body {
   font-weight: 300;
   overflow-x: hidden;
 }
+
+.sgf-hero-bg {
+  background-image:
+    linear-gradient(90deg, rgba(13, 27, 42, 0.88) 0%, rgba(13, 27, 42, 0.72) 40%, rgba(13, 27, 42, 0.55) 100%),
+    url('/images/hero-bg.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.sgf-cta-bg {
+  background-image:
+    linear-gradient(180deg, rgba(13, 27, 42, 0.86) 0%, rgba(13, 27, 42, 0.82) 100%),
+    url('/images/cta-bg.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.sgf-auth-bg {
+  background-image:
+    linear-gradient(180deg, rgba(13, 27, 42, 0.9) 0%, rgba(13, 27, 42, 0.86) 100%),
+    url('/images/auth-bg.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+@media (max-width: 900px) {
+  .sgf-hero-bg {
+    background-image:
+      linear-gradient(180deg, rgba(13, 27, 42, 0.9) 0%, rgba(13, 27, 42, 0.78) 55%, rgba(13, 27, 42, 0.75) 100%),
+      url('/images/hero-bg-mobile.jpg');
+    background-position: center top;
+  }
+}

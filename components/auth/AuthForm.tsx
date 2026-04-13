@@ -64,7 +64,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
     const supabase = createClient()
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
       if (error) {
         setError(formatAuthErrorMessage(error.message))
         setLoading(false)

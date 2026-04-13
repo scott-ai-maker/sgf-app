@@ -1,5 +1,30 @@
 import WaitlistForm from '@/components/WaitlistForm'
 
+const BRAND_LOGO = '/images/logo-mark-source.jpg'
+
+const PILLARS = [
+  {
+    image: '/images/feature-programming.jpg',
+    title: 'Custom Programming',
+    desc: 'Weekly training plans built around your goals, schedule, and equipment. No templates.',
+  },
+  {
+    image: '/images/feature-tracking.jpg',
+    title: 'Session Tracking',
+    desc: 'Log every session, track progress, and see exactly how far you\'ve come.',
+  },
+  {
+    image: '/images/feature-coaching.jpg',
+    title: 'Direct Access',
+    desc: 'Scheduled calls, form reviews, and direct messaging. Real coaching, not bots.',
+  },
+  {
+    image: '/images/feature-scheduling.jpg',
+    title: 'Easy Scheduling',
+    desc: 'Book sessions, manage your package, and stay on track — all from one dashboard.',
+  },
+]
+
 export default function Home() {
   return (
     <>
@@ -13,8 +38,22 @@ export default function Home() {
         padding: '1.5rem 3rem',
         background: 'linear-gradient(to bottom, rgba(13,27,42,0.95), transparent)',
       }}>
-        <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.15em' }}>
-          Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <div
+            aria-hidden
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              border: '1px solid var(--navy-lt)',
+              backgroundImage: `url('${BRAND_LOGO}')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.15em' }}>
+            Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
+          </div>
         </div>
         <div style={{
           fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase',
@@ -25,27 +64,32 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section style={{
+      <section
+        className="sgf-hero-bg"
+        style={{
         position: 'relative', minHeight: '100vh',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: '8rem 3rem 4rem', maxWidth: 900,
-      }}>
-        <p style={{ fontSize: '0.7rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>
-          Online Personal Training · Est. 2025
-        </p>
-        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(4rem, 10vw, 8rem)', lineHeight: 0.95, letterSpacing: '0.02em' }}>
-          Train<br />
-          <span style={{ WebkitTextStroke: '1px var(--white)', color: 'transparent' }}>Smarter.</span><br />
-          Move <span style={{ color: 'var(--gold)' }}>Forward.</span>
-        </h1>
-        <div style={{ width: 60, height: 2, background: 'var(--gold)', margin: '2rem 0' }} />
-        <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', lineHeight: 1.7, color: 'var(--gray)', maxWidth: 480, marginBottom: '2.5rem' }}>
-          Online coaching built around you — personalized programming, real accountability, and a coach who's done the work himself. Spots are limited.
-        </p>
-        <WaitlistForm id="hero" />
-        <p style={{ marginTop: '0.75rem', fontSize: '0.72rem', letterSpacing: '0.1em', color: 'var(--gray)' }}>
-          No spam. No pressure. First to know when coaching opens.
-        </p>
+        padding: '8rem 3rem 4rem',
+      }}
+      >
+        <div style={{ maxWidth: 900 }}>
+          <p style={{ fontSize: '0.7rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>
+            Online Personal Training · Est. 2025
+          </p>
+          <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(4rem, 10vw, 8rem)', lineHeight: 0.95, letterSpacing: '0.02em' }}>
+            Train<br />
+            <span style={{ WebkitTextStroke: '1px var(--white)', color: 'transparent' }}>Smarter.</span><br />
+            Move <span style={{ color: 'var(--gold)' }}>Forward.</span>
+          </h1>
+          <div style={{ width: 60, height: 2, background: 'var(--gold)', margin: '2rem 0' }} />
+          <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', lineHeight: 1.7, color: 'var(--gray)', maxWidth: 480, marginBottom: '2.5rem' }}>
+            Online coaching built around you — personalized programming, real accountability, and a coach who&apos;s done the work himself. Spots are limited.
+          </p>
+          <WaitlistForm id="hero" />
+          <p style={{ marginTop: '0.75rem', fontSize: '0.72rem', letterSpacing: '0.1em', color: 'var(--gray)' }}>
+            No spam. No pressure. First to know when coaching opens.
+          </p>
+        </div>
       </section>
 
       {/* Stats */}
@@ -67,19 +111,24 @@ export default function Home() {
 
       {/* Pillars */}
       <section style={{ padding: '6rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
-        <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1rem' }}>What's Included</p>
+        <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1rem' }}>What&apos;s Included</p>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: 1, marginBottom: '3.5rem' }}>
-          Everything You Need.<br />Nothing You Don't.
+          Everything You Need.<br />Nothing You Don&apos;t.
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5px', background: 'rgba(255,255,255,0.06)' }}>
-          {[
-            { icon: '⚡', title: 'Custom Programming', desc: 'Weekly training plans built around your goals, schedule, and equipment. No templates.' },
-            { icon: '📊', title: 'Session Tracking', desc: 'Log every session, track progress, and see exactly how far you\'ve come.' },
-            { icon: '🎯', title: 'Direct Access', desc: 'Scheduled calls, form reviews, and direct messaging. Real coaching, not bots.' },
-            { icon: '📅', title: 'Easy Scheduling', desc: 'Book sessions, manage your package, and stay on track — all from one dashboard.' },
-          ].map((p, i) => (
+          {PILLARS.map((p, i) => (
             <div key={i} style={{ background: 'var(--navy)', padding: '2.5rem 2rem' }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: '1.25rem' }}>{p.icon}</div>
+              <div
+                style={{
+                  width: '100%',
+                  height: 144,
+                  marginBottom: '1.25rem',
+                  border: '1px solid var(--navy-lt)',
+                  backgroundImage: `linear-gradient(180deg, rgba(13,27,42,0.2), rgba(13,27,42,0.55)), url('${p.image}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              />
               <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>{p.title}</div>
               <div style={{ fontSize: '0.85rem', lineHeight: 1.7, color: 'var(--gray)' }}>{p.desc}</div>
             </div>
@@ -89,11 +138,21 @@ export default function Home() {
 
       {/* Bio */}
       <div style={{ background: 'var(--navy-mid)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6rem 3rem' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1020, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: '2.5rem', alignItems: 'center' }}>
+          <div
+            style={{
+              minHeight: 460,
+              backgroundImage: "linear-gradient(180deg, rgba(13,27,42,0.22), rgba(13,27,42,0.42)), url('/images/coach-portrait.jpg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              border: '1px solid var(--navy-lt)',
+            }}
+          />
+          <div>
           <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>Your Coach</p>
           <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2rem, 4vw, 3rem)', marginBottom: '1.5rem', lineHeight: 1.1 }}>Scott Gordon</h2>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)', marginBottom: '1rem' }}>
-            I'm a <strong style={{ color: 'var(--white)', fontWeight: 600 }}>certified personal trainer</strong> with over a decade of experience helping people build real, sustainable fitness — from complete beginners to competitive athletes.
+            I&apos;m a <strong style={{ color: 'var(--white)', fontWeight: 600 }}>certified personal trainer</strong> with over a decade of experience helping people build real, sustainable fitness — from complete beginners to competitive athletes.
           </p>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)', marginBottom: '1rem' }}>
             I know what it takes to <strong style={{ color: 'var(--white)', fontWeight: 600 }}>rebuild from scratch</strong>. To show up when motivation fades. To train with intention and see results that stick.
@@ -101,11 +160,12 @@ export default function Home() {
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)' }}>
             Online coaching means <strong style={{ color: 'var(--white)', fontWeight: 600 }}>expert guidance without the commute</strong> — a program that fits your life, not the other way around.
           </p>
+          </div>
         </div>
       </div>
 
       {/* Bottom CTA */}
-      <section style={{ padding: '6rem 3rem', textAlign: 'center' }}>
+      <section className="sgf-cta-bg" style={{ padding: '6rem 3rem', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', lineHeight: 1, marginBottom: '1rem' }}>
           Ready to <span style={{ color: 'var(--gold)' }}>Start?</span>
         </h2>
@@ -121,8 +181,22 @@ export default function Home() {
         padding: '2rem 3rem',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
       }}>
-        <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.1rem', letterSpacing: '0.15em', color: 'var(--gray)' }}>
-          Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 2,
+              border: '1px solid var(--navy-lt)',
+              backgroundImage: `url('${BRAND_LOGO}')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.1rem', letterSpacing: '0.15em', color: 'var(--gray)' }}>
+            Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
+          </div>
         </div>
         <div style={{ fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--gray)', opacity: 0.6 }}>
           © 2025 Scott Gordon Fitness · scottgordonfitness.com

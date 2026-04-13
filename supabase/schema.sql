@@ -16,11 +16,11 @@ create table if not exists clients (
   phone           text,
   stripe_customer_id text unique,
   created_at      timestamptz default now()
+);
 
 -- ── ROLE MIGRATION (run after initial schema) ─────────────
 alter table clients add column if not exists role text default 'client'
   check (role in ('client', 'coach'));
-);
 
 -- ── PACKAGES ──────────────────────────────────────────────
 create table if not exists client_packages (
