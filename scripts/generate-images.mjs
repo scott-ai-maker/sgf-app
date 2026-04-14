@@ -137,7 +137,9 @@ const IMAGES = [
     presetStyle: 'CINEMATIC',
   },
 
-  // ── Coach portrait (placeholder — replace with real photo before launch) ──
+  // ── Coach portrait — seed-driven for likeness consistency ─────────────────
+  // Set LEONARDO_SEED=<your_seed> in .env.local to reproduce your exact likeness.
+  // You can also set seed here directly: seed: 1234567
   {
     filename: 'coach-portrait.jpg',
     prompt:
@@ -152,6 +154,7 @@ const IMAGES = [
     height: 1216,
     modelId: MODELS.KINO_XL,
     presetStyle: 'PORTRAIT',
+    // seed: undefined  ← uncomment and set your seed number here, or use LEONARDO_SEED env var
   },
 
   // ── Feature / pillar cards (4 pillars on the landing page) ───────────────
@@ -435,6 +438,14 @@ async function submitGeneration(spec) {
   const modelId = await resolveCompatibleModelId(spec.modelId)
   const normalized = normalizeDimensions(spec.width, spec.height)
   const alchemyEnabled = ['1', 'true', 'yes'].includes((process.env.LEONARDO_ALCHEMY ?? '').toLowerCase())
+
+  // Seed resolution order:
+  //   1. per-image spec.seed
+  //   2. LEONARDO_SEED env var (applies to all images)
+  const globalSeed = (process.env.LEONARDO_SEED ?? '').trim()
+  const seedRaw = spec.seed ?? (globalSeed !== '' ? Number(globalSeed) : undefined)
+  const seed = Number.isFinite(seedRaw) ? Math.trunc(seedRaw) : undefined
+
   const body = {
     prompt: spec.prompt,
     negative_prompt: spec.negativePrompt ?? NEG,
@@ -444,6 +455,7 @@ async function submitGeneration(spec) {
     alchemy: alchemyEnabled,
     ...(spec.presetStyle ? { presetStyle: spec.presetStyle } : {}),
     ...(modelId ? { modelId } : {}),
+    ...(seed !== undefined ? { seed } : {}),
   }
 
   if (normalized.changed) {
