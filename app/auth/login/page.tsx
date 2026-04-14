@@ -1,11 +1,11 @@
 import AuthForm from '@/components/auth/AuthForm'
-import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react'
+import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 
 const SOCIAL_LINKS = [
-  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
-  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
-  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: CirclePlay },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Users },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: BriefcaseBusiness },
 ]
 
 export const dynamic = 'force-dynamic'

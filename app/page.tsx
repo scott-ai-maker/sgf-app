@@ -1,7 +1,8 @@
 import WaitlistForm from '@/components/WaitlistForm'
-import { Instagram, Youtube, Facebook, Linkedin } from 'lucide-react'
+import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
+const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=20260414-1'
 
 const PILLARS = [
   {
@@ -27,10 +28,10 @@ const PILLARS = [
 ]
 
 const SOCIAL_LINKS = [
-  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
-  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
-  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: CirclePlay },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Users },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: BriefcaseBusiness },
 ]
 
 export default function Home() {
@@ -150,7 +151,7 @@ export default function Home() {
           <div
             style={{
               minHeight: 460,
-              backgroundImage: "linear-gradient(180deg, rgba(13,27,42,0.22), rgba(13,27,42,0.42)), url('/images/coach-portrait.jpg')",
+              backgroundImage: `linear-gradient(180deg, rgba(13,27,42,0.22), rgba(13,27,42,0.42)), url('${COACH_PORTRAIT_IMAGE}')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               border: '1px solid var(--navy-lt)',

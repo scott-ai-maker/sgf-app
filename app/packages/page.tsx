@@ -1,7 +1,7 @@
 import { PACKAGES } from '@/lib/stripe'
 import PurchaseButton from '@/components/packages/PurchaseButton'
 import Link from 'next/link'
-import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react'
+import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 
 const PACKAGE_IMAGES: Record<string, string> = {
   starter: '/images/package-starter.jpg',
@@ -12,10 +12,10 @@ const PACKAGE_IMAGES: Record<string, string> = {
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
 
 const SOCIAL_LINKS = [
-  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Instagram },
-  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: Youtube },
-  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Facebook },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: Linkedin },
+  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },
+  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: CirclePlay },
+  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Users },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: BriefcaseBusiness },
 ]
 
 export default function PackagesPage() {
