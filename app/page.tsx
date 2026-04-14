@@ -2,7 +2,7 @@ import WaitlistForm from '@/components/WaitlistForm'
 import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
-const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=20260414-1'
+const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=0.1.4'
 
 const PILLARS = [
   {
