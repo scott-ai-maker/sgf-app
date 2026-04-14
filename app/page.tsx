@@ -11,12 +11,12 @@ const PILLARS = [
     desc: 'Weekly training plans built around your goals, schedule, and equipment. No templates.',
   },
   {
-    image: '/images/feature-tracking.jpg',
+    image: '/images/feature-tracking.jpg?v=0.1.5',
     title: 'Session Tracking',
     desc: 'Log every session, track progress, and see exactly how far you\'ve come.',
   },
   {
-    image: '/images/feature-coaching.jpg',
+    image: '/images/feature-coaching.jpg?v=0.1.5',
     title: 'Direct Access',
     desc: 'Scheduled calls, form reviews, and direct messaging. Real coaching, not bots.',
   },
