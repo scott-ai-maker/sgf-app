@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SuccessBanner from '@/components/dashboard/SuccessBanner'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,67 +53,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <main className="dashboard-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      {/* Nav */}
-      <nav
-        className="dashboard-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
-          }}
-        >
-          SGF
-        </span>
-        <div className="dashboard-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <a
-            href="/dashboard/fitness"
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--gray)',
-              textDecoration: 'none',
-            }}
-          >
-            Fitness Lab
-          </a>
-          <a
-            href="/packages"
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--gray)',
-              textDecoration: 'none',
-            }}
-          >
-            Buy Sessions
-          </a>
-          <a
-            href="/dashboard/messages"
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--gray)',
-              textDecoration: 'none',
-            }}
-          >
-            Message Trainer
-          </a>
-          <LogoutButton />
-        </div>
-      </nav>
+      <SiteHeader
+        links={[
+          { href: '/dashboard/fitness', label: 'Fitness Lab' },
+          { href: '/packages', label: 'Buy Sessions' },
+          { href: '/dashboard/messages', label: 'Messages' },
+        ]}
+        actions={<LogoutButton />}
+      />
 
       <div className="dashboard-content" style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
         {showSuccess && <SuccessBanner />}
@@ -220,17 +168,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </p>
             <a
               href="/packages"
-              style={{
-                display: 'inline-block',
-                padding: '12px 28px',
-                background: 'var(--gold)',
-                color: '#0D1B2A',
-                fontFamily: 'Bebas Neue, sans-serif',
-                fontSize: 18,
-                letterSpacing: '0.06em',
-                textDecoration: 'none',
-                borderRadius: 2,
-              }}
+              className="sgf-button sgf-button-primary"
             >
               View Packages
             </a>
@@ -331,16 +269,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           {totalRemaining > 0 && (
             <a
               href="/dashboard/book"
-              style={{
-                padding: '10px 20px',
-                background: 'var(--gold)',
-                color: '#0D1B2A',
-                fontFamily: 'Bebas Neue, sans-serif',
-                fontSize: 16,
-                letterSpacing: '0.06em',
-                textDecoration: 'none',
-                borderRadius: 2,
-              }}
+              className="sgf-button sgf-button-primary"
             >
               Book a Session
             </a>

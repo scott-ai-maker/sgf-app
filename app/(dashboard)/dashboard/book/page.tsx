@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SlotPicker from '@/components/booking/SlotPicker'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,44 +23,18 @@ export default async function BookPage() {
 
   return (
     <main className="dashboard-book-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      <nav
-        className="dashboard-book-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <a
-          href="/dashboard"
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
-            textDecoration: 'none',
-          }}
-        >
-          SGF
-        </a>
-        <LogoutButton />
-      </nav>
+      <SiteHeader
+        links={[
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/messages', label: 'Messages' },
+        ]}
+        actions={<LogoutButton />}
+      />
 
       <div className="dashboard-book-content" style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
         <a
           href="/dashboard"
-          style={{
-            fontFamily: 'Raleway, sans-serif',
-            fontSize: 13,
-            color: 'var(--gray)',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            marginBottom: 24,
-          }}
+          className="sgf-shell-back"
         >
           ← Back to Dashboard
         </a>
@@ -109,17 +84,7 @@ export default async function BookPage() {
             </p>
             <a
               href="/packages"
-              style={{
-                display: 'inline-block',
-                padding: '12px 28px',
-                background: 'var(--gold)',
-                color: '#0D1B2A',
-                fontFamily: 'Bebas Neue, sans-serif',
-                fontSize: 18,
-                letterSpacing: '0.06em',
-                textDecoration: 'none',
-                borderRadius: 2,
-              }}
+              className="sgf-button sgf-button-primary"
             >
               View Packages
             </a>

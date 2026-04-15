@@ -1,7 +1,7 @@
 import { PACKAGES } from '@/lib/stripe'
 import PurchaseButton from '@/components/packages/PurchaseButton'
-import Link from 'next/link'
-import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
+import SiteHeader from '@/components/ui/SiteHeader'
+import SiteFooter from '@/components/ui/SiteFooter'
 
 const PACKAGE_IMAGES: Record<string, string> = {
   starter: '/images/package-starter.jpg',
@@ -9,79 +9,16 @@ const PACKAGE_IMAGES: Record<string, string> = {
   transformation: '/images/package-transformation.jpg',
 }
 
-const BRAND_LOGO = '/images/logo-mark-source.jpg'
-
-const SOCIAL_LINKS = [
-  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },
-  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: CirclePlay },
-  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Users },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: BriefcaseBusiness },
-]
-
 export default function PackagesPage() {
   return (
     <main className="packages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      {/* Nav */}
-      <nav
-        className="packages-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <Link
-          href="/"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            textDecoration: 'none',
-          }}
-        >
-          <div
-            aria-hidden
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 2,
-              border: '1px solid var(--navy-lt)',
-              backgroundImage: `url('${BRAND_LOGO}')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, color: 'var(--gold)', letterSpacing: '0.06em' }}>SGF</span>
-        </Link>
-        <div className="packages-nav-links" style={{ display: 'flex', gap: 20 }}>
-          <Link
-            href="/dashboard"
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--gray)',
-              textDecoration: 'none',
-            }}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/auth/login"
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--gray)',
-              textDecoration: 'none',
-            }}
-          >
-            Sign In
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader
+        links={[
+          { href: '/apply', label: 'Fit Quiz' },
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/auth/login', label: 'Sign In' },
+        ]}
+      />
 
       <div className="packages-content" style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 24px' }}>
         <h1
@@ -230,30 +167,9 @@ export default function PackagesPage() {
           ))}
         </div>
 
-        <div style={{ marginTop: 28, display: 'flex', justifyContent: 'center', gap: '0.6rem' }}>
-          {SOCIAL_LINKS.map(({ name, href, Icon }) => (
-            <a
-              key={name}
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={name}
-              style={{
-                width: 34,
-                height: 34,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--navy-lt)',
-                color: 'var(--gray)',
-                background: 'rgba(13,27,42,0.55)',
-              }}
-            >
-              <Icon size={16} strokeWidth={2} />
-            </a>
-          ))}
-        </div>
       </div>
+
+      <SiteFooter />
     </main>
   )
 }

@@ -1,34 +1,27 @@
 import Link from 'next/link'
 import ApplyQuiz from '@/components/marketing/ApplyQuiz'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export default function ApplyPage() {
   return (
     <main className="apply-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '2rem 1rem 4rem' }}>
+      <SiteHeader
+        links={[
+          { href: '/packages', label: 'Packages' },
+          { href: '/auth/login', label: 'Sign In' },
+        ]}
+      />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <div className="apply-top-links" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Link
             href="/"
-            style={{
-              color: 'var(--gray)',
-              textDecoration: 'none',
-              border: '1px solid var(--navy-lt)',
-              padding: '8px 12px',
-              fontFamily: 'Raleway, sans-serif',
-              fontSize: 13,
-            }}
+            className="sgf-button sgf-button-secondary"
           >
             Back to Home
           </Link>
           <Link
             href="/packages"
-            style={{
-              color: 'var(--white)',
-              textDecoration: 'none',
-              border: '1px solid var(--navy-lt)',
-              padding: '8px 12px',
-              fontFamily: 'Raleway, sans-serif',
-              fontSize: 13,
-            }}
+            className="sgf-button sgf-button-secondary"
           >
             View Packages
           </Link>

@@ -5,6 +5,7 @@ import LogoutButton from '@/components/auth/LogoutButton'
 import ClientDetailClient from '@/components/coach/ClientDetailClient'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
 import GenerateClientPlanButton from '@/components/coach/GenerateClientPlanButton'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,44 +54,19 @@ export default async function CoachClientPage({ params }: PageProps) {
 
   return (
     <main className="coach-client-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      <nav
-        className="coach-client-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <a
-          href="/coach"
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
-            textDecoration: 'none',
-          }}
-        >
-          SGF COACH
-        </a>
-        <LogoutButton />
-      </nav>
+      <SiteHeader
+        badgeText="Coach Client View"
+        links={[
+          { href: '/coach', label: 'Coach Dashboard' },
+          { href: `/coach/clients/${id}/messages`, label: 'Messages' },
+        ]}
+        actions={<LogoutButton />}
+      />
 
       <div className="coach-client-content" style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
         <a
           href="/coach"
-          style={{
-            fontFamily: 'Raleway, sans-serif',
-            fontSize: 13,
-            color: 'var(--gray)',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            marginBottom: 24,
-          }}
+          className="sgf-shell-back"
         >
           ← Back to Clients
         </a>
@@ -99,17 +75,7 @@ export default async function CoachClientPage({ params }: PageProps) {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <a
               href={`/coach/clients/${id}/messages`}
-              style={{
-                display: 'inline-block',
-                padding: '10px 16px',
-                border: '1px solid var(--navy-lt)',
-                background: 'var(--navy-mid)',
-                color: 'var(--gold)',
-                textDecoration: 'none',
-                fontFamily: 'Raleway, sans-serif',
-                fontWeight: 600,
-                fontSize: 13,
-              }}
+              className="sgf-button sgf-button-secondary"
             >
               Message Client
             </a>

@@ -43,7 +43,11 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
 
   return (
     <div id={`waitlist-${id}`} className="waitlist-form" style={{ display: 'flex', gap: 0, maxWidth: 480, width: '100%' }}>
+      <label htmlFor={`waitlist-email-${id}`} style={{ position: 'absolute', left: '-9999px' }}>
+        Email address
+      </label>
       <input
+        id={`waitlist-email-${id}`}
         className="waitlist-form-input"
         type="email"
         value={email}
@@ -65,6 +69,7 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
         }}
       />
       <button
+        type="button"
         className="waitlist-form-button"
         onClick={submit}
         disabled={status === 'loading'}

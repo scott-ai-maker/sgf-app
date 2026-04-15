@@ -1,8 +1,8 @@
 import WaitlistForm from '@/components/WaitlistForm'
-import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 import Link from 'next/link'
+import SiteHeader from '@/components/ui/SiteHeader'
+import SiteFooter from '@/components/ui/SiteFooter'
 
-const BRAND_LOGO = '/images/logo-mark-source.jpg'
 const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=0.1.4'
 
 const PILLARS = [
@@ -28,11 +28,10 @@ const PILLARS = [
   },
 ]
 
-const SOCIAL_LINKS = [
-  { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },
-  { name: 'YouTube', href: 'https://youtube.com/@scottgordonfitness', Icon: CirclePlay },
-  { name: 'Facebook', href: 'https://facebook.com/scottgordonfitness', Icon: Users },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/scottgordonfitness', Icon: BriefcaseBusiness },
+const HOME_STATS = [
+  { num: '1:1', label: 'Personalized Coaching' },
+  { num: '100%', label: 'Online & Flexible' },
+  { num: '12+', label: 'Years of Experience' },
 ]
 
 export default function Home() {
@@ -41,37 +40,7 @@ export default function Home() {
       {/* Gold top bar */}
       <div style={{ height: 3, background: 'linear-gradient(to right, var(--gold), transparent)' }} />
 
-      {/* Nav */}
-      <nav className="home-nav" style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '1.5rem 3rem',
-        background: 'linear-gradient(to bottom, rgba(13,27,42,0.95), transparent)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          <div
-            aria-hidden
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              border: '1px solid var(--navy-lt)',
-              backgroundImage: `url('${BRAND_LOGO}')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <div className="home-brand-title" style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.15em' }}>
-            Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
-          </div>
-        </div>
-        <div className="home-nav-badge" style={{
-          fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase',
-          color: 'var(--gray)', border: '1px solid var(--navy-lt)', padding: '0.4rem 1rem', borderRadius: 2,
-        }}>
-          Online Coaching · Coming Soon
-        </div>
-      </nav>
+      <SiteHeader fixed badgeText="Online Coaching · Rolling Intake" />
 
       {/* Hero */}
       <section
@@ -82,7 +51,7 @@ export default function Home() {
         padding: '8rem 3rem 4rem',
       }}
       >
-        <div className="home-hero-content" style={{ maxWidth: 900 }}>
+        <div className="home-hero-content fade-in-up" style={{ maxWidth: 900 }}>
           <p style={{ fontSize: '0.7rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>
             Online Personal Training · Est. 2025
           </p>
@@ -98,30 +67,13 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <Link
               href="/apply"
-              style={{
-                background: 'var(--gold)',
-                color: 'var(--navy)',
-                fontFamily: 'Bebas Neue, sans-serif',
-                fontSize: '1rem',
-                letterSpacing: '0.15em',
-                padding: '1rem 1.4rem',
-                textDecoration: 'none',
-              }}
+              className="sgf-button sgf-button-primary"
             >
               Apply for Coaching
             </Link>
             <a
               href="#waitlist-hero"
-              style={{
-                border: '1px solid var(--navy-lt)',
-                color: 'var(--white)',
-                fontFamily: 'Raleway, sans-serif',
-                fontSize: '0.85rem',
-                padding: '1rem 1.1rem',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
+              className="sgf-button sgf-button-secondary"
             >
               Join Waitlist
             </a>
@@ -135,14 +87,10 @@ export default function Home() {
 
       {/* Stats */}
       <div className="home-stats" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'center' }}>
-        {[
-          { num: '1:1', label: 'Personalized Coaching' },
-          { num: '100%', label: 'Online & Flexible' },
-          { num: '12+', label: 'Years of Experience' },
-        ].map((s, i) => (
+        {HOME_STATS.map((s, i) => (
           <div key={i} className="home-stat-item" style={{
             flex: 1, maxWidth: 280, padding: '3rem 2rem', textAlign: 'center',
-            borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+            borderRight: i < HOME_STATS.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
           }}>
             <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '3rem', color: 'var(--gold)', lineHeight: 1 }}>{s.num}</div>
             <div style={{ marginTop: '0.5rem', fontSize: '0.68rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--gray)' }}>{s.label}</div>
@@ -151,7 +99,7 @@ export default function Home() {
       </div>
 
       {/* Pillars */}
-      <section className="home-pillar-section" style={{ padding: '6rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
+      <section className="home-pillar-section fade-in-up" style={{ padding: '6rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
         <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1rem' }}>What&apos;s Included</p>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: 1, marginBottom: '3.5rem' }}>
           Everything You Need.<br />Nothing You Don&apos;t.
@@ -178,7 +126,7 @@ export default function Home() {
       </section>
 
       {/* Bio */}
-      <div className="home-bio-section" style={{ background: 'var(--navy-mid)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6rem 3rem' }}>
+      <div className="home-bio-section fade-in-up" style={{ background: 'var(--navy-mid)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6rem 3rem' }}>
         <div className="home-bio-grid" style={{ maxWidth: 1020, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: '2.5rem', alignItems: 'center' }}>
           <div
             className="home-bio-photo"
@@ -215,30 +163,13 @@ export default function Home() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <Link
             href="/apply"
-            style={{
-              background: 'var(--gold)',
-              color: 'var(--navy)',
-              fontFamily: 'Bebas Neue, sans-serif',
-              fontSize: '1rem',
-              letterSpacing: '0.15em',
-              padding: '1rem 1.4rem',
-              textDecoration: 'none',
-            }}
+            className="sgf-button sgf-button-primary"
           >
             Apply for Coaching
           </Link>
           <a
             href="#waitlist-cta"
-            style={{
-              border: '1px solid var(--navy-lt)',
-              color: 'var(--white)',
-              fontFamily: 'Raleway, sans-serif',
-              fontSize: '0.85rem',
-              padding: '1rem 1.1rem',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
+            className="sgf-button sgf-button-secondary"
           >
             Join Waitlist
           </a>
@@ -249,56 +180,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="home-footer" style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '2rem 3rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div
-            aria-hidden
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 2,
-              border: '1px solid var(--navy-lt)',
-              backgroundImage: `url('${BRAND_LOGO}')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          />
-          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.1rem', letterSpacing: '0.15em', color: 'var(--gray)' }}>
-            Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
-          </div>
-        </div>
-        <div style={{ fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--gray)', opacity: 0.6 }}>
-          © 2025 Scott Gordon Fitness · scottgordonfitness.com
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {SOCIAL_LINKS.map(({ name, href, Icon }) => (
-            <a
-              key={name}
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={name}
-              style={{
-                width: 34,
-                height: 34,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--navy-lt)',
-                color: 'var(--gray)',
-                background: 'rgba(13,27,42,0.5)',
-                transition: 'all 160ms ease',
-              }}
-            >
-              <Icon size={16} strokeWidth={2} />
-            </a>
-          ))}
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }

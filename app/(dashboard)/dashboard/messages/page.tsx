@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import LogoutButton from '@/components/auth/LogoutButton'
 import MessageThreadClient from '@/components/messages/MessageThreadClient'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,30 +24,13 @@ export default async function ClientMessagesPage() {
 
   return (
     <main className="dashboard-messages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      <nav
-        className="dashboard-messages-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <a
-          href="/dashboard"
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
-            textDecoration: 'none',
-          }}
-        >
-          SGF
-        </a>
-        <LogoutButton />
-      </nav>
+      <SiteHeader
+        links={[
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/book', label: 'Book' },
+        ]}
+        actions={<LogoutButton />}
+      />
 
       <div className="dashboard-messages-content" style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px' }}>
         <h1

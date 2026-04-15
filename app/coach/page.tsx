@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import LogoutButton from '@/components/auth/LogoutButton'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -317,28 +318,14 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
 
   return (
     <main className="coach-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
-      <nav
-        className="coach-nav"
-        style={{
-          borderBottom: '1px solid var(--navy-lt)',
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 22,
-            color: 'var(--gold)',
-            letterSpacing: '0.06em',
-          }}
-        >
-          SGF COACH
-        </span>
-        <LogoutButton />
-      </nav>
+      <SiteHeader
+        badgeText="Coach Console"
+        links={[
+          { href: '/coach#assigned-clients', label: 'Assigned Clients' },
+          { href: '/coach?focus=unread-messages#assigned-clients', label: 'Unread' },
+        ]}
+        actions={<LogoutButton />}
+      />
 
       <div className="coach-content" style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
         <h1

@@ -191,9 +191,9 @@ export default function ApplyQuiz() {
           Based on your goals, budget, and support preference, this is your highest-fit starting path.
         </p>
 
-        <div className="apply-quiz-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="apply-quiz-form-grid sgf-form-grid" style={{ marginBottom: 14 }}>
           <div>
-            <label htmlFor="apply-first-name" style={{ display: 'block', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
+            <label htmlFor="apply-first-name" className="sgf-form-label">
               First Name (Optional)
             </label>
             <input
@@ -201,18 +201,11 @@ export default function ApplyQuiz() {
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               placeholder="Your name"
-              style={{
-                width: '100%',
-                background: 'var(--navy)',
-                border: '1px solid var(--navy-lt)',
-                color: 'var(--white)',
-                padding: '12px 14px',
-                fontSize: 14,
-              }}
+              className="sgf-form-input"
             />
           </div>
           <div>
-            <label htmlFor="apply-email" style={{ display: 'block', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
+            <label htmlFor="apply-email" className="sgf-form-label">
               Email
             </label>
             <input
@@ -221,14 +214,8 @@ export default function ApplyQuiz() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{
-                width: '100%',
-                background: 'var(--navy)',
-                border: `1px solid ${email.length > 0 && !isEmailValid ? 'var(--error)' : 'var(--navy-lt)'}`,
-                color: 'var(--white)',
-                padding: '12px 14px',
-                fontSize: 14,
-              }}
+              className="sgf-form-input"
+              style={{ borderColor: email.length > 0 && !isEmailValid ? 'var(--error)' : 'var(--navy-lt)' }}
             />
           </div>
         </div>

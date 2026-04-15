@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import FitnessTrackerClient from '@/components/fitness/FitnessTrackerClient'
+import LogoutButton from '@/components/auth/LogoutButton'
+import SiteHeader from '@/components/ui/SiteHeader'
 import {
   createSignedFitnessPhotoUrl,
   extractPhotoPathFromLegacyUrl,
@@ -46,13 +48,22 @@ export default async function FitnessTrackerPage() {
 
   return (
     <main className="dashboard-fitness-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '26px 24px 40px' }}>
+      <SiteHeader
+        links={[
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/book', label: 'Book Session' },
+          { href: '/dashboard/messages', label: 'Messages' },
+        ]}
+        badgeText="Fitness Lab"
+        actions={<LogoutButton />}
+      />
       <div className="dashboard-fitness-content" style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 46, letterSpacing: '0.05em', margin: 0 }}>Fitness Lab</h1>
             <p style={{ color: 'var(--gray)', margin: '6px 0 0' }}>Build your NASM OPT plan, track sessions, and visualize your goal outcome.</p>
           </div>
-          <a href="/dashboard" style={{ color: 'var(--gold)', textDecoration: 'none', fontWeight: 600 }}>Back to Dashboard</a>
+          <a href="/dashboard" className="sgf-shell-back" style={{ marginBottom: 0 }}>← Back to Dashboard</a>
         </div>
 
         <FitnessTrackerClient

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import OnboardingForm from '@/components/fitness/OnboardingForm'
 import LogoutButton from '@/components/auth/LogoutButton'
+import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,10 +24,18 @@ export default async function OnboardingPage() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--navy)', padding: '40px 24px' }}>
+      <SiteHeader
+        links={[
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/messages', label: 'Messages' },
+        ]}
+        badgeText="Onboarding"
+        actions={<LogoutButton />}
+      />
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <LogoutButton />
-        </div>
+        <a href="/dashboard" className="sgf-shell-back">
+          ← Back to Dashboard
+        </a>
         <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 44, letterSpacing: '0.05em', margin: '0 0 8px' }}>
           Fitness Setup
         </h1>

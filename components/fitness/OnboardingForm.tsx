@@ -29,26 +29,6 @@ const EQUIPMENT_OPTIONS = [
   { key: 'medicine-ball', label: 'Medicine ball' },
 ] as const
 
-const fieldStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  border: '1px solid var(--navy-lt)',
-  background: 'var(--navy-mid)',
-  color: 'var(--white)',
-  fontFamily: 'Raleway, sans-serif',
-  fontSize: 14,
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  marginBottom: 6,
-  fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  color: 'var(--gray)',
-  fontWeight: 600,
-}
-
 export default function OnboardingForm() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -314,13 +294,14 @@ export default function OnboardingForm() {
       </section>
 
       <div style={{ display: 'grid', gap: 12 }}>
-        <label style={labelStyle}>PAR-Q Health Screening</label>
+        <label className="sgf-form-label">PAR-Q Health Screening</label>
         {PARQ_QUESTIONS.map(question => (
           <div key={question.key} style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: '10px 12px' }}>
             <p style={{ margin: '0 0 8px 0', fontSize: 14 }}>{question.label}</p>
             <div style={{ display: 'flex', gap: 14 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor={`${question.key}-yes`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
+                  id={`${question.key}-yes`}
                   type="radio"
                   name={question.key}
                   value="yes"
@@ -329,8 +310,9 @@ export default function OnboardingForm() {
                 />
                 <span>Yes</span>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor={`${question.key}-no`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
+                  id={`${question.key}-no`}
                   type="radio"
                   name={question.key}
                   value="no"
@@ -344,58 +326,58 @@ export default function OnboardingForm() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="sgf-form-grid">
         <div>
-          <label style={labelStyle}>Medical Conditions</label>
-          <textarea value={form.medicalConditions} onChange={e => updateField('medicalConditions', e.target.value)} style={{ ...fieldStyle, minHeight: 72 }} placeholder="Heart, respiratory, metabolic, neurological, etc." />
+          <label className="sgf-form-label">Medical Conditions</label>
+          <textarea value={form.medicalConditions} onChange={e => updateField('medicalConditions', e.target.value)} className="sgf-form-input" style={{ minHeight: 72 }} placeholder="Heart, respiratory, metabolic, neurological, etc." />
         </div>
         <div>
-          <label style={labelStyle}>Current Medications</label>
-          <textarea value={form.medications} onChange={e => updateField('medications', e.target.value)} style={{ ...fieldStyle, minHeight: 72 }} placeholder="Include dosage/frequency if relevant." />
+          <label className="sgf-form-label">Current Medications</label>
+          <textarea value={form.medications} onChange={e => updateField('medications', e.target.value)} className="sgf-form-input" style={{ minHeight: 72 }} placeholder="Include dosage/frequency if relevant." />
         </div>
         <div>
-          <label style={labelStyle}>Surgeries / Prior Injuries</label>
-          <textarea value={form.surgeriesOrInjuries} onChange={e => updateField('surgeriesOrInjuries', e.target.value)} style={{ ...fieldStyle, minHeight: 72 }} placeholder="Include dates if known." />
+          <label className="sgf-form-label">Surgeries / Prior Injuries</label>
+          <textarea value={form.surgeriesOrInjuries} onChange={e => updateField('surgeriesOrInjuries', e.target.value)} className="sgf-form-input" style={{ minHeight: 72 }} placeholder="Include dates if known." />
         </div>
         <div>
-          <label style={labelStyle}>Allergies</label>
-          <textarea value={form.allergies} onChange={e => updateField('allergies', e.target.value)} style={{ ...fieldStyle, minHeight: 72 }} placeholder="Medication, food, latex, etc." />
+          <label className="sgf-form-label">Allergies</label>
+          <textarea value={form.allergies} onChange={e => updateField('allergies', e.target.value)} className="sgf-form-input" style={{ minHeight: 72 }} placeholder="Medication, food, latex, etc." />
         </div>
         <div>
-          <label style={labelStyle}>Emergency Contact Name</label>
-          <input value={form.emergencyContactName} onChange={e => updateField('emergencyContactName', e.target.value)} style={fieldStyle} required />
+          <label className="sgf-form-label">Emergency Contact Name</label>
+          <input value={form.emergencyContactName} onChange={e => updateField('emergencyContactName', e.target.value)} className="sgf-form-input" required />
         </div>
         <div>
-          <label style={labelStyle}>Emergency Contact Phone</label>
-          <input value={form.emergencyContactPhone} onChange={e => updateField('emergencyContactPhone', e.target.value)} style={fieldStyle} required />
+          <label className="sgf-form-label">Emergency Contact Phone</label>
+          <input value={form.emergencyContactPhone} onChange={e => updateField('emergencyContactPhone', e.target.value)} className="sgf-form-input" required />
         </div>
         <div>
-          <label style={labelStyle}>Primary Physician (optional)</label>
-          <input value={form.primaryPhysicianName} onChange={e => updateField('primaryPhysicianName', e.target.value)} style={fieldStyle} />
+          <label className="sgf-form-label">Primary Physician (optional)</label>
+          <input value={form.primaryPhysicianName} onChange={e => updateField('primaryPhysicianName', e.target.value)} className="sgf-form-input" />
         </div>
         <div>
-          <label style={labelStyle}>Physician Phone (optional)</label>
-          <input value={form.primaryPhysicianPhone} onChange={e => updateField('primaryPhysicianPhone', e.target.value)} style={fieldStyle} />
+          <label className="sgf-form-label">Physician Phone (optional)</label>
+          <input value={form.primaryPhysicianPhone} onChange={e => updateField('primaryPhysicianPhone', e.target.value)} className="sgf-form-input" />
         </div>
       </div>
 
       <div style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: '12px' }}>
-        <label style={labelStyle}>Legal Consents</label>
+        <label className="sgf-form-label">Legal Consents</label>
         <div style={{ display: 'grid', gap: 8 }}>
-          <label><input type="checkbox" checked={form.legalConsentLiability} onChange={e => updateBooleanField('legalConsentLiability', e.target.checked)} /> I acknowledge and accept liability waiver terms for exercise participation.</label>
-          <label><input type="checkbox" checked={form.legalConsentInformed} onChange={e => updateBooleanField('legalConsentInformed', e.target.checked)} /> I provide informed consent for exercise coaching and programming.</label>
-          <label><input type="checkbox" checked={form.legalConsentPrivacy} onChange={e => updateBooleanField('legalConsentPrivacy', e.target.checked)} /> I acknowledge privacy and data handling notices for sensitive health information.</label>
-          <label><input type="checkbox" checked={form.legalConsentCoaching} onChange={e => updateBooleanField('legalConsentCoaching', e.target.checked)} /> I agree to coaching terms, expectations, and communication standards.</label>
-          <label><input type="checkbox" checked={form.legalConsentEmergency} onChange={e => updateBooleanField('legalConsentEmergency', e.target.checked)} /> I consent to emergency response actions if urgent medical risk is identified.</label>
+          <label htmlFor="legal-consent-liability"><input id="legal-consent-liability" type="checkbox" checked={form.legalConsentLiability} onChange={e => updateBooleanField('legalConsentLiability', e.target.checked)} /> I acknowledge and accept liability waiver terms for exercise participation.</label>
+          <label htmlFor="legal-consent-informed"><input id="legal-consent-informed" type="checkbox" checked={form.legalConsentInformed} onChange={e => updateBooleanField('legalConsentInformed', e.target.checked)} /> I provide informed consent for exercise coaching and programming.</label>
+          <label htmlFor="legal-consent-privacy"><input id="legal-consent-privacy" type="checkbox" checked={form.legalConsentPrivacy} onChange={e => updateBooleanField('legalConsentPrivacy', e.target.checked)} /> I acknowledge privacy and data handling notices for sensitive health information.</label>
+          <label htmlFor="legal-consent-coaching"><input id="legal-consent-coaching" type="checkbox" checked={form.legalConsentCoaching} onChange={e => updateBooleanField('legalConsentCoaching', e.target.checked)} /> I agree to coaching terms, expectations, and communication standards.</label>
+          <label htmlFor="legal-consent-emergency"><input id="legal-consent-emergency" type="checkbox" checked={form.legalConsentEmergency} onChange={e => updateBooleanField('legalConsentEmergency', e.target.checked)} /> I consent to emergency response actions if urgent medical risk is identified.</label>
         </div>
         <div style={{ marginTop: 10 }}>
-          <label style={labelStyle}>Electronic Signature (Full Legal Name)</label>
-          <input value={form.legalSignatureName} onChange={e => updateField('legalSignatureName', e.target.value)} style={fieldStyle} required />
+          <label className="sgf-form-label">Electronic Signature (Full Legal Name)</label>
+          <input value={form.legalSignatureName} onChange={e => updateField('legalSignatureName', e.target.value)} className="sgf-form-input" required />
         </div>
       </div>
 
       <div>
-        <label style={labelStyle}>Units</label>
+        <label className="sgf-form-label">Units</label>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {(['metric', 'imperial'] as Units[]).map(units => (
             <button
@@ -418,15 +400,15 @@ export default function OnboardingForm() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="sgf-form-grid">
         <div>
-          <label style={labelStyle}>Age</label>
-          <input value={form.age} onChange={e => updateField('age', e.target.value)} style={fieldStyle} type="number" min={13} max={100} required />
+          <label className="sgf-form-label">Age</label>
+          <input value={form.age} onChange={e => updateField('age', e.target.value)} className="sgf-form-input" type="number" min={13} max={100} required />
         </div>
 
         <div>
-          <label style={labelStyle}>Sex</label>
-          <select value={form.sex} onChange={e => updateField('sex', e.target.value)} style={fieldStyle}>
+          <label className="sgf-form-label">Sex</label>
+          <select value={form.sex} onChange={e => updateField('sex', e.target.value)} className="sgf-form-input">
             <option value="male">Male</option>
             <option value="female">Female</option>
             <option value="other">Other</option>
@@ -435,7 +417,7 @@ export default function OnboardingForm() {
       </div>
 
       <div>
-        <label style={labelStyle}>Your Photo (Before)</label>
+        <label className="sgf-form-label">Your Photo (Before)</label>
         <div style={{ position: 'relative', marginBottom: 10 }}>
           <input
             type="file"
@@ -464,61 +446,61 @@ export default function OnboardingForm() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="sgf-form-grid">
         {form.preferredUnits === 'metric' ? (
           <>
             <div>
-              <label style={labelStyle}>Height (cm)</label>
-              <input value={form.heightCm} onChange={e => updateField('heightCm', e.target.value)} style={fieldStyle} type="number" step="0.1" required />
+              <label className="sgf-form-label">Height (cm)</label>
+              <input value={form.heightCm} onChange={e => updateField('heightCm', e.target.value)} className="sgf-form-input" type="number" step="0.1" required />
             </div>
 
             <div>
-              <label style={labelStyle}>Weight (kg)</label>
-              <input value={form.weightKg} onChange={e => updateField('weightKg', e.target.value)} style={fieldStyle} type="number" step="0.1" required />
+              <label className="sgf-form-label">Weight (kg)</label>
+              <input value={form.weightKg} onChange={e => updateField('weightKg', e.target.value)} className="sgf-form-input" type="number" step="0.1" required />
             </div>
           </>
         ) : (
           <>
             <div>
-              <label style={labelStyle}>Height (ft)</label>
-              <input value={form.heightFt} onChange={e => updateField('heightFt', e.target.value)} style={fieldStyle} type="number" min={0} step="1" required />
+              <label className="sgf-form-label">Height (ft)</label>
+              <input value={form.heightFt} onChange={e => updateField('heightFt', e.target.value)} className="sgf-form-input" type="number" min={0} step="1" required />
             </div>
 
             <div>
-              <label style={labelStyle}>Height (in)</label>
-              <input value={form.heightIn} onChange={e => updateField('heightIn', e.target.value)} style={fieldStyle} type="number" min={0} max={11} step="1" />
+              <label className="sgf-form-label">Height (in)</label>
+              <input value={form.heightIn} onChange={e => updateField('heightIn', e.target.value)} className="sgf-form-input" type="number" min={0} max={11} step="1" />
             </div>
 
             <div>
-              <label style={labelStyle}>Weight (lb)</label>
-              <input value={form.weightLb} onChange={e => updateField('weightLb', e.target.value)} style={fieldStyle} type="number" step="0.1" required />
+              <label className="sgf-form-label">Weight (lb)</label>
+              <input value={form.weightLb} onChange={e => updateField('weightLb', e.target.value)} className="sgf-form-input" type="number" step="0.1" required />
             </div>
           </>
         )}
 
         <div>
-          <label style={labelStyle}>Waist ({form.preferredUnits === 'metric' ? 'cm' : 'in'})</label>
-          <input value={form.waist} onChange={e => updateField('waist', e.target.value)} style={fieldStyle} type="number" step="0.1" />
+          <label className="sgf-form-label">Waist ({form.preferredUnits === 'metric' ? 'cm' : 'in'})</label>
+          <input value={form.waist} onChange={e => updateField('waist', e.target.value)} className="sgf-form-input" type="number" step="0.1" />
         </div>
 
         <div>
-          <label style={labelStyle}>Neck ({form.preferredUnits === 'metric' ? 'cm' : 'in'})</label>
-          <input value={form.neck} onChange={e => updateField('neck', e.target.value)} style={fieldStyle} type="number" step="0.1" />
+          <label className="sgf-form-label">Neck ({form.preferredUnits === 'metric' ? 'cm' : 'in'})</label>
+          <input value={form.neck} onChange={e => updateField('neck', e.target.value)} className="sgf-form-input" type="number" step="0.1" />
         </div>
 
         <div>
-          <label style={labelStyle}>Hip ({form.preferredUnits === 'metric' ? 'cm' : 'in'}, optional)</label>
-          <input value={form.hip} onChange={e => updateField('hip', e.target.value)} style={fieldStyle} type="number" step="0.1" />
+          <label className="sgf-form-label">Hip ({form.preferredUnits === 'metric' ? 'cm' : 'in'}, optional)</label>
+          <input value={form.hip} onChange={e => updateField('hip', e.target.value)} className="sgf-form-input" type="number" step="0.1" />
         </div>
 
         <div>
-          <label style={labelStyle}>Training Days Per Week</label>
-          <input value={form.trainingDaysPerWeek} onChange={e => updateField('trainingDaysPerWeek', e.target.value)} style={fieldStyle} type="number" min={2} max={7} required />
+          <label className="sgf-form-label">Training Days Per Week</label>
+          <input value={form.trainingDaysPerWeek} onChange={e => updateField('trainingDaysPerWeek', e.target.value)} className="sgf-form-input" type="number" min={2} max={7} required />
         </div>
 
         <div>
-          <label style={labelStyle}>Primary Goal</label>
-          <select value={form.fitnessGoal} onChange={e => updateField('fitnessGoal', e.target.value)} style={fieldStyle}>
+          <label className="sgf-form-label">Primary Goal</label>
+          <select value={form.fitnessGoal} onChange={e => updateField('fitnessGoal', e.target.value)} className="sgf-form-input">
             <option value="fat-loss">Fat Loss</option>
             <option value="muscle-gain">Muscle Gain</option>
             <option value="performance">Performance</option>
@@ -527,8 +509,8 @@ export default function OnboardingForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Experience Level</label>
-          <select value={form.experienceLevel} onChange={e => updateField('experienceLevel', e.target.value)} style={fieldStyle}>
+          <label className="sgf-form-label">Experience Level</label>
+          <select value={form.experienceLevel} onChange={e => updateField('experienceLevel', e.target.value)} className="sgf-form-input">
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>
@@ -536,8 +518,8 @@ export default function OnboardingForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Workout Location</label>
-          <select value={form.workoutLocation} onChange={e => updateField('workoutLocation', e.target.value)} style={fieldStyle}>
+          <label className="sgf-form-label">Workout Location</label>
+          <select value={form.workoutLocation} onChange={e => updateField('workoutLocation', e.target.value)} className="sgf-form-input">
             <option value="home">Home</option>
             <option value="gym">Commercial Gym</option>
             <option value="both">Both</option>
@@ -545,35 +527,35 @@ export default function OnboardingForm() {
         </div>
 
         <div>
-          <label style={labelStyle}>Target Weight ({form.preferredUnits === 'metric' ? 'kg' : 'lb'})</label>
+          <label className="sgf-form-label">Target Weight ({form.preferredUnits === 'metric' ? 'kg' : 'lb'})</label>
           <input
             value={form.preferredUnits === 'metric' ? form.targetWeightKg : form.targetWeightLb}
             onChange={e => updateField(form.preferredUnits === 'metric' ? 'targetWeightKg' : 'targetWeightLb', e.target.value)}
-            style={fieldStyle}
+            className="sgf-form-input"
             type="number"
             step="0.1"
           />
         </div>
 
         <div>
-          <label style={labelStyle}>Target Body Fat (%)</label>
-          <input value={form.targetBodyfatPercent} onChange={e => updateField('targetBodyfatPercent', e.target.value)} style={fieldStyle} type="number" step="0.1" />
+          <label className="sgf-form-label">Target Body Fat (%)</label>
+          <input value={form.targetBodyfatPercent} onChange={e => updateField('targetBodyfatPercent', e.target.value)} className="sgf-form-input" type="number" step="0.1" />
         </div>
       </div>
 
       <div>
-        <label style={labelStyle}>Injuries / Limitations</label>
+        <label className="sgf-form-label">Injuries / Limitations</label>
         <textarea
           value={form.injuriesLimitations}
           onChange={e => updateField('injuriesLimitations', e.target.value)}
-          style={{ ...fieldStyle, minHeight: 90 }}
+          className="sgf-form-input" style={{ minHeight: 90 }}
           placeholder="Shoulder pain, knee history, etc."
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Equipment Access</label>
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <label className="sgf-form-label">Equipment Access</label>
+        <div className="sgf-form-grid" style={{ gap: 8 }}>
           {EQUIPMENT_OPTIONS.map(option => (
             <label
               key={option.key}

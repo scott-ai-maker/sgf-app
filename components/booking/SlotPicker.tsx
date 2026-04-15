@@ -130,7 +130,9 @@ export default function SlotPicker({ packages }: SlotPickerProps) {
             {packages.map(pkg => (
               <button
                 key={pkg.id}
+                type="button"
                 onClick={() => setSelectedPackageId(pkg.id)}
+                aria-pressed={selectedPackageId === pkg.id}
                 style={{
                   background: selectedPackageId === pkg.id ? 'var(--navy-lt)' : 'var(--navy-mid)',
                   border: 'none',
@@ -193,10 +195,12 @@ export default function SlotPicker({ packages }: SlotPickerProps) {
           {availableDates.map(date => (
             <button
               key={date}
+              type="button"
               onClick={() => {
                 setSelectedDate(date)
                 setSelectedSlot(null)
               }}
+              aria-pressed={selectedDate === date}
               style={{
                 background: selectedDate === date ? 'var(--gold)' : 'var(--navy-mid)',
                 border: 'none',
@@ -248,7 +252,9 @@ export default function SlotPicker({ packages }: SlotPickerProps) {
             {slotsForDate.map(slot => (
               <button
                 key={slot.datetime}
+                type="button"
                 onClick={() => setSelectedSlot(slot)}
+                aria-pressed={selectedSlot?.datetime === slot.datetime}
                 style={{
                   background: selectedSlot?.datetime === slot.datetime ? 'var(--gold)' : 'var(--navy-mid)',
                   border: 'none',
@@ -315,6 +321,7 @@ export default function SlotPicker({ packages }: SlotPickerProps) {
           )}
 
           <button
+            type="button"
             onClick={handleBook}
             disabled={booking}
             style={{
