@@ -70,12 +70,21 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
   return res.json()
 }
 
+function extensionFromMime(contentType: string | undefined) {
+  const normalized = String(contentType ?? '').toLowerCase()
+  if (normalized.includes('png')) return 'png'
+  if (normalized.includes('webp')) return 'webp'
+  return 'jpeg'
+}
+
 /**
- * Upload a publicly-accessible image to Leonardo as an init image.
- * Returns the init image ID to use with img2img generation.
+ * Uploads raw image bytes to Leonardo as an init image for img2img generation.
  */
-export async function uploadInitImage(imageUrl: string): Promise<string> {
-  const ext = imageUrl.includes('.png') ? 'png' : imageUrl.includes('.webp') ? 'webp' : 'jpeg'
+export async function uploadInitImageFromBuffer(
+  imageBuffer: ArrayBuffer,
+  contentType = 'image/jpeg'
+): Promise<string> {
+  const ext = extensionFromMime(contentType)
 
   // Step 1: get presigned S3 details from Leonardo
   const presign = await apiRequest('/init-image', {
@@ -88,18 +97,13 @@ export async function uploadInitImage(imageUrl: string): Promise<string> {
     url: string
   }
 
-  // Step 2: fetch the actual image bytes
-  const imgRes = await fetch(imageUrl)
-  if (!imgRes.ok) throw new Error(`Failed to fetch before photo: ${imgRes.status}`)
-  const imgBuffer = await imgRes.arrayBuffer()
-
-  // Step 3: upload to S3 using the presigned fields (fields is a JSON string)
+  // Step 2: upload to S3 using the presigned fields (fields is a JSON string)
   const fields = JSON.parse(rawFields) as Record<string, string>
   const form = new FormData()
   for (const [key, value] of Object.entries(fields)) {
     form.append(key, value)
   }
-  form.append('file', new Blob([imgBuffer], { type: `image/${ext}` }))
+  form.append('file', new Blob([imageBuffer], { type: contentType || `image/${ext}` }))
 
   const s3Res = await fetch(url, { method: 'POST', body: form })
   if (!s3Res.ok) throw new Error(`S3 upload failed: ${s3Res.status}`)

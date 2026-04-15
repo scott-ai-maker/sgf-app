@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { generatePredictionImage, uploadInitImage } from '@/lib/leonardo'
+import { generatePredictionImage, uploadInitImageFromBuffer } from '@/lib/leonardo'
+import {
+  createSignedFitnessPhotoUrl,
+  extractPhotoPathFromLegacyUrl,
+  FITNESS_PHOTO_BUCKET,
+  normalizePhotoPath,
+} from '@/lib/fitness-photos'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -66,10 +72,25 @@ export async function POST(req: NextRequest) {
   try {
     // Upload before photo to Leonardo as init image if available (enables img2img)
     let initImageId: string | undefined
-    const beforePhotoUrl = (profile as { before_photo_url?: string }).before_photo_url
-    if (beforePhotoUrl) {
+    const beforePhotoPath = normalizePhotoPath(
+      (profile as { before_photo_path?: string }).before_photo_path
+        ?? extractPhotoPathFromLegacyUrl((profile as { before_photo_url?: string }).before_photo_url)
+    )
+
+    if (beforePhotoPath) {
       try {
-        initImageId = await uploadInitImage(beforePhotoUrl)
+        const { data: storageBlob, error: downloadError } = await supabaseAdmin()
+          .storage
+          .from(FITNESS_PHOTO_BUCKET)
+          .download(beforePhotoPath)
+
+        if (downloadError || !storageBlob) {
+          throw new Error(downloadError?.message ?? 'Missing before photo blob')
+        }
+
+        const contentType = storageBlob.type || 'image/jpeg'
+        const imageBuffer = await storageBlob.arrayBuffer()
+        initImageId = await uploadInitImageFromBuffer(imageBuffer, contentType)
       } catch (uploadErr) {
         // Non-fatal: fall back to txt2img if upload fails
         console.error('Init image upload failed, falling back to txt2img:', uploadErr)
@@ -77,6 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     const imageUrl = await generatePredictionImage(prompt, initImageId)
+    const beforePhotoUrl = await createSignedFitnessPhotoUrl(supabase, beforePhotoPath)
     return NextResponse.json({ 
       imageUrl, 
       prompt,

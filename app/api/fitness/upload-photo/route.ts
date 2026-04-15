@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
+import {
+  createSignedFitnessPhotoUrl,
+  FITNESS_PHOTO_BUCKET,
+} from '@/lib/fitness-photos'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -19,8 +23,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No photo provided' }, { status: 400 })
     }
 
-    // Only allow images
-    if (!file.type.startsWith('image/')) {
+    const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp'])
+    if (!allowedTypes.has(file.type)) {
       return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
@@ -30,23 +34,33 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = await file.arrayBuffer()
-    const ext = file.type.split('/')[1] || 'jpg'
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
     const filename = `${user.id}/before-photo-${Date.now()}.${ext}`
 
-    // Delete old photo if exists
-    const { data: files } = await admin.storage.from('fitness-photos').list(user.id)
+    const { data: profile } = await admin
+      .from('fitness_profiles')
+      .select('before_photo_path')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (profile?.before_photo_path) {
+      await admin.storage.from(FITNESS_PHOTO_BUCKET).remove([profile.before_photo_path])
+    }
+
+    // Delete stale legacy photos in case older rows exist.
+    const { data: files } = await admin.storage.from(FITNESS_PHOTO_BUCKET).list(user.id)
     if (files && files.length > 0) {
       const oldFiles = files
         .filter(f => f.name.startsWith('before-photo-'))
         .map(f => `${user.id}/${f.name}`)
       if (oldFiles.length > 0) {
-        await admin.storage.from('fitness-photos').remove(oldFiles)
+        await admin.storage.from(FITNESS_PHOTO_BUCKET).remove(oldFiles)
       }
     }
 
     // Upload new photo
     const { error: uploadError } = await admin.storage
-      .from('fitness-photos')
+      .from(FITNESS_PHOTO_BUCKET)
       .upload(filename, buffer, {
         contentType: file.type,
         upsert: false,
@@ -56,24 +70,22 @@ export async function POST(req: NextRequest) {
       throw new Error(`Upload failed: ${uploadError.message}`)
     }
 
-    // Get public URL
-    const { data } = admin.storage.from('fitness-photos').getPublicUrl(filename)
+    const signedUrl = await createSignedFitnessPhotoUrl(admin, filename)
 
-    if (!data.publicUrl) {
-      throw new Error('Failed to generate public URL')
-    }
-
-    // Update fitness profile with photo URL
+    // Update fitness profile with storage path (private bucket).
     const { error: updateError } = await admin
       .from('fitness_profiles')
-      .update({ before_photo_url: data.publicUrl })
+      .update({
+        before_photo_path: filename,
+        before_photo_url: null,
+      })
       .eq('user_id', user.id)
 
     if (updateError) {
       throw new Error(`Database update failed: ${updateError.message}`)
     }
 
-    return NextResponse.json({ photoUrl: data.publicUrl })
+    return NextResponse.json({ photoUrl: signedUrl })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Photo upload failed'
     return NextResponse.json({ error: message }, { status: 500 })

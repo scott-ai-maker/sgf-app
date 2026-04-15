@@ -43,13 +43,8 @@ export async function requireSurfaceRole(expectedRole: AppRole) {
 
   if (!user) redirect('/auth/login')
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const role = normalizeRole(client?.role)
+  const client = await ensureClientRecord(user)
+  const role = normalizeRole(client.role)
 
   if (role !== expectedRole) {
     redirect(unauthorizedRedirect(expectedRole, role))

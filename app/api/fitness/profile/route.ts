@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
+import {
+  createSignedFitnessPhotoUrl,
+  extractPhotoPathFromLegacyUrl,
+  normalizePhotoPath,
+} from '@/lib/fitness-photos'
 
 export async function GET() {
   const supabase = await createClient()
@@ -19,7 +24,22 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ profile: data })
+  if (!data) {
+    return NextResponse.json({ profile: null })
+  }
+
+  const beforePhotoPath = normalizePhotoPath(
+    data.before_photo_path ?? extractPhotoPathFromLegacyUrl(data.before_photo_url)
+  )
+  const signedBeforePhotoUrl = await createSignedFitnessPhotoUrl(supabase, beforePhotoPath)
+
+  const profile = {
+    ...data,
+    before_photo_path: beforePhotoPath || null,
+    before_photo_url: signedBeforePhotoUrl ?? null,
+  }
+
+  return NextResponse.json({ profile })
 }
 
 export async function POST(req: NextRequest) {

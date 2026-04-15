@@ -255,6 +255,9 @@ alter table fitness_profiles
   add column if not exists before_photo_url text;
 
 alter table fitness_profiles
+  add column if not exists before_photo_path text;
+
+alter table fitness_profiles
   add column if not exists workout_location text;
 
 alter table fitness_profiles
@@ -458,11 +461,15 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values (
   'fitness-photos',
   'fitness-photos',
-  true,
+  false,
   5242880,
   array['image/png', 'image/jpeg', 'image/webp']
 )
 on conflict (id) do nothing;
+
+update storage.buckets
+set public = false
+where id = 'fitness-photos';
 
 drop policy if exists "Users upload own fitness photos" on storage.objects;
 create policy "Users upload own fitness photos" on storage.objects
@@ -487,3 +494,70 @@ create policy "Users delete own fitness photos" on storage.objects
     bucket_id = 'fitness-photos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- ── API RATE LIMITING ────────────────────────────────────
+create table if not exists api_rate_limits (
+  key              text primary key,
+  window_start     timestamptz not null,
+  count            int not null default 0,
+  updated_at       timestamptz not null default now()
+);
+
+alter table api_rate_limits enable row level security;
+
+create or replace function public.check_rate_limit(
+  p_key text,
+  p_limit int,
+  p_window_seconds int
+)
+returns table(
+  allowed boolean,
+  remaining int,
+  reset_at timestamptz,
+  current_count int
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  row_state public.api_rate_limits%rowtype;
+begin
+  if p_key is null or length(trim(p_key)) = 0 then
+    raise exception 'p_key is required';
+  end if;
+
+  if p_limit <= 0 then
+    raise exception 'p_limit must be greater than zero';
+  end if;
+
+  if p_window_seconds <= 0 then
+    raise exception 'p_window_seconds must be greater than zero';
+  end if;
+
+  insert into public.api_rate_limits as rl (key, window_start, count, updated_at)
+  values (p_key, now_ts, 1, now_ts)
+  on conflict (key) do update
+    set window_start = case
+      when rl.window_start <= now_ts - make_interval(secs => p_window_seconds) then now_ts
+      else rl.window_start
+    end,
+    count = case
+      when rl.window_start <= now_ts - make_interval(secs => p_window_seconds) then 1
+      else rl.count + 1
+    end,
+    updated_at = now_ts
+  returning * into row_state;
+
+  allowed := row_state.count <= p_limit;
+  remaining := greatest(p_limit - row_state.count, 0);
+  reset_at := row_state.window_start + make_interval(secs => p_window_seconds);
+  current_count := row_state.count;
+
+  return next;
+end;
+$$;
+
+revoke all on function public.check_rate_limit(text, int, int) from public;
+grant execute on function public.check_rate_limit(text, int, int) to service_role;

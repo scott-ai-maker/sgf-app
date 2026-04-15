@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import FitnessTrackerClient from '@/components/fitness/FitnessTrackerClient'
+import {
+  createSignedFitnessPhotoUrl,
+  extractPhotoPathFromLegacyUrl,
+  normalizePhotoPath,
+} from '@/lib/fitness-photos'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +34,16 @@ export default async function FitnessTrackerPage() {
     redirect('/dashboard/onboarding')
   }
 
+  const beforePhotoPath = normalizePhotoPath(
+    profile.before_photo_path ?? extractPhotoPathFromLegacyUrl(profile.before_photo_url)
+  )
+  const signedBeforePhotoUrl = await createSignedFitnessPhotoUrl(supabase, beforePhotoPath)
+  const profileWithSignedPhoto = {
+    ...profile,
+    before_photo_path: beforePhotoPath || null,
+    before_photo_url: signedBeforePhotoUrl ?? null,
+  }
+
   return (
     <main className="dashboard-fitness-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '26px 24px 40px' }}>
       <div className="dashboard-fitness-content" style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -41,7 +56,7 @@ export default async function FitnessTrackerPage() {
         </div>
 
         <FitnessTrackerClient
-          profile={profile}
+          profile={profileWithSignedPhoto}
           latestPlan={plans?.[0] ?? null}
           logs={logs ?? []}
           setLogs={setLogs ?? []}

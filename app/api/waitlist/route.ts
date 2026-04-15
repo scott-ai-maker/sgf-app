@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  enforceRateLimit,
+  getClientIp,
+  getPositiveIntEnv,
+} from '@/lib/rate-limit'
+
+function retryAfterSeconds(resetAt: string) {
+  const ms = new Date(resetAt).getTime() - Date.now()
+  return Math.max(1, Math.ceil(ms / 1000))
+}
 
 export async function POST(req: NextRequest) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -15,6 +25,53 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizedEmail = email.toLowerCase().trim()
+
+    const ipLimit = getPositiveIntEnv('RATE_LIMIT_WAITLIST_IP_LIMIT', 20)
+    const ipWindowSeconds = getPositiveIntEnv('RATE_LIMIT_WAITLIST_IP_WINDOW_SECONDS', 60 * 60)
+    const emailLimit = getPositiveIntEnv('RATE_LIMIT_WAITLIST_EMAIL_LIMIT', 3)
+    const emailWindowSeconds = getPositiveIntEnv('RATE_LIMIT_WAITLIST_EMAIL_WINDOW_SECONDS', 24 * 60 * 60)
+
+    const ip = getClientIp(req)
+    const ipResult = await enforceRateLimit({
+      key: `waitlist:ip:${ip}`,
+      limit: ipLimit,
+      windowSeconds: ipWindowSeconds,
+      route: '/api/waitlist',
+      dimension: 'ip',
+    })
+
+    if (!ipResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfterSeconds(ipResult.resetAt)),
+          },
+        }
+      )
+    }
+
+    const emailResult = await enforceRateLimit({
+      key: `waitlist:email:${normalizedEmail}`,
+      limit: emailLimit,
+      windowSeconds: emailWindowSeconds,
+      route: '/api/waitlist',
+      dimension: 'email',
+    })
+
+    if (!emailResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many attempts for this email. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(retryAfterSeconds(emailResult.resetAt)),
+          },
+        }
+      )
+    }
+
     const supabase = supabaseAdmin()
 
     const { error } = await supabase
