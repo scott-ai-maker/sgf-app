@@ -212,6 +212,7 @@ body {
   .packages-grid,
   .dashboard-stats-grid,
   .coach-stats-grid,
+  .coach-attention-grid,
   .coach-client-info-grid {
     grid-template-columns: 1fr !important;
   }
