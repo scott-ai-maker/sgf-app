@@ -24,6 +24,7 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: production
 
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
