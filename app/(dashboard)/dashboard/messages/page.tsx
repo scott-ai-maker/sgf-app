@@ -15,13 +15,11 @@ export default async function ClientMessagesPage() {
 
   const { data: client } = await supabase
     .from('clients')
-    .select('role, designated_coach_id')
+    .select('designated_coach_id')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (!client || client.role !== 'client') {
-    redirect('/coach')
-  }
+  if (!client) redirect('/auth/login')
 
   return (
     <main className="dashboard-messages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>

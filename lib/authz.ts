@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
@@ -18,6 +19,43 @@ export class AuthzError extends Error {
     super(message)
     this.status = status
   }
+}
+
+function normalizeRole(role: string | null | undefined): AppRole | null {
+  if (role === 'client' || role === 'coach') return role
+  return null
+}
+
+function unauthorizedRedirect(expectedRole: AppRole, actualRole: AppRole | null): string {
+  if (expectedRole === 'client') {
+    return actualRole === 'coach' ? '/coach' : '/auth/login'
+  }
+
+  return actualRole === 'client' ? '/dashboard' : '/auth/login'
+}
+
+export async function requireSurfaceRole(expectedRole: AppRole) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/auth/login')
+
+  const { data: client } = await supabase
+    .from('clients')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const role = normalizeRole(client?.role)
+
+  if (role !== expectedRole) {
+    redirect(unauthorizedRedirect(expectedRole, role))
+  }
+
+  return { supabase, user, role }
 }
 
 async function ensureClientRecord(user: User): Promise<ClientRecord> {

@@ -22,16 +22,6 @@ export default async function CoachClientMessagesPage({ params }: PageProps) {
 
   const admin = supabaseAdmin()
 
-  const { data: coach } = await admin
-    .from('clients')
-    .select('id, role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!coach || coach.role !== 'coach') {
-    redirect('/dashboard')
-  }
-
   const { data: client } = await admin
     .from('clients')
     .select('id, full_name, email, designated_coach_id')

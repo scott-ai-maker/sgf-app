@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import OnboardingForm from '@/components/fitness/OnboardingForm'
+import LogoutButton from '@/components/auth/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,14 +12,6 @@ export default async function OnboardingPage() {
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/auth/login')
-
-  const { data: client } = await supabase
-    .from('clients')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (client?.role === 'coach') redirect('/coach')
 
   const { data: profile } = await supabase
     .from('fitness_profiles')
@@ -31,6 +24,9 @@ export default async function OnboardingPage() {
   return (
     <main style={{ minHeight: '100vh', background: 'var(--navy)', padding: '40px 24px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <LogoutButton />
+        </div>
         <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 44, letterSpacing: '0.05em', margin: '0 0 8px' }}>
           Fitness Setup
         </h1>
