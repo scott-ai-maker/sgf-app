@@ -45,6 +45,7 @@ The current whitebox coverage focuses on:
 For authenticated manual smoke coverage, use:
 
 - `docs/authenticated-smoke-checklist.md`
+- `docs/launch-funnel-assets.md`
 
 For scripted authenticated smoke coverage, run:
 
@@ -54,6 +55,38 @@ SMOKE_ASSIGNED_CLIENT_PASSWORD='...' \
 SMOKE_UNASSIGNED_CLIENT_PASSWORD='...' \
 npm run smoke:auth
 ```
+
+## Marketing Emails
+
+Apply and waitlist submissions support three email automations:
+
+- lead confirmation email
+- internal notification email
+- 5-email launch sequence queue kickoff
+
+Required environment variables:
+
+- `RESEND_API_KEY`
+- `MARKETING_FROM_EMAIL`
+- `MARKETING_CRON_SECRET`
+
+Recommended environment variables:
+
+- `MARKETING_INTERNAL_NOTIFY_EMAIL` (where you receive new lead alerts)
+- `MARKETING_REPLY_TO_EMAIL`
+- `MARKETING_BASE_URL` (for email links, defaults to `http://127.0.0.1:3000`)
+- `MARKETING_SEQUENCE_ENABLED=0` (disable sequence queue if needed)
+
+Dispatch pending sequence emails manually:
+
+```bash
+npm run emails:dispatch
+```
+
+Production best practice:
+
+- call `POST /api/marketing/dispatch` on a schedule (for example every 15 minutes)
+- include header `x-marketing-cron-secret: $MARKETING_CRON_SECRET`
 
 ## UI Automation
 

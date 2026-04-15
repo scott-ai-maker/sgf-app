@@ -8,6 +8,40 @@ create table if not exists waitlist (
   created_at  timestamptz default now()
 );
 
+-- ── COACHING APPLICATIONS (FUNNEL QUIZ) ─────────────────
+create table if not exists coaching_applications (
+  id                    uuid primary key default gen_random_uuid(),
+  email                 text not null,
+  first_name            text,
+  goal                  text not null,
+  timeline              text not null,
+  training_days         text not null,
+  support_level         text not null,
+  primary_obstacle      text not null,
+  coaching_history      text not null,
+  budget_band           text not null,
+  readiness             text not null,
+  recommended_tier      text not null,
+  source                text default 'apply_quiz',
+  created_at            timestamptz default now()
+);
+
+create table if not exists marketing_email_queue (
+  id                    uuid primary key default gen_random_uuid(),
+  email                 text not null,
+  first_name            text,
+  template_key          text not null,
+  source                text not null default 'launch_funnel',
+  send_after            timestamptz not null,
+  status                text not null default 'pending'
+    check (status in ('pending', 'sent', 'failed')),
+  attempts              int not null default 0,
+  provider_message_id   text,
+  last_error            text,
+  sent_at               timestamptz,
+  created_at            timestamptz default now()
+);
+
 -- ── CLIENTS ───────────────────────────────────────────────
 create table if not exists clients (
   id              uuid primary key references auth.users(id) on delete cascade,
@@ -52,6 +86,8 @@ create table if not exists sessions (
 
 -- ── ROW LEVEL SECURITY ────────────────────────────────────
 alter table waitlist enable row level security;
+alter table coaching_applications enable row level security;
+alter table marketing_email_queue enable row level security;
 alter table clients enable row level security;
 alter table client_packages enable row level security;
 alter table sessions enable row level security;
@@ -59,6 +95,11 @@ alter table sessions enable row level security;
 -- Waitlist: anyone can insert, only service role can read
 drop policy if exists "Public can join waitlist" on waitlist;
 create policy "Public can join waitlist" on waitlist
+  for insert with check (true);
+
+-- Coaching applications: anyone can submit, only service role reads
+drop policy if exists "Public can submit coaching application" on coaching_applications;
+create policy "Public can submit coaching application" on coaching_applications
   for insert with check (true);
 
 -- Clients: users can only read/update their own record
@@ -83,6 +124,10 @@ create policy "Client sees own sessions" on sessions
 create index if not exists sessions_client_id_idx on sessions(client_id);
 create index if not exists sessions_scheduled_at_idx on sessions(scheduled_at);
 create index if not exists packages_client_id_idx on client_packages(client_id);
+create index if not exists coaching_applications_email_idx on coaching_applications(email);
+create index if not exists coaching_applications_created_at_idx on coaching_applications(created_at);
+create index if not exists marketing_email_queue_dispatch_idx on marketing_email_queue(status, send_after);
+create unique index if not exists marketing_email_queue_unique_template_idx on marketing_email_queue(email, template_key);
 
 -- ── COACH POLICIES ────────────────────────────────────────
 -- Coach can read assigned clients

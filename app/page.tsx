@@ -1,5 +1,6 @@
 import WaitlistForm from '@/components/WaitlistForm'
 import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
+import Link from 'next/link'
 
 const BRAND_LOGO = '/images/logo-mark-source.jpg'
 const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=0.1.4'
@@ -94,6 +95,37 @@ export default function Home() {
           <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', lineHeight: 1.7, color: 'var(--gray)', maxWidth: 480, marginBottom: '2.5rem' }}>
             Online coaching built around you — personalized programming, real accountability, and a coach who&apos;s done the work himself. Spots are limited.
           </p>
+          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <Link
+              href="/apply"
+              style={{
+                background: 'var(--gold)',
+                color: 'var(--navy)',
+                fontFamily: 'Bebas Neue, sans-serif',
+                fontSize: '1rem',
+                letterSpacing: '0.15em',
+                padding: '1rem 1.4rem',
+                textDecoration: 'none',
+              }}
+            >
+              Apply for Coaching
+            </Link>
+            <a
+              href="#waitlist-hero"
+              style={{
+                border: '1px solid var(--navy-lt)',
+                color: 'var(--white)',
+                fontFamily: 'Raleway, sans-serif',
+                fontSize: '0.85rem',
+                padding: '1rem 1.1rem',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              Join Waitlist
+            </a>
+          </div>
           <WaitlistForm id="hero" />
           <p style={{ marginTop: '0.75rem', fontSize: '0.72rem', letterSpacing: '0.1em', color: 'var(--gray)' }}>
             No spam. No pressure. First to know when coaching opens.
@@ -178,7 +210,38 @@ export default function Home() {
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', lineHeight: 1, marginBottom: '1rem' }}>
           Ready to <span style={{ color: 'var(--gold)' }}>Start?</span>
         </h2>
-        <p style={{ color: 'var(--gray)', fontSize: '0.95rem', marginBottom: '2.5rem' }}>Join the waitlist. Spots are limited and filling fast.</p>
+        <p style={{ color: 'var(--gray)', fontSize: '0.95rem', marginBottom: '1rem' }}>Apply now for best-fit coaching, or join the waitlist for launch updates.</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <Link
+            href="/apply"
+            style={{
+              background: 'var(--gold)',
+              color: 'var(--navy)',
+              fontFamily: 'Bebas Neue, sans-serif',
+              fontSize: '1rem',
+              letterSpacing: '0.15em',
+              padding: '1rem 1.4rem',
+              textDecoration: 'none',
+            }}
+          >
+            Apply for Coaching
+          </Link>
+          <a
+            href="#waitlist-cta"
+            style={{
+              border: '1px solid var(--navy-lt)',
+              color: 'var(--white)',
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: '0.85rem',
+              padding: '1rem 1.1rem',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            Join Waitlist
+          </a>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <WaitlistForm id="cta" />
         </div>

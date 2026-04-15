@@ -1,6 +1,6 @@
 {
   "name": "sgf-app",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,6 +13,7 @@
     "test:ui:headed": "playwright test --headed",
     "test:ui:debug": "playwright test --debug",
     "smoke:auth": "node --env-file=.env.local scripts/authenticated-smoke-harness.mjs",
+    "emails:dispatch": "node --env-file=.env.local scripts/dispatch-marketing-emails.mjs",
     "generate-images": "node scripts/generate-images.mjs"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "resend": "^6.11.0",
     "stripe": "^22.0.0"
   },
   "devDependencies": {

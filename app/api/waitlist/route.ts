@@ -7,17 +7,29 @@ export async function POST(req: NextRequest) {
 
   try {
     const { supabaseAdmin } = await import('@/lib/supabase')
+    const { triggerLeadEmailAutomation } = await import('@/lib/marketing-email')
     const { email } = await req.json()
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
     }
 
-    const { error } = await supabaseAdmin()
+    const normalizedEmail = email.toLowerCase().trim()
+    const supabase = supabaseAdmin()
+
+    const { error } = await supabase
       .from('waitlist')
-      .insert({ email: email.toLowerCase().trim() })
+      .insert({ email: normalizedEmail })
 
     if (error && error.code !== '23505') throw error
+
+    // Avoid repeated confirmation/sequence spam for duplicate waitlist submissions.
+    if (!error) {
+      await triggerLeadEmailAutomation(supabase, {
+        email: normalizedEmail,
+        source: 'waitlist',
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
