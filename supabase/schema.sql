@@ -495,6 +495,87 @@ create policy "Users delete own fitness photos" on storage.objects
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+create or replace function public.book_client_session(
+  p_client_id uuid,
+  p_package_id uuid,
+  p_scheduled_at timestamptz
+)
+returns setof public.sessions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  package_row public.client_packages%rowtype;
+  booked_session public.sessions%rowtype;
+begin
+  if p_client_id is null then
+    raise exception 'CLIENT_ID_REQUIRED';
+  end if;
+
+  if p_package_id is null then
+    raise exception 'PACKAGE_ID_REQUIRED';
+  end if;
+
+  if p_scheduled_at is null then
+    raise exception 'SCHEDULED_AT_REQUIRED';
+  end if;
+
+  if p_scheduled_at <= now() then
+    raise exception 'SLOT_MUST_BE_IN_FUTURE';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('session-slot:' || p_scheduled_at::text));
+
+  select *
+  into package_row
+  from public.client_packages
+  where id = p_package_id
+    and client_id = p_client_id
+  for update;
+
+  if not found then
+    raise exception 'PACKAGE_NOT_FOUND';
+  end if;
+
+  if package_row.sessions_remaining <= 0 then
+    raise exception 'NO_SESSIONS_REMAINING';
+  end if;
+
+  if exists (
+    select 1
+    from public.sessions
+    where scheduled_at = p_scheduled_at
+      and status = 'scheduled'
+  ) then
+    raise exception 'SLOT_ALREADY_BOOKED';
+  end if;
+
+  insert into public.sessions (
+    client_id,
+    package_id,
+    scheduled_at,
+    status
+  )
+  values (
+    p_client_id,
+    p_package_id,
+    p_scheduled_at,
+    'scheduled'
+  )
+  returning * into booked_session;
+
+  update public.client_packages
+  set sessions_remaining = sessions_remaining - 1
+  where id = package_row.id;
+
+  return next booked_session;
+end;
+$$;
+
+revoke all on function public.book_client_session(uuid, uuid, timestamptz) from public;
+grant execute on function public.book_client_session(uuid, uuid, timestamptz) to service_role;
+
 -- ── API RATE LIMITING ────────────────────────────────────
 create table if not exists api_rate_limits (
   key              text primary key,
