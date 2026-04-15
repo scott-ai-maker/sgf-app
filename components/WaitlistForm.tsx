@@ -27,7 +27,7 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
 
   if (status === 'success') {
     return (
-      <div style={{
+      <div className="waitlist-success" style={{
         borderLeft: '3px solid var(--success)',
         background: 'rgba(72,187,120,0.07)',
         padding: '1.25rem 1.5rem',
@@ -42,8 +42,9 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
   }
 
   return (
-    <div id={`waitlist-${id}`} style={{ display: 'flex', gap: 0, maxWidth: 480, width: '100%' }}>
+    <div id={`waitlist-${id}`} className="waitlist-form" style={{ display: 'flex', gap: 0, maxWidth: 480, width: '100%' }}>
       <input
+        className="waitlist-form-input"
         type="email"
         value={email}
         onChange={e => setEmail(e.target.value)}
@@ -64,6 +65,7 @@ export default function WaitlistForm({ id = 'default' }: { id?: string }) {
         }}
       />
       <button
+        className="waitlist-form-button"
         onClick={submit}
         disabled={status === 'loading'}
         style={{

@@ -172,6 +172,7 @@ export default function ApplyQuiz() {
 
     return (
       <section
+        className="apply-quiz-card"
         style={{
           background: 'var(--navy-mid)',
           border: '1px solid var(--navy-lt)',
@@ -190,7 +191,7 @@ export default function ApplyQuiz() {
           Based on your goals, budget, and support preference, this is your highest-fit starting path.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="apply-quiz-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
             <label htmlFor="apply-first-name" style={{ display: 'block', fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
               First Name (Optional)
@@ -243,7 +244,7 @@ export default function ApplyQuiz() {
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div className="apply-quiz-actions" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={submitApplication}
@@ -304,6 +305,7 @@ export default function ApplyQuiz() {
 
   return (
     <section
+      className="apply-quiz-card"
       style={{
         background: 'var(--navy-mid)',
         border: '1px solid var(--navy-lt)',
@@ -345,7 +347,7 @@ export default function ApplyQuiz() {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
+      <div className="apply-quiz-nav" style={{ display: 'flex', gap: 12, marginTop: 18 }}>
         <button
           type="button"
           onClick={() => setStep(s => Math.max(0, s - 1))}

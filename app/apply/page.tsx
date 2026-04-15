@@ -3,9 +3,9 @@ import ApplyQuiz from '@/components/marketing/ApplyQuiz'
 
 export default function ApplyPage() {
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)', padding: '2rem 1rem 4rem' }}>
+    <main className="apply-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '2rem 1rem 4rem' }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div className="apply-top-links" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Link
             href="/"
             style={{

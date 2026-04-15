@@ -30,8 +30,8 @@ export default async function FitnessTrackerPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)', padding: '26px 24px 40px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <main className="dashboard-fitness-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '26px 24px 40px' }}>
+      <div className="dashboard-fitness-content" style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 46, letterSpacing: '0.05em', margin: 0 }}>Fitness Lab</h1>

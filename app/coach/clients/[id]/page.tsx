@@ -52,8 +52,9 @@ export default async function CoachClientPage({ params }: PageProps) {
   )
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="coach-client-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <nav
+        className="coach-client-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -77,7 +78,7 @@ export default async function CoachClientPage({ params }: PageProps) {
         <LogoutButton />
       </nav>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="coach-client-content" style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
         <a
           href="/coach"
           style={{
@@ -118,6 +119,7 @@ export default async function CoachClientPage({ params }: PageProps) {
 
         {/* Client info */}
         <div
+          className="coach-client-info-grid"
           style={{
             background: 'var(--navy-mid)',
             border: '1px solid var(--navy-lt)',
@@ -221,6 +223,7 @@ export default async function CoachClientPage({ params }: PageProps) {
             {packages.map(pkg => (
               <div
                 key={pkg.id}
+                className="coach-client-package-row"
                 style={{
                   background: 'var(--navy-mid)',
                   padding: '16px 24px',

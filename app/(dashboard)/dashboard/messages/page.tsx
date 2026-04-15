@@ -24,8 +24,9 @@ export default async function ClientMessagesPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="dashboard-messages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <nav
+        className="dashboard-messages-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -49,7 +50,7 @@ export default async function ClientMessagesPage() {
         <LogoutButton />
       </nav>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="dashboard-messages-content" style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px' }}>
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',

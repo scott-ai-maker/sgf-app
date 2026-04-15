@@ -58,3 +58,227 @@ body {
     background-position: center top;
   }
 }
+
+/* Shared responsive layout hardening */
+@media (max-width: 1100px) {
+  .home-nav,
+  .home-pillar-section,
+  .home-bio-section,
+  .home-cta-section,
+  .home-footer {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+
+  .packages-nav,
+  .dashboard-nav,
+  .coach-nav,
+  .coach-client-nav {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+
+  .packages-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .dashboard-stats-grid,
+  .coach-client-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .coach-table-header,
+  .coach-table-row {
+    grid-template-columns: 1.4fr 1.4fr 1fr auto auto !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .home-nav {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .home-brand-title {
+    font-size: 1.05rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .home-nav-badge {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.16em !important;
+    margin-left: auto;
+  }
+
+  .home-hero {
+    padding: 7.5rem 1.5rem 3rem !important;
+  }
+
+  .home-hero-content {
+    max-width: 100% !important;
+  }
+
+  .home-stats {
+    flex-direction: column;
+  }
+
+  .home-stat-item {
+    max-width: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 2rem 1.25rem !important;
+  }
+
+  .home-stat-item:last-child {
+    border-bottom: none;
+  }
+
+  .home-pillar-section,
+  .home-bio-section,
+  .home-cta-section,
+  .home-footer {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .home-bio-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+
+  .home-bio-photo {
+    min-height: 340px !important;
+  }
+
+  .home-footer {
+    justify-content: center !important;
+    text-align: center;
+  }
+
+  .waitlist-form {
+    flex-direction: column;
+    gap: 0.65rem !important;
+  }
+
+  .waitlist-form-input {
+    border-right: 1px solid var(--navy-lt) !important;
+    border-radius: 2px !important;
+  }
+
+  .waitlist-form-button {
+    border-radius: 2px !important;
+    width: 100%;
+  }
+
+  .apply-top-links {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .apply-quiz-card {
+    padding: 1.1rem !important;
+  }
+
+  .apply-quiz-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .apply-quiz-actions,
+  .apply-quiz-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .apply-quiz-actions > *,
+  .apply-quiz-nav > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .packages-content,
+  .dashboard-content,
+  .dashboard-book-content,
+  .dashboard-messages-content,
+  .dashboard-fitness-content,
+  .coach-content,
+  .coach-client-content,
+  .coach-client-messages-content {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .packages-grid,
+  .dashboard-stats-grid,
+  .coach-stats-grid,
+  .coach-client-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .packages-card {
+    padding: 24px 16px !important;
+  }
+
+  .packages-nav,
+  .dashboard-nav,
+  .dashboard-book-nav,
+  .dashboard-messages-nav,
+  .coach-nav,
+  .coach-client-nav,
+  .coach-client-messages-nav {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .packages-nav-links,
+  .dashboard-nav-links {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.65rem !important;
+  }
+
+  .dashboard-fitness-page {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .coach-table-header {
+    display: none !important;
+  }
+
+  .coach-table-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.45rem !important;
+    padding: 14px !important;
+  }
+
+  .dashboard-package-row,
+  .coach-client-package-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.6rem;
+    padding: 14px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .home-nav-badge {
+    display: none;
+  }
+
+  .home-hero {
+    padding-top: 7rem !important;
+  }
+
+  .home-bio-photo {
+    min-height: 280px !important;
+  }
+
+  .packages-content {
+    padding-top: 2rem !important;
+  }
+}

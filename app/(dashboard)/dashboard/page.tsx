@@ -51,9 +51,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const showSuccess = params.success === 'true'
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="dashboard-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       {/* Nav */}
       <nav
+        className="dashboard-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -72,7 +73,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         >
           SGF
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="dashboard-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <a
             href="/dashboard/fitness"
             style={{
@@ -113,7 +114,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </nav>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="dashboard-content" style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
         {showSuccess && <SuccessBanner />}
 
         <h1
@@ -141,6 +142,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         {/* Stats grid */}
         <div
+          className="dashboard-stats-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
@@ -246,6 +248,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             {packages.map(pkg => (
               <div
                 key={pkg.id}
+                className="dashboard-package-row"
                 style={{
                   background: 'var(--navy-mid)',
                   padding: '20px 24px',

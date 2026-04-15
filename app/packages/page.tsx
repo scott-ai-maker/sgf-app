@@ -20,9 +20,10 @@ const SOCIAL_LINKS = [
 
 export default function PackagesPage() {
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="packages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       {/* Nav */}
       <nav
+        className="packages-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -54,7 +55,7 @@ export default function PackagesPage() {
           />
           <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, color: 'var(--gold)', letterSpacing: '0.06em' }}>SGF</span>
         </Link>
-        <div style={{ display: 'flex', gap: 20 }}>
+        <div className="packages-nav-links" style={{ display: 'flex', gap: 20 }}>
           <Link
             href="/dashboard"
             style={{
@@ -82,7 +83,7 @@ export default function PackagesPage() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 24px' }}>
+      <div className="packages-content" style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 24px' }}>
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',
@@ -109,6 +110,7 @@ export default function PackagesPage() {
         </p>
 
         <div
+          className="packages-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
@@ -119,6 +121,7 @@ export default function PackagesPage() {
           {PACKAGES.map(pkg => (
             <div
               key={pkg.id}
+              className="packages-card"
               style={{
                 background: 'var(--navy-mid)',
                 padding: '36px 28px',

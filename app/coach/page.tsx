@@ -68,8 +68,9 @@ export default async function CoachPage() {
   const weekCount = (weekSessions ?? []).length
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="coach-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <nav
+        className="coach-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -91,7 +92,7 @@ export default async function CoachPage() {
         <LogoutButton />
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="coach-content" style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px' }}>
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',
@@ -106,6 +107,7 @@ export default async function CoachPage() {
 
         {/* Stats */}
         <div
+          className="coach-stats-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -183,6 +185,7 @@ export default async function CoachPage() {
           >
             {/* Header row */}
             <div
+              className="coach-table-header"
               style={{
                 background: 'var(--navy)',
                 padding: '12px 24px',
@@ -211,6 +214,7 @@ export default async function CoachPage() {
             {assignedClients.map(client => (
                 <div
                   key={client.id}
+                  className="coach-table-row"
                   style={{
                     background: 'var(--navy-mid)',
                     padding: '16px 24px',
@@ -302,6 +306,7 @@ export default async function CoachPage() {
             }}
           >
             <div
+              className="coach-table-header"
               style={{
                 background: 'var(--navy)',
                 padding: '12px 24px',
@@ -330,6 +335,7 @@ export default async function CoachPage() {
             {unassignedClients.map(client => (
               <div
                 key={client.id}
+                className="coach-table-row"
                 style={{
                   background: 'var(--navy-mid)',
                   padding: '16px 24px',

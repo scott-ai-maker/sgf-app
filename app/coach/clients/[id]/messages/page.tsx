@@ -43,8 +43,9 @@ export default async function CoachClientMessagesPage({ params }: PageProps) {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="coach-client-messages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <nav
+        className="coach-client-messages-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -68,7 +69,7 @@ export default async function CoachClientMessagesPage({ params }: PageProps) {
         <LogoutButton />
       </nav>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="coach-client-messages-content" style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px' }}>
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',

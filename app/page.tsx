@@ -42,7 +42,7 @@ export default function Home() {
       <div style={{ height: 3, background: 'linear-gradient(to right, var(--gold), transparent)' }} />
 
       {/* Nav */}
-      <nav style={{
+      <nav className="home-nav" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '1.5rem 3rem',
@@ -61,11 +61,11 @@ export default function Home() {
               backgroundPosition: 'center',
             }}
           />
-          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.15em' }}>
+          <div className="home-brand-title" style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.4rem', letterSpacing: '0.15em' }}>
             Scott Gordon <span style={{ color: 'var(--gold)' }}>Fitness</span>
           </div>
         </div>
-        <div style={{
+        <div className="home-nav-badge" style={{
           fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase',
           color: 'var(--gray)', border: '1px solid var(--navy-lt)', padding: '0.4rem 1rem', borderRadius: 2,
         }}>
@@ -75,14 +75,14 @@ export default function Home() {
 
       {/* Hero */}
       <section
-        className="sgf-hero-bg"
+        className="sgf-hero-bg home-hero"
         style={{
         position: 'relative', minHeight: '100vh',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
         padding: '8rem 3rem 4rem',
       }}
       >
-        <div style={{ maxWidth: 900 }}>
+        <div className="home-hero-content" style={{ maxWidth: 900 }}>
           <p style={{ fontSize: '0.7rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>
             Online Personal Training · Est. 2025
           </p>
@@ -134,13 +134,13 @@ export default function Home() {
       </section>
 
       {/* Stats */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'center' }}>
+      <div className="home-stats" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'center' }}>
         {[
           { num: '1:1', label: 'Personalized Coaching' },
           { num: '100%', label: 'Online & Flexible' },
           { num: '12+', label: 'Years of Experience' },
         ].map((s, i) => (
-          <div key={i} style={{
+          <div key={i} className="home-stat-item" style={{
             flex: 1, maxWidth: 280, padding: '3rem 2rem', textAlign: 'center',
             borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none',
           }}>
@@ -151,14 +151,14 @@ export default function Home() {
       </div>
 
       {/* Pillars */}
-      <section style={{ padding: '6rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
+      <section className="home-pillar-section" style={{ padding: '6rem 3rem', maxWidth: 1100, margin: '0 auto' }}>
         <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1rem' }}>What&apos;s Included</p>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: 1, marginBottom: '3.5rem' }}>
           Everything You Need.<br />Nothing You Don&apos;t.
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5px', background: 'rgba(255,255,255,0.06)' }}>
+        <div className="home-pillar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5px', background: 'rgba(255,255,255,0.06)' }}>
           {PILLARS.map((p, i) => (
-            <div key={i} style={{ background: 'var(--navy)', padding: '2.5rem 2rem' }}>
+            <div key={i} className="home-pillar-card" style={{ background: 'var(--navy)', padding: '2.5rem 2rem' }}>
               <div
                 style={{
                   width: '100%',
@@ -178,9 +178,10 @@ export default function Home() {
       </section>
 
       {/* Bio */}
-      <div style={{ background: 'var(--navy-mid)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6rem 3rem' }}>
-        <div style={{ maxWidth: 1020, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: '2.5rem', alignItems: 'center' }}>
+      <div className="home-bio-section" style={{ background: 'var(--navy-mid)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '6rem 3rem' }}>
+        <div className="home-bio-grid" style={{ maxWidth: 1020, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: '2.5rem', alignItems: 'center' }}>
           <div
+            className="home-bio-photo"
             style={{
               minHeight: 460,
               backgroundImage: `linear-gradient(180deg, rgba(13,27,42,0.22), rgba(13,27,42,0.42)), url('${COACH_PORTRAIT_IMAGE}')`,
@@ -206,7 +207,7 @@ export default function Home() {
       </div>
 
       {/* Bottom CTA */}
-      <section className="sgf-cta-bg" style={{ padding: '6rem 3rem', textAlign: 'center' }}>
+      <section className="sgf-cta-bg home-cta-section" style={{ padding: '6rem 3rem', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', lineHeight: 1, marginBottom: '1rem' }}>
           Ready to <span style={{ color: 'var(--gold)' }}>Start?</span>
         </h2>
@@ -248,7 +249,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer style={{
+      <footer className="home-footer" style={{
         borderTop: '1px solid rgba(255,255,255,0.06)',
         padding: '2rem 3rem',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',

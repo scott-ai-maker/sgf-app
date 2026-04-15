@@ -21,8 +21,9 @@ export default async function BookPage() {
     .order('purchased_at', { ascending: false })
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
+    <main className="dashboard-book-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <nav
+        className="dashboard-book-nav"
         style={{
           borderBottom: '1px solid var(--navy-lt)',
           padding: '16px 32px',
@@ -46,7 +47,7 @@ export default async function BookPage() {
         <LogoutButton />
       </nav>
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
+      <div className="dashboard-book-content" style={{ maxWidth: 800, margin: '0 auto', padding: '40px 24px' }}>
         <a
           href="/dashboard"
           style={{
