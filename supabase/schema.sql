@@ -123,6 +123,9 @@ create policy "Client sees own sessions" on sessions
 -- ── INDEXES ───────────────────────────────────────────────
 create index if not exists sessions_client_id_idx on sessions(client_id);
 create index if not exists sessions_scheduled_at_idx on sessions(scheduled_at);
+create unique index if not exists sessions_unique_scheduled_slot_idx
+  on sessions(scheduled_at)
+  where status = 'scheduled';
 create index if not exists packages_client_id_idx on client_packages(client_id);
 create index if not exists coaching_applications_email_idx on coaching_applications(email);
 create index if not exists coaching_applications_created_at_idx on coaching_applications(created_at);
@@ -551,19 +554,24 @@ begin
     raise exception 'SLOT_ALREADY_BOOKED';
   end if;
 
-  insert into public.sessions (
-    client_id,
-    package_id,
-    scheduled_at,
-    status
-  )
-  values (
-    p_client_id,
-    p_package_id,
-    p_scheduled_at,
-    'scheduled'
-  )
-  returning * into booked_session;
+  begin
+    insert into public.sessions (
+      client_id,
+      package_id,
+      scheduled_at,
+      status
+    )
+    values (
+      p_client_id,
+      p_package_id,
+      p_scheduled_at,
+      'scheduled'
+    )
+    returning * into booked_session;
+  exception
+    when unique_violation then
+      raise exception 'SLOT_ALREADY_BOOKED';
+  end;
 
   update public.client_packages
   set sessions_remaining = sessions_remaining - 1

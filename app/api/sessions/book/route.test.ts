@@ -115,6 +115,27 @@ describe('sessions book route', () => {
     await expect(res.json()).resolves.toEqual({ error: 'This slot is already booked' })
   })
 
+  it('maps duplicate-key rpc errors to 409', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        code: '23505',
+        message: 'duplicate key value violates unique constraint "sessions_unique_scheduled_slot_idx"',
+        details: 'Key (scheduled_at)=(2030-01-01 10:00:00+00) already exists.',
+      },
+    })
+
+    const req = new NextRequest('http://localhost/api/sessions/book', {
+      method: 'POST',
+      body: JSON.stringify({ packageId: 'pkg-1', scheduledAt: '2030-01-01T10:00:00.000Z' }),
+    })
+
+    const res = await POST(req)
+
+    expect(res.status).toBe(409)
+    await expect(res.json()).resolves.toEqual({ error: 'This slot is already booked' })
+  })
+
   it('returns booked session when rpc succeeds', async () => {
     const req = new NextRequest('http://localhost/api/sessions/book', {
       method: 'POST',

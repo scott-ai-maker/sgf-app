@@ -8,7 +8,18 @@ function parseScheduledAt(value: unknown) {
   return parsed
 }
 
-function statusForBookingError(message: string) {
+function statusForBookingError(error: { message?: string | null; code?: string | null; details?: string | null }) {
+  const message = error.message ?? ''
+  const details = error.details ?? ''
+
+  if (
+    error.code === '23505'
+    || message.includes('sessions_unique_scheduled_slot_idx')
+    || details.includes('sessions_unique_scheduled_slot_idx')
+  ) {
+    return { status: 409, error: 'This slot is already booked' }
+  }
+
   switch (message) {
     case 'PACKAGE_NOT_FOUND':
       return { status: 404, error: 'Package not found' }
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
-    const mapped = statusForBookingError(error.message)
+    const mapped = statusForBookingError(error)
     if (mapped) {
       return NextResponse.json({ error: mapped.error }, { status: mapped.status })
     }
