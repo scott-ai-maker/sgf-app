@@ -1,12 +1,15 @@
 {
   "name": "sgf-app",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:auth": "node --env-file=.env.local scripts/authenticated-smoke-harness.mjs",
     "generate-images": "node scripts/generate-images.mjs"
   },
   "dependencies": {
@@ -27,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.4"
   }
 }

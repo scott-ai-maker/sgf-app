@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
 
 // Returns available 1-hour slots for the next 14 days.
 // Business hours (America/New_York):
@@ -74,13 +74,13 @@ function generateSlots(now: Date): { date: string; time: string; datetime: strin
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const authz = await getRequestAuthz()
+    requireRole(authz.client.role, ['client'])
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
 
   const { supabaseAdmin } = await import('@/lib/supabase')

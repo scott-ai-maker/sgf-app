@@ -1,32 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let coachId = ''
+  try {
+    const authz = await getRequestAuthz()
+    requireRole(authz.client.role, ['coach'])
+    coachId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
 
-  const { supabaseAdmin } = await import('@/lib/supabase')
   const admin = supabaseAdmin()
-
-  // Verify caller is a coach
-  const { data: caller } = await admin
-    .from('clients')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (!caller || caller.role !== 'coach') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   const { id } = await params
   const body = await req.json()
@@ -46,6 +37,24 @@ export async function PATCH(
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+  }
+
+  const { data: targetSession } = await admin
+    .from('sessions')
+    .select('id, client_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!targetSession) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  }
+
+  try {
+    await requireCoachAssignedClient(coachId, targetSession.client_id)
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Forbidden'
+    return NextResponse.json({ error: message }, { status })
   }
 
   const { data, error } = await admin

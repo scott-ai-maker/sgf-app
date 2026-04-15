@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import LogoutButton from '@/components/auth/LogoutButton'
 import ClientDetailClient from '@/components/coach/ClientDetailClient'
+import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
+import GenerateClientPlanButton from '@/components/coach/GenerateClientPlanButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,11 +26,11 @@ export default async function CoachClientPage({ params }: PageProps) {
   // Fetch client info
   const { data: client, error: clientError } = await admin
     .from('clients')
-    .select('id, email, full_name, phone, created_at')
+    .select('id, email, full_name, phone, created_at, designated_coach_id')
     .eq('id', id)
     .single()
 
-  if (clientError || !client) notFound()
+  if (clientError || !client || client.designated_coach_id !== user.id) notFound()
 
   // Fetch packages
   const { data: packages } = await admin
@@ -91,6 +93,28 @@ export default async function CoachClientPage({ params }: PageProps) {
         >
           ← Back to Clients
         </a>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <a
+              href={`/coach/clients/${id}/messages`}
+              style={{
+                display: 'inline-block',
+                padding: '10px 16px',
+                border: '1px solid var(--navy-lt)',
+                background: 'var(--navy-mid)',
+                color: 'var(--gold)',
+                textDecoration: 'none',
+                fontFamily: 'Raleway, sans-serif',
+                fontWeight: 600,
+                fontSize: 13,
+              }}
+            >
+              Message Client
+            </a>
+            <CoachClientAssignmentButton clientId={id} mode="release" />
+          </div>
+        </div>
 
         {/* Client info */}
         <div
@@ -247,6 +271,10 @@ export default async function CoachClientPage({ params }: PageProps) {
         )}
 
         {/* Sessions */}
+        <div style={{ marginBottom: 14 }}>
+          <GenerateClientPlanButton clientId={id} />
+        </div>
+
         <h2
           style={{
             fontFamily: 'Bebas Neue, sans-serif',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,14 +7,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Stripe is not configured. Missing STRIPE_SECRET_KEY.' }, { status: 500 })
     }
 
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authz = await getRequestAuthz()
+    requireRole(authz.client.role, ['client'])
+    const userId = authz.user.id
 
     const body = await req.json()
     const packageId = body?.packageId
@@ -45,7 +40,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       metadata: {
-        clientId: user.id,
+        clientId: userId,
         packageName: pkg.name,
         sessionsTotal: String(pkg.sessions),
       },
@@ -55,6 +50,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
+    if (error instanceof AuthzError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     const message = error instanceof Error ? error.message : 'Unexpected checkout error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

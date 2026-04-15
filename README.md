@@ -20,6 +20,41 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Testing
+
+Run the whitebox test suite with:
+
+```bash
+npm test
+```
+
+Use watch mode during development with:
+
+```bash
+npm run test:watch
+```
+
+The current whitebox coverage focuses on:
+
+- RBAC helper behavior in `lib/authz.ts`
+- Coach assignment decision logic in `lib/coach-assignments.ts`
+- Workout planning and body-fat calculation logic in `lib/fitness.ts`
+- Route-level RBAC and error mapping in `app/api/coach/clients/[id]/assignment/route.ts`
+- Route-level messaging authorization and validation in `app/api/messages/route.ts`
+
+For authenticated manual smoke coverage, use:
+
+- `docs/authenticated-smoke-checklist.md`
+
+For scripted authenticated smoke coverage, run:
+
+```bash
+SMOKE_COACH_PASSWORD='...' \
+SMOKE_ASSIGNED_CLIENT_PASSWORD='...' \
+SMOKE_UNASSIGNED_CLIENT_PASSWORD='...' \
+npm run smoke:auth
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

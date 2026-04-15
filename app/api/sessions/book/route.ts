@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let userId = ''
+  try {
+    const authz = await getRequestAuthz()
+    requireRole(authz.client.role, ['client'])
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
 
   const body = await req.json()
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
     .from('client_packages')
     .select('id, sessions_remaining')
     .eq('id', packageId)
-    .eq('client_id', user.id)
+    .eq('client_id', userId)
     .single()
 
   if (pkgError || !pkg) {
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
   const { data: session, error: insertError } = await admin
     .from('sessions')
     .insert({
-      client_id: user.id,
+      client_id: userId,
       package_id: packageId,
       scheduled_at: slotStart.toISOString(),
       status: 'scheduled',

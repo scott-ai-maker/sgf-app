@@ -32,6 +32,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .order('scheduled_at', { ascending: true }),
   ])
 
+  const { data: profile } = await supabase
+    .from('fitness_profiles')
+    .select('onboarding_completed_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!profile?.onboarding_completed_at) {
+    redirect('/dashboard/onboarding')
+  }
+
   const totalRemaining = (packages ?? []).reduce(
     (sum, p) => sum + (p.sessions_remaining ?? 0),
     0
@@ -64,6 +74,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <a
+            href="/dashboard/fitness"
+            style={{
+              fontFamily: 'Raleway, sans-serif',
+              fontWeight: 600,
+              fontSize: 13,
+              color: 'var(--gray)',
+              textDecoration: 'none',
+            }}
+          >
+            Fitness Lab
+          </a>
+          <a
             href="/packages"
             style={{
               fontFamily: 'Raleway, sans-serif',
@@ -74,6 +96,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             }}
           >
             Buy Sessions
+          </a>
+          <a
+            href="/dashboard/messages"
+            style={{
+              fontFamily: 'Raleway, sans-serif',
+              fontWeight: 600,
+              fontSize: 13,
+              color: 'var(--gray)',
+              textDecoration: 'none',
+            }}
+          >
+            Message Trainer
           </a>
           <LogoutButton />
         </div>

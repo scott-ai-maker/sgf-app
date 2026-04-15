@@ -31,10 +31,27 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  let role: 'client' | 'coach' | null = null
+  if (user) {
+    const { data: clientRow } = await supabase
+      .from('clients')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    role = clientRow?.role === 'coach' ? 'coach' : clientRow ? 'client' : null
+  }
+
   // Protect /dashboard routes
   if (pathname.startsWith('/dashboard') && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Keep coach and client app surfaces distinct.
+  if (pathname.startsWith('/dashboard') && user && role === 'coach') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/coach'
     return NextResponse.redirect(url)
   }
 
@@ -46,13 +63,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    const { data: client } = await supabase
-      .from('clients')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!client || client.role !== 'coach') {
+    if (role !== 'coach') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
