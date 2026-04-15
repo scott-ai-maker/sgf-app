@@ -9,6 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed",
+    "test:ui:debug": "playwright test --debug",
     "smoke:auth": "node --env-file=.env.local scripts/authenticated-smoke-harness.mjs",
     "generate-images": "node scripts/generate-images.mjs"
   },
@@ -23,6 +26,7 @@
     "stripe": "^22.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

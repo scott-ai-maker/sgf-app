@@ -55,6 +55,34 @@ SMOKE_UNASSIGNED_CLIENT_PASSWORD='...' \
 npm run smoke:auth
 ```
 
+## UI Automation
+
+This project uses Playwright for browser-level UI automation tests.
+
+Run headless UI tests with:
+
+```bash
+npm run test:ui
+```
+
+Run headed UI tests with:
+
+```bash
+npm run test:ui:headed
+```
+
+Debug one test interactively with:
+
+```bash
+npm run test:ui:debug
+```
+
+Notes:
+
+- By default, Playwright targets `http://127.0.0.1:3000`.
+- Override the target URL with `PLAYWRIGHT_BASE_URL`.
+- The config reuses an existing local dev server when available.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
