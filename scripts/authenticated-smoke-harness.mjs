@@ -158,6 +158,41 @@ async function getAssignedPackage(admin, clientId) {
   return data?.[0] ?? null
 }
 
+/**
+ * Ensure the assigned client always has at least one session remaining for the
+ * booking smoke check. Upserts a dedicated smoke-test package row so the check
+ * is idempotent across CI runs regardless of how many times it has booked.
+ */
+async function ensureTestPackage(admin, clientId) {
+  const SMOKE_PACKAGE_NAME = 'smoke-test-package'
+
+  // Try to refill an existing smoke package first.
+  const { data: existing } = await admin
+    .from('client_packages')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('package_name', SMOKE_PACKAGE_NAME)
+    .maybeSingle()
+
+  if (existing?.id) {
+    const { error } = await admin
+      .from('client_packages')
+      .update({ sessions_remaining: 1 })
+      .eq('id', existing.id)
+    if (error) throw new Error(`Failed to refill smoke package: ${error.message}`)
+    return
+  }
+
+  // Create a fresh smoke package.
+  const { error } = await admin.from('client_packages').insert({
+    client_id: clientId,
+    package_name: SMOKE_PACKAGE_NAME,
+    sessions_total: 1,
+    sessions_remaining: 1,
+  })
+  if (error) throw new Error(`Failed to create smoke package: ${error.message}`)
+}
+
 async function getFitnessProfile(admin, userId) {
   const { data, error } = await admin
     .from('fitness_profiles')
@@ -456,6 +491,7 @@ async function main() {
 
   if (enableBooking) {
     await runCheck(results, 'assigned client can book a session', async () => {
+      await ensureTestPackage(admin, assignedClientRow.id)
       const packageRow = await getAssignedPackage(admin, assignedClientRow.id)
       assert(packageRow?.id, 'No package with remaining sessions was found for assigned client')
 
