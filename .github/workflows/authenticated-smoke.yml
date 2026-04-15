@@ -1,0 +1,93 @@
+name: Authenticated Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_booking:
+        description: Run booking checks
+        required: false
+        default: true
+        type: boolean
+      enable_checkout:
+        description: Run checkout checks
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '30 7 * * *'
+
+concurrency:
+  group: authenticated-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SMOKE_COACH_PASSWORD: ${{ secrets.SMOKE_COACH_PASSWORD }}
+      SMOKE_ASSIGNED_CLIENT_PASSWORD: ${{ secrets.SMOKE_ASSIGNED_CLIENT_PASSWORD }}
+      SMOKE_UNASSIGNED_CLIENT_PASSWORD: ${{ secrets.SMOKE_UNASSIGNED_CLIENT_PASSWORD }}
+      SMOKE_BASE_URL: http://127.0.0.1:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start app
+        run: |
+          npm run dev > /tmp/next-dev.log 2>&1 &
+          echo $! > /tmp/next-dev.pid
+
+      - name: Wait for app
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "$SMOKE_BASE_URL" > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not become ready in time"
+          exit 1
+
+      - name: Run authenticated smoke harness
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.enable_booking }}" == "true" ]]; then
+              export SMOKE_ENABLE_BOOKING=1
+            fi
+            if [[ "${{ inputs.enable_checkout }}" == "true" ]]; then
+              export SMOKE_ENABLE_CHECKOUT=1
+            fi
+          else
+            export SMOKE_ENABLE_BOOKING=1
+          fi
+
+          node scripts/authenticated-smoke-harness.mjs
+
+      - name: Upload app log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: authenticated-smoke-next-dev-log
+          path: /tmp/next-dev.log
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [[ -f /tmp/next-dev.pid ]]; then
+            kill "$(cat /tmp/next-dev.pid)" || true
+          fi
