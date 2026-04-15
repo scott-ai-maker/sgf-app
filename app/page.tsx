@@ -31,7 +31,7 @@ const PILLARS = [
 const HOME_STATS = [
   { num: '1:1', label: 'Personalized Coaching' },
   { num: '100%', label: 'Online & Flexible' },
-  { num: '12+', label: 'Years of Experience' },
+  { num: '17', label: 'Years of Experience' },
 ]
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
       {/* Gold top bar */}
       <div style={{ height: 3, background: 'linear-gradient(to right, var(--gold), transparent)' }} />
 
-      <SiteHeader fixed badgeText="Online Coaching · Rolling Intake" />
+      <SiteHeader fixed />
 
       {/* Hero */}
       <section
@@ -62,21 +62,15 @@ export default function Home() {
           </h1>
           <div style={{ width: 60, height: 2, background: 'var(--gold)', margin: '2rem 0' }} />
           <p style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', lineHeight: 1.7, color: 'var(--gray)', maxWidth: 480, marginBottom: '2.5rem' }}>
-            Online coaching built around you — personalized programming, real accountability, and a coach who&apos;s done the work himself. Spots are limited.
+            Custom programming, real accountability, and a certified coach who transformed his own body before training thousands of clients. Results over theory. Limited spots.
           </p>
           <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
             <Link
               href="/apply"
               className="sgf-button sgf-button-primary"
             >
-              Apply for Coaching
+              Get Your Custom Program
             </Link>
-            <a
-              href="#waitlist-hero"
-              className="sgf-button sgf-button-secondary"
-            >
-              Join Waitlist
-            </a>
           </div>
           <WaitlistForm id="hero" />
           <p style={{ marginTop: '0.75rem', fontSize: '0.72rem', letterSpacing: '0.1em', color: 'var(--gray)' }}>
@@ -139,16 +133,22 @@ export default function Home() {
             }}
           />
           <div>
-          <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1.5rem' }}>Your Coach</p>
-          <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2rem, 4vw, 3rem)', marginBottom: '1.5rem', lineHeight: 1.1 }}>Scott Gordon</h2>
+          <p style={{ fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '1rem' }}>Your Coach</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1, margin: 0 }}>Scott Gordon</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'rgba(255,184,28,0.1)', padding: '0.35rem 0.65rem', borderRadius: '3px', border: '1px solid rgba(255,184,28,0.3)', fontSize: '0.65rem', fontWeight: 600, color: 'var(--gold)', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+            >
+              <span>✓</span> NASM Certified
+            </div>
+          </div>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)', marginBottom: '1rem' }}>
-            I&apos;m a <strong style={{ color: 'var(--white)', fontWeight: 600 }}>certified personal trainer</strong> with over a decade of experience helping people build real, sustainable fitness — from complete beginners to competitive athletes.
+            I&apos;ve been training clients for <strong style={{ color: 'var(--white)', fontWeight: 600 }}>17 years</strong> — through thousands of sessions, hundreds of transformations, and years of my own experimentation.
           </p>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)', marginBottom: '1rem' }}>
-            I know what it takes to <strong style={{ color: 'var(--white)', fontWeight: 600 }}>rebuild from scratch</strong>. To show up when motivation fades. To train with intention and see results that stick.
+            <strong style={{ color: 'var(--white)', fontWeight: 600 }}>I lost 50+ lbs through training myself</strong> before ever coaching a client. I know the struggle. I know what actually works — and what doesn&apos;t.
           </p>
           <p style={{ fontSize: '0.95rem', lineHeight: 1.85, color: 'var(--gray)' }}>
-            Online coaching means <strong style={{ color: 'var(--white)', fontWeight: 600 }}>expert guidance without the commute</strong> — a program that fits your life, not the other way around.
+            As a <strong style={{ color: 'var(--white)', fontWeight: 600 }}>master trainer with thousands of logged hours</strong>, I build programs for your body, your schedule, and your goals — not templates.
           </p>
           </div>
         </div>
@@ -157,22 +157,16 @@ export default function Home() {
       {/* Bottom CTA */}
       <section className="sgf-cta-bg home-cta-section" style={{ padding: '6rem 3rem', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', lineHeight: 1, marginBottom: '1rem' }}>
-          Ready to <span style={{ color: 'var(--gold)' }}>Start?</span>
+          Ready to <span style={{ color: 'var(--gold)' }}>Transform?</span>
         </h2>
-        <p style={{ color: 'var(--gray)', fontSize: '0.95rem', marginBottom: '1rem' }}>Apply now for best-fit coaching, or join the waitlist for launch updates.</p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <p style={{ color: 'var(--gray)', fontSize: '0.95rem', marginBottom: '1.5rem' }}>Limited coaching spots. Apply now to see if you&apos;re a fit.</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
           <Link
             href="/apply"
             className="sgf-button sgf-button-primary"
           >
-            Apply for Coaching
+            Apply for Custom Program
           </Link>
-          <a
-            href="#waitlist-cta"
-            className="sgf-button sgf-button-secondary"
-          >
-            Join Waitlist
-          </a>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <WaitlistForm id="cta" />
