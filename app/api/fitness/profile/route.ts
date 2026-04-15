@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
     userId = authz.user.id
   } catch (error) {
     const status = error instanceof AuthzError ? error.status : 500
-    const message = error instanceof Error ? error.message : 'Unauthorized'
+    const rawMessage = error instanceof Error ? error.message : 'Unauthorized'
+    const message = status === 403
+      ? 'Onboarding intake is available for client accounts only.'
+      : rawMessage
     return NextResponse.json({ error: message }, { status })
   }
 

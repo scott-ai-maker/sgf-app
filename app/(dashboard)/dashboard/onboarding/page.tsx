@@ -12,6 +12,14 @@ export default async function OnboardingPage() {
 
   if (!user) redirect('/auth/login')
 
+  const { data: client } = await supabase
+    .from('clients')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (client?.role === 'coach') redirect('/coach')
+
   const { data: profile } = await supabase
     .from('fitness_profiles')
     .select('onboarding_completed_at')
