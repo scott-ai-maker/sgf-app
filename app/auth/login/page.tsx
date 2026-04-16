@@ -10,7 +10,31 @@ const SOCIAL_LINKS = [
 
 export const dynamic = 'force-dynamic'
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{
+    next?: string
+  }>
+}
+
+function getLoginSurface(nextPath: string) {
+  return nextPath.startsWith('/coach')
+    ? {
+        eyebrow: 'Coach Access',
+        title: 'Coach Login',
+        description: 'Sign in to access your coach console and assigned client roster.',
+      }
+    : {
+        eyebrow: 'Client Access',
+        title: 'Client Login',
+        description: 'Sign in to access your dashboard, messages, and booking tools.',
+      }
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams
+  const nextPath = resolvedSearchParams.next?.startsWith('/') ? resolvedSearchParams.next : '/dashboard'
+  const surface = getLoginSurface(nextPath)
+
   return (
     <main
       className="sgf-auth-bg"
@@ -43,11 +67,24 @@ export default function LoginPage() {
             color: 'var(--gold)',
             letterSpacing: '0.06em',
             textAlign: 'center',
+            marginBottom: 6,
+          }}
+        >
+          {surface.title}
+        </h1>
+        <p
+          style={{
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 12,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--gold)',
+            textAlign: 'center',
             marginBottom: 8,
           }}
         >
-          SCOTT GORDON FITNESS
-        </h1>
+          {surface.eyebrow}
+        </p>
         <p
           style={{
             fontFamily: 'Raleway, sans-serif',
@@ -57,7 +94,7 @@ export default function LoginPage() {
             marginBottom: 32,
           }}
         >
-          Sign in to your account
+          {surface.description}
         </p>
         <div
           style={{
@@ -67,7 +104,7 @@ export default function LoginPage() {
             backdropFilter: 'blur(2px)',
           }}
         >
-          <AuthForm mode="login" />
+          <AuthForm mode="login" redirectPath={nextPath} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '0.55rem', marginTop: '1rem' }}>
           {SOCIAL_LINKS.map(({ name, href, Icon }) => (

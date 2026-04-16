@@ -2,6 +2,7 @@ import WaitlistForm from '@/components/WaitlistForm'
 import Link from 'next/link'
 import SiteHeader from '@/components/ui/SiteHeader'
 import SiteFooter from '@/components/ui/SiteFooter'
+import MarketingLoginActions from '@/components/ui/MarketingLoginActions'
 
 const COACH_PORTRAIT_IMAGE = '/images/coach-portrait.jpg?v=0.1.4'
 
@@ -40,7 +41,7 @@ export default function Home() {
       {/* Gold top bar */}
       <div style={{ height: 3, background: 'linear-gradient(to right, var(--gold), transparent)' }} />
 
-      <SiteHeader fixed />
+      <SiteHeader fixed actions={<MarketingLoginActions />} />
 
       {/* Hero */}
       <section

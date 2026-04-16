@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import ApplyQuiz from '@/components/marketing/ApplyQuiz'
 import SiteHeader from '@/components/ui/SiteHeader'
+import MarketingLoginActions from '@/components/ui/MarketingLoginActions'
 
 export default function ApplyPage() {
   return (
@@ -8,8 +9,8 @@ export default function ApplyPage() {
       <SiteHeader
         links={[
           { href: '/packages', label: 'Packages' },
-          { href: '/auth/login', label: 'Sign In' },
         ]}
+        actions={<MarketingLoginActions />}
       />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <div className="apply-top-links" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

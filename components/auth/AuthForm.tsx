@@ -8,6 +8,7 @@ type Mode = 'login' | 'signup'
 
 interface AuthFormProps {
   mode: Mode
+  redirectPath?: string
 }
 
 function formatAuthErrorMessage(rawMessage: string) {
@@ -49,7 +50,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 }
 
-export default function AuthForm({ mode }: AuthFormProps) {
+export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthFormProps) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -85,7 +86,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       }
     }
 
-    router.push('/dashboard')
+    router.push(redirectPath)
     router.refresh()
   }
 
@@ -93,10 +94,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
     const supabase = createClient()
     setError(null)
 
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', redirectPath)
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     })
 

@@ -2,6 +2,7 @@ import { PACKAGES } from '@/lib/stripe'
 import PurchaseButton from '@/components/packages/PurchaseButton'
 import SiteHeader from '@/components/ui/SiteHeader'
 import SiteFooter from '@/components/ui/SiteFooter'
+import MarketingLoginActions from '@/components/ui/MarketingLoginActions'
 
 const PACKAGE_IMAGES: Record<string, string> = {
   starter: '/images/package-starter.jpg',
@@ -16,8 +17,8 @@ export default function PackagesPage() {
         links={[
           { href: '/apply', label: 'Fit Quiz' },
           { href: '/dashboard', label: 'Dashboard' },
-          { href: '/auth/login', label: 'Sign In' },
         ]}
+        actions={<MarketingLoginActions />}
       />
 
       <div className="packages-content" style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 24px' }}>

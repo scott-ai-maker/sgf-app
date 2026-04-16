@@ -85,6 +85,35 @@ body {
 .site-header-actions {
   display: inline-flex;
   align-items: center;
+  gap: 0.55rem;
+}
+
+.site-header-auth-link {
+  text-decoration: none;
+  color: var(--gray);
+  border: 1px solid var(--navy-lt);
+  background: rgba(13, 27, 42, 0.35);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.72rem;
+  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+}
+
+.site-header-auth-link:hover {
+  color: var(--white);
+  border-color: rgba(212, 160, 23, 0.5);
+}
+
+.site-header-auth-link-accent {
+  color: var(--navy);
+  background: var(--gold);
+  border-color: rgba(212, 160, 23, 0.7);
+}
+
+.site-header-auth-link-accent:hover {
+  color: var(--navy);
+  background: var(--gold-lt);
 }
 
 .site-header-links {
@@ -365,6 +394,7 @@ body {
 
   .site-header-actions {
     margin-left: auto;
+    flex-wrap: wrap;
   }
 
   .site-header-links {
