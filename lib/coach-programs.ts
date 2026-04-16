@@ -189,7 +189,7 @@ export function buildStoredProgramPlan(
   let generatedDateIndex = 0
 
   const workouts = payload.workouts
-    .map((workout, index) => {
+    .map<ProgramWorkoutSnapshot | null>((workout, index) => {
       const focus = normalizeText(workout.focus)
       const explicitScheduledDate = normalizeOptionalText(workout.scheduledDate)
       const scheduledDate = explicitScheduledDate ?? generatedDates[generatedDateIndex++] ?? null
@@ -229,7 +229,7 @@ export function buildStoredProgramPlan(
         exercises: sanitizedExercises,
       } satisfies ProgramWorkoutSnapshot
     })
-    .filter((workout): workout is ProgramWorkoutSnapshot => Boolean(workout))
+    .filter(Boolean) as ProgramWorkoutSnapshot[]
 
   const equipmentNames = new Set(
     workouts.flatMap(workout => workout.exercises.flatMap(exercise => exercise.primaryEquipment.map(item => item.toLowerCase())))
