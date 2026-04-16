@@ -67,7 +67,7 @@ export default function GenerateClientPlanButton({ clientId }: GenerateClientPla
           cursor: busy ? 'not-allowed' : 'pointer',
         }}
       >
-        {busy ? 'Generating...' : 'Generate Workout Plan'}
+        {busy ? 'Generating...' : 'Quick Generate Plan'}
       </button>
 
       {status && (

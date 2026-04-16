@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
+import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
 
 interface FitnessProfile {
   preferred_units?: 'metric' | 'imperial'
@@ -21,11 +22,20 @@ interface WorkoutExercise {
   name: string
   sets: string
   reps: string
+  tempo?: string | null
+  rest?: string | null
+  notes?: string | null
+  description?: string | null
+  primaryEquipment?: string[] | null
+  imageUrl?: string | null
+  videoUrl?: string | null
 }
 
 interface WorkoutDay {
   day: number
   focus: string
+  scheduledDate?: string | null
+  notes?: string | null
   exercises: WorkoutExercise[]
 }
 
@@ -35,6 +45,13 @@ interface WorkoutPlanRecord {
   phase_name: string
   plan_json?: {
     workouts?: WorkoutDay[]
+    calendar?: Array<{
+      day: number
+      focus: string
+      scheduledDate: string | null
+      durationMins: number
+      exerciseCount: number
+    }>
   }
 }
 
@@ -98,6 +115,28 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
   const planWorkouts = useMemo(() => {
     return plan?.plan_json?.workouts ?? []
   }, [plan])
+
+  const planCalendarEntries = useMemo(() => {
+    const explicitCalendar = plan?.plan_json?.calendar ?? []
+
+    if (explicitCalendar.length > 0) {
+      return explicitCalendar
+        .filter(item => item.scheduledDate)
+        .map(item => ({
+          date: String(item.scheduledDate),
+          title: `Day ${item.day}: ${item.focus}`,
+          subtitle: `${item.exerciseCount} exercise${item.exerciseCount === 1 ? '' : 's'} • ${item.durationMins} mins`,
+        }))
+    }
+
+    return planWorkouts
+      .filter(workout => workout.scheduledDate)
+      .map(workout => ({
+        date: String(workout.scheduledDate),
+        title: `Day ${workout.day}: ${workout.focus}`,
+        subtitle: `${workout.exercises.length} exercise${workout.exercises.length === 1 ? '' : 's'}`,
+      }))
+  }, [plan, planWorkouts])
 
   const units = profile?.preferred_units === 'imperial' ? 'imperial' : 'metric'
 
@@ -353,10 +392,72 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   <h3 style={{ margin: '0 0 8px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em', fontSize: 21 }}>
                     Day {workout.day}: {workout.focus}
                   </h3>
+                  {workout.scheduledDate && (
+                    <p style={{ margin: '0 0 10px', color: 'var(--gold)', fontSize: 13 }}>
+                      Scheduled for {new Date(`${workout.scheduledDate}T12:00:00Z`).toLocaleDateString()}
+                    </p>
+                  )}
+                  {workout.notes && (
+                    <p style={{ margin: '0 0 12px', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{workout.notes}</p>
+                  )}
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {workout.exercises.map(ex => (
-                      <li key={ex.name} style={{ marginBottom: 5 }}>
-                        {ex.name} - {ex.sets} sets x {ex.reps}
+                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12 }}>
+                        <div style={{ color: 'var(--white)', fontWeight: 600 }}>
+                          {ex.name} - {ex.sets} sets x {ex.reps}
+                          {ex.tempo ? ` · Tempo ${ex.tempo}` : ''}
+                          {ex.rest ? ` · Rest ${ex.rest}` : ''}
+                        </div>
+                        {ex.description && (
+                          <p style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{ex.description}</p>
+                        )}
+                        {ex.notes && (
+                          <p style={{ margin: '4px 0 0', color: 'var(--gold)', fontSize: 13 }}>{ex.notes}</p>
+                        )}
+                        {(ex.primaryEquipment?.length || ex.imageUrl || ex.videoUrl) && (
+                          <div style={{ display: 'grid', gridTemplateColumns: ex.imageUrl ? '76px 1fr' : '1fr', gap: 10, marginTop: 8 }}>
+                            {ex.imageUrl && (
+                              <div
+                                aria-hidden="true"
+                                style={{
+                                  width: 76,
+                                  minHeight: 76,
+                                  border: '1px solid rgba(255,255,255,0.08)',
+                                  backgroundImage: `url(${ex.imageUrl})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                }}
+                              />
+                            )}
+                            <div>
+                              {ex.primaryEquipment && ex.primaryEquipment.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  {ex.primaryEquipment.map(item => (
+                                    <span
+                                      key={item}
+                                      style={{
+                                        border: '1px solid rgba(212,160,23,0.22)',
+                                        background: 'rgba(212,160,23,0.12)',
+                                        color: 'var(--gold)',
+                                        padding: '2px 8px',
+                                        fontSize: 11,
+                                        letterSpacing: '0.06em',
+                                        textTransform: 'uppercase',
+                                      }}
+                                    >
+                                      {item}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {ex.videoUrl && (
+                                <a href={ex.videoUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: 8, color: 'var(--gold-lt)', textDecoration: 'none', fontSize: 13 }}>
+                                  Open exercise video
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -376,6 +477,14 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
             <button type="submit" disabled={busy === 'log'} style={buttonStyle}>{busy === 'log' ? 'Saving...' : 'Save Log'}</button>
           </form>
         </section>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <WorkoutCalendarView
+          entries={planCalendarEntries}
+          title="Workout Calendar"
+          subtitle="Your coach can assign scheduled training dates for each session block."
+        />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>

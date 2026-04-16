@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import LogoutButton from '@/components/auth/LogoutButton'
 import ClientDetailClient from '@/components/coach/ClientDetailClient'
+import CoachProgramBuilder from '@/components/coach/CoachProgramBuilder'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
 import GenerateClientPlanButton from '@/components/coach/GenerateClientPlanButton'
 import SiteHeader from '@/components/ui/SiteHeader'
@@ -46,6 +47,32 @@ export default async function CoachClientPage({ params }: PageProps) {
     .select('id, scheduled_at, status, notes, duration_mins')
     .eq('client_id', id)
     .order('scheduled_at', { ascending: false })
+
+  const [latestPlansResult, templatesResult, exercisesResult, equipmentResult] = await Promise.all([
+    admin
+      .from('workout_plans')
+      .select('*')
+      .eq('user_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    admin
+      .from('workout_program_templates')
+      .select('id, title, slug, goal, nasm_opt_phase, phase_name, sessions_per_week, estimated_duration_mins, template_json')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false }),
+    admin
+      .from('exercise_library_entries')
+      .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .limit(1000),
+    admin
+      .from('equipment_library_entries')
+      .select('id, name, slug, description, media_image_url')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .limit(250),
+  ])
 
   const totalRemaining = (packages ?? []).reduce(
     (sum, p) => sum + (p.sessions_remaining ?? 0),
@@ -243,6 +270,14 @@ export default async function CoachClientPage({ params }: PageProps) {
         <div style={{ marginBottom: 14 }}>
           <GenerateClientPlanButton clientId={id} />
         </div>
+
+        <CoachProgramBuilder
+          clientId={id}
+          latestPlan={latestPlansResult.data?.[0] ?? null}
+          templates={templatesResult.data ?? []}
+          exercises={exercisesResult.data ?? []}
+          equipment={equipmentResult.data ?? []}
+        />
 
         <h2
           style={{

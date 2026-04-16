@@ -279,6 +279,61 @@ create table if not exists workout_plans (
   created_at                timestamptz default now()
 );
 
+create table if not exists workout_program_templates (
+  id                        uuid primary key default gen_random_uuid(),
+  slug                      text unique,
+  source                    text not null default 'licensed_import',
+  title                     text not null,
+  goal                      text,
+  nasm_opt_phase            int check (nasm_opt_phase between 1 and 5),
+  phase_name                text,
+  sessions_per_week         int,
+  estimated_duration_mins   int,
+  template_json             jsonb not null default '{}'::jsonb,
+  is_active                 boolean not null default true,
+  created_at                timestamptz default now(),
+  updated_at                timestamptz default now()
+);
+
+create table if not exists exercise_library_entries (
+  id                        uuid primary key default gen_random_uuid(),
+  source                    text not null default 'licensed_import',
+  source_id                 text,
+  slug                      text,
+  name                      text not null,
+  description               text,
+  coaching_cues             text[] default array[]::text[],
+  primary_equipment         text[] default array[]::text[],
+  media_image_url           text,
+  media_video_url           text,
+  metadata_json             jsonb not null default '{}'::jsonb,
+  is_active                 boolean not null default true,
+  created_at                timestamptz default now(),
+  updated_at                timestamptz default now()
+);
+
+create unique index if not exists exercise_library_entries_source_id_idx
+  on exercise_library_entries(source, source_id)
+  where source_id is not null;
+
+create table if not exists equipment_library_entries (
+  id                        uuid primary key default gen_random_uuid(),
+  source                    text not null default 'licensed_import',
+  source_id                 text,
+  slug                      text,
+  name                      text not null,
+  description               text,
+  media_image_url           text,
+  metadata_json             jsonb not null default '{}'::jsonb,
+  is_active                 boolean not null default true,
+  created_at                timestamptz default now(),
+  updated_at                timestamptz default now()
+);
+
+create unique index if not exists equipment_library_entries_source_id_idx
+  on equipment_library_entries(source, source_id)
+  where source_id is not null;
+
 do $$
 begin
   -- Legacy typo migration for older databases:
@@ -364,6 +419,9 @@ alter table workout_plans enable row level security;
 alter table workout_logs enable row level security;
 alter table workout_set_logs enable row level security;
 alter table body_composition_analyses enable row level security;
+alter table workout_program_templates enable row level security;
+alter table exercise_library_entries enable row level security;
+alter table equipment_library_entries enable row level security;
 
 drop policy if exists "User reads own fitness profile" on fitness_profiles;
 create policy "User reads own fitness profile" on fitness_profiles
@@ -449,6 +507,18 @@ drop policy if exists "User writes own body composition analyses" on body_compos
 create policy "User writes own body composition analyses" on body_composition_analyses
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Authenticated reads workout program templates" on workout_program_templates;
+create policy "Authenticated reads workout program templates" on workout_program_templates
+  for select to authenticated using (is_active = true);
+
+drop policy if exists "Authenticated reads exercise library" on exercise_library_entries;
+create policy "Authenticated reads exercise library" on exercise_library_entries
+  for select to authenticated using (is_active = true);
+
+drop policy if exists "Authenticated reads equipment library" on equipment_library_entries;
+create policy "Authenticated reads equipment library" on equipment_library_entries
+  for select to authenticated using (is_active = true);
+
 create index if not exists fitness_profiles_updated_at_idx on fitness_profiles(updated_at desc);
 create index if not exists client_intake_forms_signed_at_idx on client_intake_forms(user_id, consent_signed_at desc);
 create index if not exists clients_designated_coach_idx on clients(designated_coach_id);
@@ -458,6 +528,9 @@ create index if not exists workout_logs_user_id_idx on workout_logs(user_id, ses
 create index if not exists workout_set_logs_user_id_idx on workout_set_logs(user_id, session_date desc);
 create index if not exists workout_set_logs_exercise_idx on workout_set_logs(user_id, exercise_name, session_date desc);
 create index if not exists body_composition_user_id_idx on body_composition_analyses(user_id, created_at desc);
+create index if not exists workout_program_templates_active_idx on workout_program_templates(is_active, created_at desc);
+create index if not exists exercise_library_entries_name_idx on exercise_library_entries(name);
+create index if not exists equipment_library_entries_name_idx on equipment_library_entries(name);
 
 -- ── STORAGE: BEFORE PHOTOS ───────────────────────────────
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
