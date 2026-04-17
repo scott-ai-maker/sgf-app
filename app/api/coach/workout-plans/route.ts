@@ -91,12 +91,14 @@ export async function POST(req: NextRequest) {
       ? admin
           .from('exercise_library_entries')
           .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
+          .eq('is_active', true)
           .in('id', exerciseIds)
       : Promise.resolve({ data: [] as ExerciseLibraryRecord[] }),
     exerciseNames.length
       ? admin
           .from('exercise_library_entries')
           .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
+          .eq('is_active', true)
           .in('name', exerciseNames)
       : Promise.resolve({ data: [] as ExerciseLibraryRecord[] }),
     admin

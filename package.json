@@ -12,6 +12,8 @@
     "test:ui": "playwright test",
     "test:ui:headed": "playwright test --headed",
     "test:ui:debug": "playwright test --debug",
+    "exercises:seed": "node --env-file=.env.local scripts/seed-exercise-library.mjs",
+    "exercises:sync:exercisedb": "node --env-file=.env.local scripts/import-exercisedb.mjs",
     "smoke:auth": "node --env-file=.env.local scripts/authenticated-smoke-harness.mjs",
     "emails:dispatch": "node --env-file=.env.local scripts/dispatch-marketing-emails.mjs",
     "generate-images": "node scripts/generate-images.mjs"

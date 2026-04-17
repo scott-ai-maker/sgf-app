@@ -86,6 +86,14 @@ function addUtcDays(date: Date, days: number) {
   return copy
 }
 
+function formatDayList(days: number[]) {
+  if (days.length === 1) {
+    return `day ${days[0]}`
+  }
+
+  return `days ${days.join(', ')}`
+}
+
 function toBuilderExercise(exercise?: BuilderWorkoutDay['exercises'][number]): BuilderExercise {
   return {
     id: uid(),
@@ -156,7 +164,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
     return days
       .map((day, index) => {
         const explicitDate = parseDateOnly(day.scheduledDate)
-        const generatedDate = parsedStart ? addUtcDays(parsedStart, generatedIndex++ * spacing) : null
+        const generatedDate = !explicitDate && parsedStart ? addUtcDays(parsedStart, generatedIndex++ * spacing) : null
         const scheduledDate = explicitDate ?? generatedDate
         if (!scheduledDate) return null
 
@@ -168,6 +176,33 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
       })
       .filter((entry): entry is { date: string; title: string; subtitle: string } => Boolean(entry))
   }, [days, sessionsPerWeek, startDate])
+
+  const validationMessages = useMemo(() => {
+    const missingFocusDays: number[] = []
+    const missingExerciseNameDays: number[] = []
+
+    days.forEach((day, index) => {
+      if (!String(day.focus ?? '').trim()) {
+        missingFocusDays.push(index + 1)
+      }
+
+      if (day.exercises.some(exercise => !String(exercise.name ?? '').trim())) {
+        missingExerciseNameDays.push(index + 1)
+      }
+    })
+
+    const messages: string[] = []
+
+    if (missingFocusDays.length > 0) {
+      messages.push(`Add a focus for ${formatDayList(missingFocusDays)}.`)
+    }
+
+    if (missingExerciseNameDays.length > 0) {
+      messages.push(`Add exercise names for ${formatDayList(missingExerciseNameDays)}.`)
+    }
+
+    return messages
+  }, [days])
 
   function applyTemplate(nextTemplateId: string) {
     setTemplateId(nextTemplateId)
@@ -269,50 +304,60 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   }
 
   async function handleSubmit() {
-    setBusy(true)
-    setStatus(null)
-
-    const res = await fetch('/api/coach/workout-plans', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        clientId,
-        templateId,
-        name,
-        goal,
-        nasmOptPhase: Number(nasmOptPhase),
-        phaseName,
-        sessionsPerWeek: Number(sessionsPerWeek),
-        estimatedDurationMins: Number(estimatedDurationMins),
-        startDate,
-        workouts: days.map((day, index) => ({
-          day: index + 1,
-          focus: day.focus,
-          scheduledDate: day.scheduledDate,
-          notes: day.notes,
-          exercises: day.exercises.map(exercise => ({
-            libraryExerciseId: exercise.libraryExerciseId || null,
-            name: exercise.name,
-            sets: exercise.sets,
-            reps: exercise.reps,
-            tempo: exercise.tempo,
-            rest: exercise.rest,
-            notes: exercise.notes,
-          })),
-        })),
-      }),
-    })
-
-    const payload = await res.json().catch(() => ({}))
-    setBusy(false)
-
-    if (!res.ok) {
-      setStatus(payload.error ?? 'Failed to save custom workout plan.')
+    if (validationMessages.length > 0) {
+      setStatus('Complete required fields before saving.')
       return
     }
 
-    setStatus('Custom program saved for this client.')
-    router.refresh()
+    setBusy(true)
+    setStatus(null)
+
+    try {
+      const res = await fetch('/api/coach/workout-plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          templateId,
+          name,
+          goal,
+          nasmOptPhase: Number(nasmOptPhase),
+          phaseName,
+          sessionsPerWeek: Number(sessionsPerWeek),
+          estimatedDurationMins: Number(estimatedDurationMins),
+          startDate,
+          workouts: days.map((day, index) => ({
+            day: index + 1,
+            focus: day.focus,
+            scheduledDate: day.scheduledDate,
+            notes: day.notes,
+            exercises: day.exercises.map(exercise => ({
+              libraryExerciseId: exercise.libraryExerciseId || null,
+              name: exercise.name,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              tempo: exercise.tempo,
+              rest: exercise.rest,
+              notes: exercise.notes,
+            })),
+          })),
+        }),
+      })
+
+      const payload = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setStatus(payload.error ?? 'Failed to save custom workout plan.')
+        return
+      }
+
+      setStatus('Custom program saved for this client.')
+      router.refresh()
+    } catch {
+      setStatus('Failed to save custom workout plan. Check your connection and try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -508,10 +553,21 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             Reset To Latest Plan
           </button>
         </div>
-        <button type="button" disabled={busy} onClick={handleSubmit} style={primaryButtonStyle}>
+        <button type="button" disabled={busy || validationMessages.length > 0} onClick={handleSubmit} style={primaryButtonStyle}>
           {busy ? 'Saving...' : 'Save Custom Program'}
         </button>
       </div>
+
+      {validationMessages.length > 0 && (
+        <div style={{ marginTop: 12, padding: '10px 12px', border: '1px solid rgba(255,61,87,0.45)', background: 'rgba(255,61,87,0.08)' }}>
+          <p style={{ margin: 0, color: 'var(--error)', fontSize: 13, fontWeight: 600 }}>Required before save:</p>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--gray)', fontSize: 13 }}>
+            {validationMessages.map(message => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {status && (
         <p style={{ margin: '14px 0 0', color: status.toLowerCase().includes('failed') || status.toLowerCase().includes('invalid') ? 'var(--error)' : 'var(--success)' }}>
