@@ -36,8 +36,9 @@ export default function CoachClientAssignmentButton({ clientId, mode }: CoachCli
   const isAssign = mode === 'assign'
 
   return (
-    <div style={{ display: 'grid', gap: 6, justifyItems: 'start' }}>
+    <div className="coach-assignment-action" style={{ display: 'grid', gap: 6, justifyItems: 'start' }}>
       <button
+        className="coach-assignment-button"
         type="button"
         onClick={handleClick}
         disabled={busy}
@@ -49,7 +50,8 @@ export default function CoachClientAssignmentButton({ clientId, mode }: CoachCli
           borderRadius: 2,
           fontFamily: 'Raleway, sans-serif',
           fontWeight: 700,
-          fontSize: 12,
+          fontSize: 13,
+          minHeight: 42,
           cursor: busy ? 'not-allowed' : 'pointer',
           whiteSpace: 'nowrap',
         }}

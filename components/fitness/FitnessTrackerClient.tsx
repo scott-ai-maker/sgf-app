@@ -370,14 +370,14 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="fitness-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div className="fitness-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Workout Generator</h2>
             <button
               onClick={handleGeneratePlan}
               disabled={busy === 'plan'}
-              style={{ border: 0, background: 'var(--gold)', color: '#0D1B2A', padding: '10px 14px', fontFamily: 'Bebas Neue, sans-serif', fontSize: 17, letterSpacing: '0.06em' }}
+              style={{ border: 0, background: 'var(--gold)', color: '#0D1B2A', padding: '10px 14px', fontFamily: 'Bebas Neue, sans-serif', fontSize: 17, letterSpacing: '0.06em', minHeight: 44 }}
             >
               {busy === 'plan' ? 'Generating...' : 'Generate NASM Plan'}
             </button>
@@ -487,10 +487,10 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+      <div className="fitness-sub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, marginTop: 16 }}>
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
           <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Progress Stats</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(140px, 1fr))', gap: 10 }}>
+          <div className="fitness-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(140px, 1fr))', gap: 10 }}>
             <Stat label="Total Sets" value={String(progression.totalSets)} />
             <Stat label="Total Reps" value={String(progression.totalReps)} />
             <Stat label={`Total Volume (${units === 'imperial' ? 'lb' : 'kg'})`} value={units === 'imperial' ? String(Math.round(progression.totalVolumeKg * 2.20462)) : String(progression.totalVolumeKg)} />
@@ -522,15 +522,15 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           <form onSubmit={handleLogSet} style={{ display: 'grid', gap: 10 }}>
             <input type="date" value={setLogState.sessionDate} onChange={e => setSetLogState(prev => ({ ...prev, sessionDate: e.target.value }))} style={inputStyle} required />
             <input type="text" value={setLogState.exerciseName} onChange={e => setSetLogState(prev => ({ ...prev, exerciseName: e.target.value }))} style={inputStyle} placeholder="Exercise name" required />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <input type="number" min={1} value={setLogState.setNumber} onChange={e => setSetLogState(prev => ({ ...prev, setNumber: e.target.value }))} style={inputStyle} placeholder="Set #" />
               <input type="number" min={1} value={setLogState.reps} onChange={e => setSetLogState(prev => ({ ...prev, reps: e.target.value }))} style={inputStyle} placeholder="Reps" required />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <input type="number" step="0.1" min={0} value={setLogState.weight} onChange={e => setSetLogState(prev => ({ ...prev, weight: e.target.value }))} style={inputStyle} placeholder={`Weight (${units === 'imperial' ? 'lb' : 'kg'})`} />
               <input type="number" min={0} value={setLogState.restSeconds} onChange={e => setSetLogState(prev => ({ ...prev, restSeconds: e.target.value }))} style={inputStyle} placeholder="Rest (sec)" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <input type="number" step="0.1" min={1} max={10} value={setLogState.rpe} onChange={e => setSetLogState(prev => ({ ...prev, rpe: e.target.value }))} style={inputStyle} placeholder="RPE (1-10)" />
               <input type="number" step="0.1" min={0} max={6} value={setLogState.rir} onChange={e => setSetLogState(prev => ({ ...prev, rir: e.target.value }))} style={inputStyle} placeholder="RIR" />
             </div>
@@ -606,7 +606,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
             {logs.map(log => (
               <div key={String(log.id)} style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy)', padding: 10 }}>
                 <div style={{ fontWeight: 600 }}>{String(log.session_title)}</div>
-                <div style={{ color: 'var(--gray)', fontSize: 13 }}>{String(log.session_date)} | RPE {String(log.exertion_rpe ?? '-')}</div>
+                <div style={{ color: 'var(--gray)', fontSize: 13, overflowWrap: 'anywhere' }}>{String(log.session_date)} | RPE {String(log.exertion_rpe ?? '-')}</div>
               </div>
             ))}
           </div>
@@ -620,7 +620,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
             {localSetLogs.slice(0, 15).map(row => (
               <div key={row.id} style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy)', padding: 10 }}>
                 <div style={{ fontWeight: 600 }}>{row.exercise_name}</div>
-                <div style={{ color: 'var(--gray)', fontSize: 13 }}>
+                <div style={{ color: 'var(--gray)', fontSize: 13, overflowWrap: 'anywhere' }}>
                   {row.session_date} | Set {row.set_number ?? '-'} | {row.reps} reps | {formatWeight(row.weight_kg, units)} | Rest {row.rest_seconds ?? '-'}s | RPE {row.rpe ?? '-'} | RIR {row.rir ?? '-'}
                 </div>
               </div>
@@ -695,6 +695,8 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--navy-lt)',
   background: 'var(--navy)',
   color: 'var(--white)',
+  minHeight: 44,
+  fontSize: 16,
 }
 
 const buttonStyle: React.CSSProperties = {
@@ -706,6 +708,7 @@ const buttonStyle: React.CSSProperties = {
   fontSize: 17,
   letterSpacing: '0.06em',
   cursor: 'pointer',
+  minHeight: 44,
 }
 
 function fileToDataUrl(file: File) {

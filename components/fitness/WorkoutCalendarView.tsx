@@ -115,11 +115,11 @@ export default function WorkoutCalendarView({ entries, title, subtitle }: Workou
         {subtitle && <p style={{ color: 'var(--gray)', margin: '6px 0 0', fontSize: 14 }}>{subtitle}</p>}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setMonthCursor(prev => addMonths(prev, -1))} style={monthButtonStyle}>
           Prev
         </button>
-        <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em' }}>{monthLabel(monthCursor)}</div>
+        <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em', textAlign: 'center', flex: '1 1 180px' }}>{monthLabel(monthCursor)}</div>
         <button type="button" onClick={() => setMonthCursor(prev => addMonths(prev, 1))} style={monthButtonStyle}>
           Next
         </button>
@@ -201,6 +201,8 @@ const monthButtonStyle: React.CSSProperties = {
   background: 'transparent',
   color: 'var(--white)',
   padding: '7px 10px',
+  minHeight: 40,
+  minWidth: 68,
   fontSize: 12,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',

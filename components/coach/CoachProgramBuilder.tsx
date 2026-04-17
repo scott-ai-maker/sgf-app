@@ -333,7 +333,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             Build individualized training blocks and calendar dates here. Imported template and exercise library content only appears after you load licensed data into the catalog tables.
           </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(110px, 1fr))', gap: 10, minWidth: 320 }}>
+        <div className="coach-program-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(110px, 1fr))', gap: 10, width: '100%', maxWidth: 420 }}>
           <Metric label="Templates" value={String(templates.length)} />
           <Metric label="Exercises" value={String(exercises.length)} />
           <Metric label="Equipment" value={String(equipment.length)} />
@@ -392,7 +392,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
         {days.map((day, dayIndex) => (
           <div key={day.id} style={{ border: '1px solid var(--navy-lt)', background: 'rgba(13,27,42,0.7)', padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(160px, 1fr)', gap: 10, flex: 1 }}>
+              <div className="coach-program-day-header-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(160px, 1fr)', gap: 10, flex: 1 }}>
                 <label style={labelStyle}>
                   Day {dayIndex + 1} Focus
                   <input value={day.focus} onChange={event => updateDay(day.id, 'focus', event.target.value)} style={inputStyle} placeholder="Upper Body Strength" />
@@ -415,7 +415,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             <div style={{ display: 'grid', gap: 12 }}>
               {day.exercises.map(exercise => (
                 <div key={exercise.id} style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(18,35,54,0.9)', padding: 14 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) repeat(4, minmax(90px, 1fr)) auto', gap: 10, alignItems: 'end' }}>
+                  <div className="coach-program-exercise-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) repeat(4, minmax(90px, 1fr)) auto', gap: 10, alignItems: 'end' }}>
                     <label style={labelStyle}>
                       Exercise
                       <input
@@ -453,7 +453,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                   </label>
 
                   {(exercise.description || exercise.primaryEquipment.length > 0 || exercise.imageUrl || exercise.videoUrl) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: exercise.imageUrl ? '88px 1fr' : '1fr', gap: 12, marginTop: 12, padding: 12, background: 'rgba(13,27,42,0.68)' }}>
+                    <div className="coach-program-exercise-detail" style={{ display: 'grid', gridTemplateColumns: exercise.imageUrl ? '88px 1fr' : '1fr', gap: 12, marginTop: 12, padding: 12, background: 'rgba(13,27,42,0.68)' }}>
                       {exercise.imageUrl && (
                         <div
                           aria-hidden="true"
@@ -568,7 +568,8 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--navy-mid)',
   color: 'var(--white)',
   fontFamily: 'Raleway, sans-serif',
-  fontSize: 14,
+  fontSize: 16,
+  minHeight: 44,
 }
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -580,6 +581,7 @@ const primaryButtonStyle: React.CSSProperties = {
   letterSpacing: '0.08em',
   fontSize: 18,
   cursor: 'pointer',
+  minHeight: 44,
 }
 
 const secondaryButtonStyle: React.CSSProperties = {
@@ -590,6 +592,7 @@ const secondaryButtonStyle: React.CSSProperties = {
   fontFamily: 'Raleway, sans-serif',
   fontSize: 13,
   cursor: 'pointer',
+  minHeight: 42,
 }
 
 const chipStyle: React.CSSProperties = {

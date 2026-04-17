@@ -100,7 +100,7 @@ export default async function CoachClientPage({ params }: PageProps) {
         </a>
 
         <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="coach-client-top-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <a
               href={`/coach/clients/${id}/messages`}
               className="sgf-button sgf-button-secondary"
@@ -156,7 +156,7 @@ export default async function CoachClientPage({ params }: PageProps) {
             >
               Email
             </div>
-            <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 14, color: 'var(--white)' }}>
+            <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 14, color: 'var(--white)', overflowWrap: 'anywhere' }}>
               {client.email}
             </div>
           </div>
@@ -174,7 +174,7 @@ export default async function CoachClientPage({ params }: PageProps) {
             >
               Phone
             </div>
-            <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 14, color: 'var(--white)' }}>
+            <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 14, color: 'var(--white)', overflowWrap: 'anywhere' }}>
               {client.phone ?? '—'}
             </div>
           </div>

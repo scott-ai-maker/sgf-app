@@ -298,6 +298,29 @@ body {
   outline-offset: 1px;
 }
 
+.fitness-main-grid,
+.fitness-sub-grid {
+  max-width: 100%;
+}
+
+.fitness-main-grid > *,
+.fitness-sub-grid > * {
+  min-width: 0;
+}
+
+.coach-program-metrics-grid,
+.coach-program-day-header-grid,
+.coach-program-exercise-grid,
+.coach-program-exercise-detail,
+.coach-commerce-grid,
+.coach-commerce-pair-grid,
+.coach-session-action-row,
+.coach-session-notes-row,
+.coach-client-top-actions,
+.coach-assignment-action {
+  max-width: 100%;
+}
+
 .fade-in-up {
   animation: fade-in-up 560ms ease both;
 }
@@ -382,6 +405,32 @@ body {
 }
 
 @media (max-width: 900px) {
+  .fitness-main-grid,
+  .fitness-sub-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .coach-program-metrics-grid,
+  .coach-program-day-header-grid,
+  .coach-commerce-pair-grid,
+  .coach-session-notes-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .coach-program-exercise-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+  }
+
+  .coach-program-exercise-grid > :first-child,
+  .coach-program-exercise-grid > :last-child {
+    grid-column: span 2;
+  }
+
+  .coach-session-card {
+    padding: 16px !important;
+  }
+
   .site-header {
     padding: 0.9rem 1rem;
     flex-wrap: wrap;
@@ -588,6 +637,46 @@ body {
 }
 
 @media (max-width: 560px) {
+  .fitness-main-grid,
+  .fitness-sub-grid,
+  .fitness-stats-grid,
+  .fitness-set-input-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .coach-commerce-grid,
+  .coach-program-metrics-grid,
+  .coach-program-day-header-grid,
+  .coach-program-exercise-grid,
+  .coach-program-exercise-detail,
+  .coach-commerce-pair-grid,
+  .coach-session-action-row,
+  .coach-session-notes-row,
+  .coach-client-top-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .coach-session-action-row > button,
+  .coach-session-notes-row > button,
+  .coach-client-top-actions > *,
+  .coach-assignment-action,
+  .coach-assignment-action > .coach-assignment-button {
+    width: 100%;
+  }
+
+  .coach-session-notes-row textarea {
+    width: 100%;
+  }
+
+  .fitness-section-header button {
+    width: 100%;
+  }
+
+  .dashboard-fitness-page {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
   .site-header-badge {
     display: none;
   }
@@ -606,5 +695,46 @@ body {
 
   .packages-content {
     padding-top: 2rem !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .fitness-set-input-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .coach-client-content,
+  .dashboard-fitness-content {
+    padding-left: 0.7rem !important;
+    padding-right: 0.7rem !important;
+  }
+
+  .coach-client-content h2 {
+    font-size: 19px !important;
+    line-height: 1.2;
+  }
+
+  .dashboard-fitness-content h1 {
+    font-size: 34px !important;
+    line-height: 1;
+  }
+
+  .dashboard-fitness-content h2 {
+    font-size: 24px !important;
+    line-height: 1.1;
+  }
+
+  .coach-client-info-grid {
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+
+  .coach-client-package-row,
+  .coach-session-card,
+  .coach-commerce-grid section,
+  .dashboard-fitness-content section {
+    padding: 14px !important;
   }
 }

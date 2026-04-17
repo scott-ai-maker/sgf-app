@@ -43,7 +43,7 @@ export default function SessionActions({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {canMark && (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="coach-session-action-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => updateSession({ status: 'completed' })}
             disabled={loading}
@@ -55,7 +55,8 @@ export default function SessionActions({
               borderRadius: 2,
               fontFamily: 'Raleway, sans-serif',
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: 13,
+              minHeight: 40,
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
@@ -72,7 +73,8 @@ export default function SessionActions({
               borderRadius: 2,
               fontFamily: 'Raleway, sans-serif',
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: 13,
+              minHeight: 40,
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
@@ -81,7 +83,7 @@ export default function SessionActions({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      <div className="coach-session-notes-row" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <textarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
@@ -96,9 +98,10 @@ export default function SessionActions({
             color: 'var(--white)',
             fontFamily: 'Raleway, sans-serif',
             fontWeight: 300,
-            fontSize: 13,
+            fontSize: 16,
             resize: 'vertical',
             outline: 'none',
+            minHeight: 44,
           }}
         />
         <button
@@ -115,6 +118,7 @@ export default function SessionActions({
             letterSpacing: '0.06em',
             cursor: loading ? 'not-allowed' : 'pointer',
             whiteSpace: 'nowrap',
+            minHeight: 40,
           }}
         >
           Save

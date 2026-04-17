@@ -122,15 +122,17 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
     borderRadius: 2,
     color: 'var(--white)',
     fontFamily: 'Raleway, sans-serif',
-    fontSize: 13,
+    fontSize: 16,
     outline: 'none',
+    minHeight: 44,
   }
 
   return (
     <div
+      className="coach-commerce-grid"
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
         gap: 18,
         marginBottom: 36,
       }}
@@ -180,6 +182,7 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
             fontFamily: 'Bebas Neue, sans-serif',
             letterSpacing: '0.06em',
             fontSize: 16,
+            minHeight: 44,
             cursor: grantLoading ? 'not-allowed' : 'pointer',
           }}
         >
@@ -202,7 +205,7 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
           Generate a reusable code for package checkout.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div className="coach-commerce-pair-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
             <label htmlFor="discount-type" style={labelStyle}>Type</label>
             <select
@@ -228,7 +231,7 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        <div className="coach-commerce-pair-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
             <label htmlFor="discount-max-redemptions" style={labelStyle}>Max redemptions</label>
             <input
@@ -287,6 +290,7 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
             fontFamily: 'Bebas Neue, sans-serif',
             letterSpacing: '0.06em',
             fontSize: 16,
+            minHeight: 44,
             cursor: discountLoading ? 'not-allowed' : 'pointer',
           }}
         >

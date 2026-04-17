@@ -71,6 +71,7 @@ export default function ClientDetailClient({ sessions }: ClientDetailClientProps
       {sessions.map(session => (
         <div
           key={session.id}
+          className="coach-session-card"
           style={{
             background: 'var(--navy-mid)',
             padding: '20px 24px',
@@ -80,11 +81,13 @@ export default function ClientDetailClient({ sessions }: ClientDetailClientProps
           }}
         >
           <div
+            className="coach-session-card-header"
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 16,
+              flexWrap: 'wrap',
             }}
           >
             <div>
@@ -109,6 +112,7 @@ export default function ClientDetailClient({ sessions }: ClientDetailClientProps
                   fontSize: 13,
                   color: 'var(--gray)',
                   marginTop: 2,
+                  overflowWrap: 'anywhere',
                 }}
               >
                 {new Date(session.scheduled_at).toLocaleTimeString('en-US', {
