@@ -9,6 +9,7 @@ interface PurchaseButtonProps {
 export default function PurchaseButton({ packageId }: PurchaseButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [discountCode, setDiscountCode] = useState('')
 
   async function handlePurchase() {
     setLoading(true)
@@ -17,7 +18,10 @@ export default function PurchaseButton({ packageId }: PurchaseButtonProps) {
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packageId }),
+      body: JSON.stringify({
+        packageId,
+        discountCode: discountCode.trim() || undefined,
+      }),
     })
 
     if (res.status === 401) {
@@ -45,6 +49,40 @@ export default function PurchaseButton({ packageId }: PurchaseButtonProps) {
 
   return (
     <div>
+      <label
+        htmlFor={`discount-${packageId}`}
+        style={{
+          display: 'block',
+          fontFamily: 'Raleway, sans-serif',
+          fontWeight: 600,
+          fontSize: 11,
+          color: 'var(--gray)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          marginBottom: 6,
+        }}
+      >
+        Discount Code (Optional)
+      </label>
+      <input
+        id={`discount-${packageId}`}
+        type="text"
+        value={discountCode}
+        onChange={e => setDiscountCode(e.target.value.toUpperCase())}
+        placeholder="COACH-XXXXXX"
+        style={{
+          width: '100%',
+          marginBottom: 12,
+          padding: '10px 12px',
+          background: 'var(--navy)',
+          border: '1px solid var(--navy-lt)',
+          borderRadius: 2,
+          color: 'var(--white)',
+          fontFamily: 'Raleway, sans-serif',
+          fontSize: 13,
+          outline: 'none',
+        }}
+      />
       <button
         onClick={handlePurchase}
         disabled={loading}

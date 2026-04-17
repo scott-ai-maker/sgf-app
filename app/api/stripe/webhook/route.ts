@@ -18,7 +18,13 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      const { clientId, packageName, sessionsTotal } = session.metadata ?? {}
+      const {
+        clientId,
+        packageName,
+        sessionsTotal,
+        discountCode,
+        discountAmountCents,
+      } = session.metadata ?? {}
       const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
 
       if (clientId && packageName && sessionsTotal) {
@@ -74,16 +80,62 @@ export async function POST(req: NextRequest) {
           throw new Error(`Failed upserting client: ${clientError.message}`)
         }
 
+        const normalizedDiscountCode = (discountCode ?? '').trim().toUpperCase()
+        const parsedDiscountAmount = Number.parseInt(discountAmountCents ?? '0', 10)
+        const discountAmount = Number.isNaN(parsedDiscountAmount) ? 0 : Math.max(parsedDiscountAmount, 0)
+
         const { error: packageError } = await admin.from('client_packages').insert({
           client_id: clientId,
           package_name: packageName,
           sessions_total: parseInt(sessionsTotal),
           sessions_remaining: parseInt(sessionsTotal),
           stripe_payment_id: paymentIntentId,
+          source: 'purchase',
+          discount_code: normalizedDiscountCode || null,
+          discount_amount_cents: discountAmount,
         })
 
         if (packageError) {
           throw new Error(`Failed inserting package: ${packageError.message}`)
+        }
+
+        if (paymentIntentId && normalizedDiscountCode) {
+          const { data: discountCodeRow, error: discountCodeError } = await admin
+            .from('discount_codes')
+            .select('id')
+            .eq('code', normalizedDiscountCode)
+            .maybeSingle()
+
+          if (discountCodeError) {
+            throw new Error(`Failed loading discount code: ${discountCodeError.message}`)
+          }
+
+          if (discountCodeRow?.id) {
+            const { data: redemption, error: redemptionError } = await admin
+              .from('discount_code_redemptions')
+              .insert({
+                discount_code_id: discountCodeRow.id,
+                client_id: clientId,
+                stripe_payment_id: paymentIntentId,
+                amount_cents: discountAmount,
+              })
+              .select('id')
+              .maybeSingle()
+
+            if (redemptionError && redemptionError.code !== '23505') {
+              throw new Error(`Failed inserting discount redemption: ${redemptionError.message}`)
+            }
+
+            if (redemption?.id) {
+              const { error: redemptionCountError } = await admin.rpc('increment_discount_code_redemptions', {
+                p_discount_code: normalizedDiscountCode,
+              })
+
+              if (redemptionCountError) {
+                throw new Error(`Failed incrementing discount redemptions: ${redemptionCountError.message}`)
+              }
+            }
+          }
         }
       }
     }

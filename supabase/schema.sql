@@ -66,10 +66,184 @@ create table if not exists client_packages (
   package_name      text not null,           -- e.g. 'Momentum Pack'
   sessions_total    int not null,
   sessions_remaining int not null,
+  source            text not null default 'purchase'
+    check (source in ('purchase', 'comp')),
+  granted_by_coach_id uuid references clients(id) on delete set null,
+  grant_note        text,
+  discount_code     text,
+  discount_amount_cents int not null default 0,
   stripe_payment_id text,
   purchased_at      timestamptz default now(),
   expires_at        timestamptz              -- optional expiry
 );
+
+-- Existing projects may already have client_packages from older schema versions.
+-- Keep this migration idempotent by backfilling newly introduced columns.
+alter table client_packages
+  add column if not exists source text default 'purchase'
+  check (source in ('purchase', 'comp'));
+
+alter table client_packages
+  alter column source set default 'purchase';
+
+update client_packages
+set source = 'purchase'
+where source is null;
+
+alter table client_packages
+  alter column source set not null;
+
+alter table client_packages
+  add column if not exists granted_by_coach_id uuid references clients(id) on delete set null;
+
+alter table client_packages
+  add column if not exists grant_note text;
+
+alter table client_packages
+  add column if not exists discount_code text;
+
+alter table client_packages
+  add column if not exists discount_amount_cents int not null default 0;
+
+create table if not exists comp_session_grants (
+  id                uuid primary key default gen_random_uuid(),
+  client_id         uuid not null references clients(id) on delete cascade,
+  coach_id          uuid not null references clients(id) on delete cascade,
+  sessions_granted  int not null check (sessions_granted > 0),
+  note              text,
+  client_package_id uuid references client_packages(id) on delete set null,
+  created_at        timestamptz default now()
+);
+
+-- Existing projects may already have comp_session_grants from older schema versions.
+alter table comp_session_grants
+  add column if not exists client_package_id uuid references client_packages(id) on delete set null;
+
+alter table comp_session_grants
+  add column if not exists created_at timestamptz default now();
+
+update comp_session_grants
+set created_at = now()
+where created_at is null;
+
+create table if not exists discount_codes (
+  id                  uuid primary key default gen_random_uuid(),
+  code                text unique not null,
+  description         text,
+  discount_type       text not null check (discount_type in ('percent', 'fixed_amount')),
+  discount_value      int not null check (discount_value > 0),
+  is_active           boolean not null default true,
+  max_redemptions     int check (max_redemptions is null or max_redemptions > 0),
+  redemptions_count   int not null default 0,
+  starts_at           timestamptz not null default now(),
+  expires_at          timestamptz,
+  applies_to_package_ids text[],
+  restricted_client_id uuid references clients(id) on delete set null,
+  created_by_coach_id uuid references clients(id) on delete set null,
+  created_at          timestamptz default now()
+);
+
+-- Existing projects may already have discount_codes from older schema versions.
+alter table discount_codes
+  add column if not exists description text;
+
+alter table discount_codes
+  add column if not exists discount_type text
+  check (discount_type in ('percent', 'fixed_amount'));
+
+alter table discount_codes
+  add column if not exists discount_value int;
+
+alter table discount_codes
+  add column if not exists is_active boolean default true;
+
+alter table discount_codes
+  add column if not exists max_redemptions int check (max_redemptions is null or max_redemptions > 0);
+
+alter table discount_codes
+  add column if not exists redemptions_count int default 0;
+
+alter table discount_codes
+  add column if not exists starts_at timestamptz default now();
+
+alter table discount_codes
+  add column if not exists expires_at timestamptz;
+
+alter table discount_codes
+  add column if not exists applies_to_package_ids text[];
+
+alter table discount_codes
+  add column if not exists restricted_client_id uuid references clients(id) on delete set null;
+
+alter table discount_codes
+  add column if not exists created_by_coach_id uuid references clients(id) on delete set null;
+
+alter table discount_codes
+  add column if not exists created_at timestamptz default now();
+
+alter table discount_codes
+  alter column is_active set default true;
+
+alter table discount_codes
+  alter column redemptions_count set default 0;
+
+alter table discount_codes
+  alter column starts_at set default now();
+
+update discount_codes
+set is_active = true
+where is_active is null;
+
+update discount_codes
+set redemptions_count = 0
+where redemptions_count is null;
+
+update discount_codes
+set starts_at = now()
+where starts_at is null;
+
+update discount_codes
+set created_at = now()
+where created_at is null;
+
+alter table discount_codes
+  alter column is_active set not null;
+
+alter table discount_codes
+  alter column redemptions_count set not null;
+
+alter table discount_codes
+  alter column starts_at set not null;
+
+create table if not exists discount_code_redemptions (
+  id                uuid primary key default gen_random_uuid(),
+  discount_code_id  uuid not null references discount_codes(id) on delete cascade,
+  client_id         uuid not null references clients(id) on delete cascade,
+  stripe_payment_id text not null unique,
+  amount_cents      int not null default 0,
+  created_at        timestamptz default now()
+);
+
+-- Existing projects may already have discount_code_redemptions from older schema versions.
+alter table discount_code_redemptions
+  add column if not exists amount_cents int default 0;
+
+alter table discount_code_redemptions
+  add column if not exists created_at timestamptz default now();
+
+alter table discount_code_redemptions
+  alter column amount_cents set default 0;
+
+update discount_code_redemptions
+set amount_cents = 0
+where amount_cents is null;
+
+update discount_code_redemptions
+set created_at = now()
+where created_at is null;
+
+alter table discount_code_redemptions
+  alter column amount_cents set not null;
 
 -- ── SESSIONS ──────────────────────────────────────────────
 create table if not exists sessions (
@@ -91,6 +265,9 @@ alter table marketing_email_queue enable row level security;
 alter table clients enable row level security;
 alter table client_packages enable row level security;
 alter table sessions enable row level security;
+alter table comp_session_grants enable row level security;
+alter table discount_codes enable row level security;
+alter table discount_code_redemptions enable row level security;
 
 -- Waitlist: anyone can insert, only service role can read
 drop policy if exists "Public can join waitlist" on waitlist;
@@ -127,6 +304,12 @@ create unique index if not exists sessions_unique_scheduled_slot_idx
   on sessions(scheduled_at)
   where status = 'scheduled';
 create index if not exists packages_client_id_idx on client_packages(client_id);
+create index if not exists packages_source_idx on client_packages(source);
+create index if not exists comp_session_grants_client_idx on comp_session_grants(client_id, created_at desc);
+create index if not exists comp_session_grants_coach_idx on comp_session_grants(coach_id, created_at desc);
+create index if not exists discount_codes_code_idx on discount_codes(code);
+create index if not exists discount_codes_active_idx on discount_codes(is_active, expires_at);
+create index if not exists discount_code_redemptions_discount_idx on discount_code_redemptions(discount_code_id, created_at desc);
 create index if not exists coaching_applications_email_idx on coaching_applications(email);
 create index if not exists coaching_applications_created_at_idx on coaching_applications(created_at);
 create index if not exists marketing_email_queue_dispatch_idx on marketing_email_queue(status, send_after);
@@ -160,6 +343,31 @@ create policy "Coach reads assigned packages" on client_packages
       where c.id = auth.uid()
         and c.role = 'coach'
         and cl.designated_coach_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Coach reads assigned comp grants" on comp_session_grants;
+create policy "Coach reads assigned comp grants" on comp_session_grants
+  for select using (
+    exists (
+      select 1
+      from clients coach
+      join clients cl on cl.id = comp_session_grants.client_id
+      where coach.id = auth.uid()
+        and coach.role = 'coach'
+        and cl.designated_coach_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Coach reads own discount codes" on discount_codes;
+create policy "Coach reads own discount codes" on discount_codes
+  for select using (
+    exists (
+      select 1
+      from clients coach
+      where coach.id = auth.uid()
+        and coach.role = 'coach'
+        and discount_codes.created_by_coach_id = auth.uid()
     )
   );
 
@@ -723,3 +931,25 @@ $$;
 
 revoke all on function public.check_rate_limit(text, int, int) from public;
 grant execute on function public.check_rate_limit(text, int, int) to service_role;
+
+create or replace function public.increment_discount_code_redemptions(
+  p_discount_code text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_discount_code is null or length(trim(p_discount_code)) = 0 then
+    return;
+  end if;
+
+  update public.discount_codes
+  set redemptions_count = redemptions_count + 1
+  where code = upper(trim(p_discount_code));
+end;
+$$;
+
+revoke all on function public.increment_discount_code_redemptions(text) from public;
+grant execute on function public.increment_discount_code_redemptions(text) to service_role;

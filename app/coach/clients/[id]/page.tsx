@@ -6,6 +6,7 @@ import ClientDetailClient from '@/components/coach/ClientDetailClient'
 import CoachProgramBuilder from '@/components/coach/CoachProgramBuilder'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
 import GenerateClientPlanButton from '@/components/coach/GenerateClientPlanButton'
+import CoachCommerceTools from '@/components/coach/CoachCommerceTools'
 import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
@@ -239,6 +240,12 @@ export default async function CoachClientPage({ params }: PageProps) {
                   <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 2 }}>
                     Purchased {new Date(pkg.purchased_at).toLocaleDateString()}
                   </div>
+                  {(pkg.source === 'comp' || pkg.discount_code) && (
+                    <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 4 }}>
+                      {pkg.source === 'comp' ? 'Comp grant' : 'Paid package'}
+                      {pkg.discount_code ? ` · Discount ${pkg.discount_code}` : ''}
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span
@@ -265,6 +272,20 @@ export default async function CoachClientPage({ params }: PageProps) {
             ))}
           </div>
         )}
+
+        <h2
+          style={{
+            fontFamily: 'Bebas Neue, sans-serif',
+            fontSize: 22,
+            color: 'var(--white)',
+            letterSpacing: '0.06em',
+            marginBottom: 14,
+          }}
+        >
+          COMMERCE TOOLS
+        </h2>
+
+        <CoachCommerceTools clientId={id} />
 
         {/* Sessions */}
         <div style={{ marginBottom: 14 }}>
