@@ -631,13 +631,20 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                             </div>
                           )
                         })()}
-                        {equipmentBadges(exercise.primaryEquipment).length > 0 && (
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                            {equipmentBadges(exercise.primaryEquipment).map(item => (
-                              <span key={item} style={chipStyle}>{item}</span>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const equipmentItems = Array.isArray(exercise.primaryEquipment)
+                            ? exercise.primaryEquipment.map(item => String(item ?? '').trim()).filter(Boolean)
+                            : []
+                          const badgeItems = equipmentItems.length > 0 ? equipmentItems : ['Bodyweight']
+
+                          return (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                              {badgeItems.map(item => (
+                                <span key={item} style={chipStyle}>{item}</span>
+                              ))}
+                            </div>
+                          )
+                        })()}
                         {exercise.videoUrl && (
                           <a href={exercise.videoUrl} target="_blank" rel="noreferrer" style={videoLinkStyle}>
                             Open exercise video

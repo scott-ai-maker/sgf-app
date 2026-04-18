@@ -447,26 +447,33 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                               />
                             )}
                             <div>
-                              {equipmentBadges(ex.primaryEquipment).length > 0 && (
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                  {equipmentBadges(ex.primaryEquipment).map(item => (
-                                    <span
-                                      key={item}
-                                      style={{
-                                        border: '1px solid rgba(212,160,23,0.22)',
-                                        background: 'rgba(212,160,23,0.12)',
-                                        color: 'var(--gold)',
-                                        padding: '2px 8px',
-                                        fontSize: 11,
-                                        letterSpacing: '0.06em',
-                                        textTransform: 'uppercase',
-                                      }}
-                                    >
-                                      {item}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              {(() => {
+                                const equipmentItems = Array.isArray(ex.primaryEquipment)
+                                  ? ex.primaryEquipment.map(item => String(item ?? '').trim()).filter(Boolean)
+                                  : []
+                                const badgeItems = equipmentItems.length > 0 ? equipmentItems : ['Bodyweight']
+
+                                return (
+                                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    {badgeItems.map(item => (
+                                      <span
+                                        key={item}
+                                        style={{
+                                          border: '1px solid rgba(212,160,23,0.22)',
+                                          background: 'rgba(212,160,23,0.12)',
+                                          color: 'var(--gold)',
+                                          padding: '2px 8px',
+                                          fontSize: 11,
+                                          letterSpacing: '0.06em',
+                                          textTransform: 'uppercase',
+                                        }}
+                                      >
+                                        {item}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )
+                              })()}
                               {ex.videoUrl && (
                                 <a href={ex.videoUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', marginTop: 8, color: 'var(--gold-lt)', textDecoration: 'none', fontSize: 13 }}>
                                   Open exercise video
