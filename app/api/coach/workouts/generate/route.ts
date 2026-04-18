@@ -1,10 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
-import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
-import { buildRandomizedTemplateWorkouts } from '@/lib/coach-template-generator'
+import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+
+function normalizeEquipmentAccess(items: string[]) {
+  return [...new Set(items.map(item => String(item ?? '').trim().toLowerCase()).filter(Boolean))]
+}
+
+function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAccess: string[]) {
+  if (equipmentAccess.length === 0) return true
+
+  const normalizedEquipment = (Array.isArray(exercise.primary_equipment) ? exercise.primary_equipment : [])
+    .map(item => String(item ?? '').trim().toLowerCase())
+    .filter(Boolean)
+
+  if (normalizedEquipment.length === 0) {
+    return equipmentAccess.includes('bodyweight')
+  }
+
+  return normalizedEquipment.some(item => {
+    if (item.includes('bodyweight') || item === 'none') return equipmentAccess.includes('bodyweight')
+    if (item.includes('dumbbell')) return equipmentAccess.includes('dumbbells')
+    if (item.includes('barbell')) return equipmentAccess.includes('barbell')
+    if (item.includes('bench')) return equipmentAccess.includes('bench')
+    if (item.includes('cable')) return equipmentAccess.includes('cable-machine')
+    if (item.includes('machine') || item.includes('smith') || item.includes('lever') || item.includes('press')) return equipmentAccess.includes('machines')
+    if (item.includes('kettlebell')) return equipmentAccess.includes('kettlebells')
+    if (item.includes('band') || item.includes('tube') || item.includes('strap')) return equipmentAccess.includes('bands')
+    if (item.includes('trx') || item.includes('suspension')) return equipmentAccess.includes('trx')
+    if (item.includes('medicine ball') || item.includes('stability ball')) return equipmentAccess.includes('medicine-ball')
+    return true
+  })
+}
+
+function phasePrescription(nasmOptPhase: number) {
+  switch (nasmOptPhase) {
+    case 1:
+      return { sets: '2-3', reps: '12-20', tempo: '4/2/1', rest: '0-90s' }
+    case 2:
+      return { sets: '2-4', reps: '8-12', tempo: '2/0/2', rest: '0-60s' }
+    case 3:
+      return { sets: '3-5', reps: '6-12', tempo: '2/0/2', rest: '30-60s' }
+    case 4:
+      return { sets: '4-6', reps: '1-5', tempo: 'x/x/x', rest: '3-5m' }
+    case 5:
+      return { sets: '3-5', reps: '1-10', tempo: 'x/x/x', rest: '1-2m' }
+    default:
+      return { sets: '3', reps: '8-12', tempo: '2/0/2', rest: '60s' }
+  }
+}
+
+function buildRandomizedTemplateWorkouts({
+  template,
+  exercises,
+  sessionsPerWeek,
+  equipmentAccess,
+}: {
+  template: WorkoutProgramTemplateRecord
+  exercises: ExerciseLibraryRecord[]
+  sessionsPerWeek: number
+  equipmentAccess: string[]
+}) {
+  const normalizedEquipmentAccess = normalizeEquipmentAccess(equipmentAccess)
+  const filteredExercises = exercises.filter(exercise => exerciseMatchesEquipment(exercise, normalizedEquipmentAccess))
+  const pool = filteredExercises.length > 0 ? filteredExercises : exercises
+  const prescription = phasePrescription(Number(template.nasm_opt_phase ?? 1))
+  const templateWorkouts: CoachProgramWorkoutInput[] = Array.isArray(template.template_json?.workouts) && template.template_json.workouts.length > 0
+    ? template.template_json.workouts.slice(0, Math.max(1, sessionsPerWeek))
+    : Array.from({ length: Math.max(1, sessionsPerWeek) }, (_, index) => ({ day: index + 1, focus: `Training Day ${index + 1}`, scheduledDate: null, notes: null, exercises: [] }))
+
+  return templateWorkouts.map((workout, workoutIndex) => {
+    const dayFocus = String(workout.focus ?? `Training Day ${workoutIndex + 1}`).trim() || `Training Day ${workoutIndex + 1}`
+    const dayExerciseCount = Math.min(6, Math.max(4, pool.length > 0 ? 5 : 0))
+    const dayExercises = Array.from({ length: dayExerciseCount }, (_, exerciseIndex) => {
+      const selected = pool[(workoutIndex * dayExerciseCount + exerciseIndex) % pool.length]
+
+      return {
+        libraryExerciseId: selected?.id ?? null,
+        name: selected?.name ?? `Exercise ${exerciseIndex + 1}`,
+        sets: prescription.sets,
+        reps: prescription.reps,
+        tempo: prescription.tempo,
+        rest: prescription.rest,
+        notes: null,
+      }
+    })
+
+    return {
+      day: Number(workout.day) || workoutIndex + 1,
+      focus: dayFocus,
+      scheduledDate: String(workout.scheduledDate ?? '').trim() || null,
+      notes: String(workout.notes ?? '').trim() || null,
+      exercises: dayExercises,
+    }
+  })
+}
 
 export async function POST(req: NextRequest) {
   let coachId = ''

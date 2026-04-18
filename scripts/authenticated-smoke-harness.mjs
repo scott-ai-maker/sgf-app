@@ -434,7 +434,8 @@ async function main() {
     }
 
     assert(response.status === 200, `Expected 200, got ${response.status}`)
-    assert(payload?.plan?.user_id === assignedClientRow.id, 'Expected generated coach plan for assigned client')
+    assert(payload?.draft?.clientId === assignedClientRow.id, 'Expected generated coach draft for assigned client')
+    assert(Array.isArray(payload?.draft?.workouts) && payload.draft.workouts.length > 0, 'Expected generated coach draft workouts')
   })
 
   await runCheck(results, 'coach cannot use client booking api', async () => {
