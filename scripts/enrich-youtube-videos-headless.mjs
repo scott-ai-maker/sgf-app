@@ -17,6 +17,34 @@ function normalizeText(value) {
   return String(value ?? '').trim()
 }
 
+function toSentenceCase(value) {
+  const text = normalizeText(value)
+  if (!text) return ''
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function containsInvalidYoutubeWarning(text) {
+  const value = normalizeText(text).toLowerCase()
+  if (!value) return true
+
+  return (
+    value.includes('videos you watch may be added to the tv\'s watch history') ||
+    value.includes('sign in to youtube on your computer') ||
+    value.includes('influence tv recommendations')
+  )
+}
+
+function buildFallbackSteps(exerciseName) {
+  const label = toSentenceCase(exerciseName || 'exercise')
+
+  return [
+    `Step 1: Setup Stand in athletic posture and prepare for ${label}.`,
+    `Step 2: Brace Draw your abs in, maintain a neutral spine, and keep steady breathing.`,
+    `Step 3: Execute Perform ${label} with controlled tempo and full range of motion.`,
+    `Step 4: Return Reset to the start position with control and repeat for quality reps.`,
+  ].join('\n\n')
+}
+
 function formatExerciseDescription(description) {
   const text = String(description ?? '').replace(/\r/g, '').trim()
   if (!text) return null
@@ -75,7 +103,10 @@ async function extractYoutubeDescription(page, videoUrl) {
       if (element) {
         const text = await element.evaluate(el => el.textContent)
         if (text && text.trim().length > 20) {
-          return normalizeText(text)
+          const normalized = normalizeText(text)
+          if (!containsInvalidYoutubeWarning(normalized)) {
+            return normalized
+          }
         }
       }
     }
@@ -86,7 +117,10 @@ async function extractYoutubeDescription(page, videoUrl) {
     if (descMatch) {
       try {
         const decoded = JSON.parse(`"${descMatch[1]}"`)
-        return normalizeText(decoded)
+        const normalized = normalizeText(decoded)
+        if (!containsInvalidYoutubeWarning(normalized)) {
+          return normalized
+        }
       } catch (e) {
         // Fallback
       }
@@ -99,12 +133,11 @@ async function extractYoutubeDescription(page, videoUrl) {
 }
 
 async function enrichYouTubeVideos() {
-  console.log('Fetching YouTube exercises without descriptions...\n')
+  console.log('Fetching YouTube exercises with missing or invalid descriptions...\n')
   
   const { data: youtubeExercises, error: fetchError } = await supabase
     .from('exercise_library_entries')
-    .select('id, name, media_video_url, metadata_json')
-    .or('description.is.null,description.eq.""')
+    .select('id, name, description, media_video_url, metadata_json')
     .not('metadata_json->>nasmEdgeVideoId', 'is', null)
 
   if (fetchError) {
@@ -117,7 +150,18 @@ async function enrichYouTubeVideos() {
     process.exit(0)
   }
 
-  const total = youtubeExercises.length
+  const targets = youtubeExercises.filter(exercise => {
+    const description = normalizeText(exercise.description)
+    if (!description) return true
+    return containsInvalidYoutubeWarning(description)
+  })
+
+  if (targets.length === 0) {
+    console.log('✓ No YouTube exercises need cleanup or enrichment.')
+    process.exit(0)
+  }
+
+  const total = targets.length
   console.log(`Found ${total} YouTube exercises to process\n`)
   console.log('Starting headless browser...')
 
@@ -131,8 +175,8 @@ async function enrichYouTubeVideos() {
   let failed = 0
   const startTime = Date.now()
 
-  for (let i = 0; i < youtubeExercises.length; i++) {
-    const exercise = youtubeExercises[i]
+  for (let i = 0; i < targets.length; i++) {
+    const exercise = targets[i]
     const current = i + 1
     
     // Show progress bar
@@ -146,13 +190,8 @@ async function enrichYouTubeVideos() {
 
     try {
       const rawDescription = await extractYoutubeDescription(page, videoUrl)
-      
-      if (!rawDescription) {
-        failed++
-        continue
-      }
 
-      const formattedDescription = formatExerciseDescription(rawDescription)
+      const formattedDescription = formatExerciseDescription(rawDescription || buildFallbackSteps(exercise.name))
       if (!formattedDescription) {
         failed++
         continue
@@ -173,7 +212,26 @@ async function enrichYouTubeVideos() {
 
       enriched++
     } catch (err) {
-      failed++
+      const fallback = formatExerciseDescription(buildFallbackSteps(exercise.name))
+      if (!fallback) {
+        failed++
+        continue
+      }
+
+      const { error: updateError } = await supabase
+        .from('exercise_library_entries')
+        .update({
+          description: fallback,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', exercise.id)
+
+      if (updateError) {
+        failed++
+        continue
+      }
+
+      enriched++
     }
   }
 
@@ -185,9 +243,21 @@ async function enrichYouTubeVideos() {
 
   console.log(`\n`)
   console.log(`✓ Complete in ${minutes}m ${seconds}s`)
-  console.log(`✓ Enriched: ${enriched} exercises`)
+  console.log(`✓ Updated: ${enriched} exercises`)
   console.log(`✗ Failed: ${failed} exercises`)
-  console.log(`\nCoverage: ${Math.round(((enriched + 57) / 323) * 100)}% of library has descriptions`)
+
+  const { count: totalCount } = await supabase
+    .from('exercise_library_entries')
+    .select('*', { count: 'exact', head: true })
+
+  const { count: withDescriptionsCount } = await supabase
+    .from('exercise_library_entries')
+    .select('*', { count: 'exact', head: true })
+    .not('description', 'is', null)
+    .neq('description', '')
+
+  const coverage = totalCount ? Math.round((withDescriptionsCount / totalCount) * 100) : 0
+  console.log(`\nCoverage: ${coverage}% of library has descriptions`)
 }
 
 await enrichYouTubeVideos()
