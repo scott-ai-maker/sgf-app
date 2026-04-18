@@ -323,23 +323,15 @@ async function main() {
     assert(response.status === 403, `Expected 403, got ${response.status}`)
   })
 
-  await runCheck(results, 'assigned client can generate own workout plan (or reports missing onboarding profile)', async () => {
-    const profile = await getFitnessProfile(admin, assignedClientRow.id)
-
-    const { response, payload } = await request(
+  await runCheck(results, 'assigned client self-generation endpoint is unavailable (coach-generated plans only)', async () => {
+    const { response } = await request(
       baseUrl,
       '/api/workouts/generate',
       { method: 'POST', body: { sessionsPerWeek: 4 } },
       assignedClientSession
     )
 
-    if (!profile?.onboarding_completed_at) {
-      assert(response.status === 400, `Expected 400 without onboarding profile, got ${response.status}`)
-      return
-    }
-
-    assert(response.status === 200, `Expected 200, got ${response.status}`)
-    assert(payload?.plan?.user_id === assignedClientRow.id, 'Expected generated plan for assigned client')
+    assert(response.status === 404, `Expected 404 for removed endpoint, got ${response.status}`)
   })
 
   await runCheck(results, 'coach route responds', async () => {

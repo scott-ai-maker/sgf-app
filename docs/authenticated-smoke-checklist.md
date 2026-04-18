@@ -107,8 +107,8 @@ Log in as the assigned client.
 
 ### Fitness
 
-- Generate a workout plan.
-  - Expected: success response and plan visible.
+- Verify a workout plan is visible for the assigned client.
+  - Expected: existing coach-generated plan is visible, or onboarding redirect appears when required.
 - Save a workout log.
   - Expected: success response and log visible.
 - Save a set log.
@@ -230,7 +230,7 @@ After the UI/API pass, verify persisted state directly.
 
 - `clients.designated_coach_id` changes only for the intended client.
 - `coach_client_messages` rows contain the expected `client_id`, `coach_id`, and `sender_id`.
-- `workout_plans.user_id` matches the intended client for both self-generated and coach-generated plans.
+- `workout_plans.user_id` matches the intended client for coach-generated plans.
 - `sessions.client_id` and `client_packages.client_id` remain consistent.
 - No unauthorized rows were created for other users.
 
