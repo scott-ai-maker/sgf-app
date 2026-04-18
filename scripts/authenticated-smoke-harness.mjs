@@ -142,6 +142,17 @@ async function getClientRowByEmail(admin, email) {
   return data
 }
 
+async function ensureClientStartsUnassigned(admin, clientId, email) {
+  const { error } = await admin
+    .from('clients')
+    .update({ designated_coach_id: null })
+    .eq('id', clientId)
+
+  if (error) {
+    throw new Error(`Failed to reset unassigned client ${email}: ${error.message}`)
+  }
+}
+
 async function getAssignedPackage(admin, clientId) {
   const { data, error } = await admin
     .from('client_packages')
@@ -236,7 +247,12 @@ async function main() {
   const admin = createAdminClient()
   const coachRow = await getClientRowByEmail(admin, accounts.coachEmail)
   const assignedClientRow = await getClientRowByEmail(admin, accounts.assignedClientEmail)
-  const unassignedClientRow = await getClientRowByEmail(admin, accounts.unassignedClientEmail)
+  let unassignedClientRow = await getClientRowByEmail(admin, accounts.unassignedClientEmail)
+
+  if (unassignedClientRow.designated_coach_id !== null) {
+    await ensureClientStartsUnassigned(admin, unassignedClientRow.id, accounts.unassignedClientEmail)
+    unassignedClientRow = await getClientRowByEmail(admin, accounts.unassignedClientEmail)
+  }
 
   assert(coachRow.role === 'coach', `${accounts.coachEmail} is not marked as a coach`)
   assert(assignedClientRow.role === 'client', `${accounts.assignedClientEmail} is not marked as a client`)
