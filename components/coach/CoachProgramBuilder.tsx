@@ -597,7 +597,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                     <input value={exercise.notes} onChange={event => updateExercise(day.id, exercise.id, 'notes', event.target.value)} style={inputStyle} placeholder="Coaching cue, modification, target RPE" />
                   </label>
 
-                  {(exercise.description || exercise.primaryEquipment.length > 0 || exercise.imageUrl || exercise.videoUrl) && (
+                  {(exercise.description || exercise.imageUrl || exercise.videoUrl || equipmentBadges(exercise.primaryEquipment).length > 0) && (
                     <div className="coach-program-exercise-detail" style={{ display: 'grid', gridTemplateColumns: exercise.imageUrl ? '88px 1fr' : '1fr', gap: 12, marginTop: 12, padding: 12, background: 'rgba(13,27,42,0.68)' }}>
                       {exercise.imageUrl && (
                         <div
