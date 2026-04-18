@@ -17,34 +17,34 @@ const PHASE_OPTIONS = [
   { value: '5', label: 'Phase 5 - Power' },
 ]
 
-const EQUIPMENT_OPTIONS = [
-  { value: 'bodyweight', label: 'Bodyweight' },
-  { value: 'dumbbells', label: 'Dumbbells' },
-  { value: 'barbell', label: 'Barbell' },
-  { value: 'bench', label: 'Bench' },
-  { value: 'cable-machine', label: 'Cable Machine' },
-  { value: 'machines', label: 'Machines' },
-  { value: 'kettlebells', label: 'Kettlebells' },
-  { value: 'bands', label: 'Bands' },
-  { value: 'trx', label: 'TRX' },
-  { value: 'medicine-ball', label: 'Medicine Ball' },
-]
-
-const EQUIPMENT_PROFILE_HINTS: Record<string, string[]> = {
-  bodyweight: ['body weight', 'bodyweight'],
-  dumbbells: ['dumbbell'],
-  barbell: ['barbell'],
-  bench: ['bench'],
-  'cable-machine': ['cable'],
-  machines: ['machine', 'lever', 'smith', 'press'],
-  kettlebells: ['kettlebell'],
-  bands: ['band', 'tubing'],
-  trx: ['trx', 'suspension'],
-  'medicine-ball': ['medicine ball'],
+interface EquipmentOption {
+  value: string
+  label: string
+  profileValue: string | null
+  locked?: boolean
 }
 
 function normalizeText(value: unknown) {
   return String(value ?? '').trim().toLowerCase()
+}
+
+function toEquipmentProfileValue(name: string): string | null {
+  const normalized = normalizeText(name)
+
+  if (!normalized || normalized === 'none') return null
+  if (normalized.includes('body weight') || normalized.includes('bodyweight')) return 'bodyweight'
+  if (normalized.includes('dumbbell')) return 'dumbbells'
+  if (normalized.includes('barbell')) return 'barbell'
+  if (normalized.includes('bench')) return 'bench'
+  if (normalized.includes('cable')) return 'cable-machine'
+  if (normalized.includes('machine') || normalized.includes('smith') || normalized.includes('lever') || normalized.includes('press')) return 'machines'
+  if (normalized.includes('kettlebell')) return 'kettlebells'
+  if (normalized.includes('band') || normalized.includes('tube') || normalized.includes('strap')) return 'bands'
+  if (normalized.includes('trx') || normalized.includes('suspension')) return 'trx'
+  if (normalized.includes('medicine ball') || normalized.includes('stability ball')) return 'medicine-ball'
+  if (normalized.includes('pull-up bar')) return 'bodyweight'
+
+  return null
 }
 
 export default function GenerateClientPlanButton({
@@ -53,28 +53,46 @@ export default function GenerateClientPlanButton({
   libraryEquipmentNames = [],
 }: GenerateClientPlanButtonProps) {
   const router = useRouter()
+  const availableEquipmentOptions = useMemo<EquipmentOption[]>(() => {
+    const names = [...new Set(libraryEquipmentNames.map(item => String(item ?? '').trim()).filter(Boolean))]
+      .filter(name => normalizeText(name) !== 'none')
+      .sort((a, b) => a.localeCompare(b))
+
+    const dynamicOptions = names.map(name => ({
+      value: `library:${normalizeText(name)}`,
+      label: name,
+      profileValue: toEquipmentProfileValue(name),
+    }))
+
+    return [
+      { value: 'bodyweight', label: 'Bodyweight', profileValue: 'bodyweight', locked: true },
+      ...dynamicOptions,
+    ]
+  }, [libraryEquipmentNames])
+
   const [sessionsPerWeek, setSessionsPerWeek] = useState('4')
   const [nasmOptPhase, setNasmOptPhase] = useState('1')
   const [equipmentAccess, setEquipmentAccess] = useState<string[]>(() => {
-    const normalized = [...new Set(initialEquipmentAccess.map(item => String(item).trim().toLowerCase()).filter(Boolean))]
-    if (!normalized.includes('bodyweight')) normalized.unshift('bodyweight')
-    return normalized
+    const initialProfiles = new Set(
+      initialEquipmentAccess
+        .map(item => String(item ?? '').trim().toLowerCase())
+        .filter(Boolean)
+    )
+
+    initialProfiles.add('bodyweight')
+
+    const selectedValues = availableEquipmentOptions
+      .filter(option => option.profileValue && initialProfiles.has(option.profileValue))
+      .map(option => option.value)
+
+    if (!selectedValues.includes('bodyweight')) {
+      selectedValues.unshift('bodyweight')
+    }
+
+    return [...new Set(selectedValues)]
   })
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
-
-  const availableEquipmentOptions = useMemo(() => {
-    const normalizedNames = [...new Set(libraryEquipmentNames.map(item => normalizeText(item)).filter(Boolean))]
-
-    return EQUIPMENT_OPTIONS.filter(option => {
-      if (option.value === 'bodyweight') return true
-
-      const profileHints = EQUIPMENT_PROFILE_HINTS[option.value] ?? []
-      if (profileHints.length === 0) return false
-
-      return normalizedNames.some(name => profileHints.some(hint => name.includes(hint)))
-    })
-  }, [libraryEquipmentNames])
 
   function toggleEquipment(value: string) {
     setEquipmentAccess(current => {
@@ -88,6 +106,19 @@ export default function GenerateClientPlanButton({
     setBusy(true)
     setStatus(null)
 
+    const equipmentProfiles = [
+      ...new Set(
+        availableEquipmentOptions
+          .filter(option => equipmentAccess.includes(option.value))
+          .map(option => option.profileValue)
+          .filter((value): value is string => Boolean(value))
+      ),
+    ]
+
+    if (!equipmentProfiles.includes('bodyweight')) {
+      equipmentProfiles.unshift('bodyweight')
+    }
+
     const res = await fetch('/api/coach/workouts/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,7 +126,7 @@ export default function GenerateClientPlanButton({
         clientId,
         sessionsPerWeek: Number(sessionsPerWeek),
         nasmOptPhase: Number(nasmOptPhase),
-        equipmentAccess,
+        equipmentAccess: equipmentProfiles,
       }),
     })
 
