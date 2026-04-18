@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface GenerateClientPlanButtonProps {
   clientId: string
@@ -15,6 +16,7 @@ const PHASE_OPTIONS = [
 ]
 
 export default function GenerateClientPlanButton({ clientId }: GenerateClientPlanButtonProps) {
+  const router = useRouter()
   const [sessionsPerWeek, setSessionsPerWeek] = useState('4')
   const [nasmOptPhase, setNasmOptPhase] = useState('1')
   const [busy, setBusy] = useState(false)
@@ -46,6 +48,7 @@ export default function GenerateClientPlanButton({ clientId }: GenerateClientPla
     setStatus(templateTitle
       ? `Workout plan generated for ${selectedPhase} using ${templateTitle}.`
       : 'Workout plan generated for client successfully.')
+    router.refresh()
     setBusy(false)
   }
 
