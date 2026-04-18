@@ -142,7 +142,12 @@ function initialDaysFromPlan(plan: LatestWorkoutPlan | null) {
 }
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {
-  const text = String(description ?? '').replace(/\r/g, '').trim()
+  const text = String(description ?? '')
+    .replace(/\r/g, '')
+    .replace(/\n\nEquipment\s*:[\s\S]*$/i, '')
+    .replace(/\nEquipment\s*:[\s\S]*$/i, '')
+    .replace(/\s+Equipment\s*:[\s\S]*$/i, '')
+    .trim()
   if (!text) return []
 
   const numberedSteps = text.match(/Step\s*\d+\s*:[\s\S]*?(?=(?:\s*Step\s*\d+\s*:)|$)/gi)
@@ -156,6 +161,14 @@ function formatExerciseDescriptionLines(description: string | null | undefined) 
     .filter(Boolean)
 
   return lines.length > 0 ? lines : [text]
+}
+
+function equipmentBadges(primaryEquipment: string[] | null | undefined) {
+  const items = Array.isArray(primaryEquipment)
+    ? primaryEquipment.map(item => String(item ?? '').trim()).filter(Boolean)
+    : []
+
+  return items.length > 0 ? items : ['Bodyweight']
 }
 
 function isDraftPlan(plan: LatestWorkoutPlan | CoachProgramDraft | null): plan is CoachProgramDraft {
@@ -618,9 +631,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                             </div>
                           )
                         })()}
-                        {exercise.primaryEquipment.length > 0 && (
+                        {equipmentBadges(exercise.primaryEquipment).length > 0 && (
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                            {exercise.primaryEquipment.map(item => (
+                            {equipmentBadges(exercise.primaryEquipment).map(item => (
                               <span key={item} style={chipStyle}>{item}</span>
                             ))}
                           </div>

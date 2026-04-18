@@ -98,10 +98,9 @@ async function generateFourStepDescription(exerciseName, equipment) {
   return steps.map(step => step.replace(/\s+/g, ' ').trim()).join('\n\n')
 }
 
-function withEquipmentLine(description, equipment) {
+function normalizeDescriptionText(description) {
   const base = removeEquipmentLine(description)
-  const normalized = normalizeStepSpacing(base)
-  return `${normalized}\n\nEquipment: ${equipment}`
+  return normalizeStepSpacing(base)
 }
 
 function createProgressBar(current, total) {
@@ -145,7 +144,7 @@ async function main() {
         aiRegenerated++
       }
 
-      const nextDescription = withEquipmentLine(baseDescription, equipment)
+      const nextDescription = normalizeDescriptionText(baseDescription)
 
       if (nextDescription !== currentDescription.trim()) {
         const { error: updateError } = await supabase

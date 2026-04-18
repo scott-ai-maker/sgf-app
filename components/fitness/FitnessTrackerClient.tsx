@@ -88,7 +88,12 @@ interface FitnessTrackerClientProps {
 }
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {
-  const text = String(description ?? '').replace(/\r/g, '').trim()
+  const text = String(description ?? '')
+    .replace(/\r/g, '')
+    .replace(/\n\nEquipment\s*:[\s\S]*$/i, '')
+    .replace(/\nEquipment\s*:[\s\S]*$/i, '')
+    .replace(/\s+Equipment\s*:[\s\S]*$/i, '')
+    .trim()
   if (!text) return []
 
   const numberedSteps = text.match(/Step\s*\d+\s*:[\s\S]*?(?=(?:\s*Step\s*\d+\s*:)|$)/gi)
@@ -102,6 +107,14 @@ function formatExerciseDescriptionLines(description: string | null | undefined) 
     .filter(Boolean)
 
   return lines.length > 0 ? lines : [text]
+}
+
+function equipmentBadges(primaryEquipment: string[] | null | undefined) {
+  const items = Array.isArray(primaryEquipment)
+    ? primaryEquipment.map(item => String(item ?? '').trim()).filter(Boolean)
+    : []
+
+  return items.length > 0 ? items : ['Bodyweight']
 }
 
 export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis }: FitnessTrackerClientProps) {
@@ -418,7 +431,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                         {ex.notes && (
                           <p style={{ margin: '4px 0 0', color: 'var(--gold)', fontSize: 13 }}>{ex.notes}</p>
                         )}
-                        {(ex.primaryEquipment?.length || ex.imageUrl || ex.videoUrl) && (
+                        {(equipmentBadges(ex.primaryEquipment).length > 0 || ex.imageUrl || ex.videoUrl) && (
                           <div style={{ display: 'grid', gridTemplateColumns: ex.imageUrl ? '76px 1fr' : '1fr', gap: 10, marginTop: 8 }}>
                             {ex.imageUrl && (
                               <div
@@ -434,9 +447,9 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                               />
                             )}
                             <div>
-                              {ex.primaryEquipment && ex.primaryEquipment.length > 0 && (
+                              {equipmentBadges(ex.primaryEquipment).length > 0 && (
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                  {ex.primaryEquipment.map(item => (
+                                  {equipmentBadges(ex.primaryEquipment).map(item => (
                                     <span
                                       key={item}
                                       style={{
