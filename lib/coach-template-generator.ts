@@ -339,6 +339,7 @@ export function buildRandomizedTemplateWorkouts(input: BuildTemplateWorkoutsInpu
   const sessionsPerWeek = Math.max(1, Math.min(7, Number(input.sessionsPerWeek) || 3))
   const phase = Number(input.template.nasm_opt_phase ?? 1)
   const equipmentAccess = new Set(normalizeArray(input.equipmentAccess))
+  equipmentAccess.add('bodyweight')
 
   const templateWorkouts = toTemplateWorkouts(input.template, sessionsPerWeek)
   const usedExerciseIds = new Set<string>()

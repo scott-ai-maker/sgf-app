@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
   const clientId = String(body.clientId ?? '').trim()
   const sessionsPerWeek = Number(body.sessionsPerWeek)
   const nasmOptPhase = Number(body.nasmOptPhase)
+  const requestedEquipmentAccess = Array.isArray(body.equipmentAccess)
+    ? body.equipmentAccess.map((item: unknown) => String(item ?? '').trim().toLowerCase()).filter(Boolean)
+    : []
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -83,11 +86,17 @@ export async function POST(req: NextRequest) {
     ? sessionsPerWeek
     : Number(selectedTemplate.sessions_per_week ?? profile.training_days_per_week ?? 3)
 
+  const effectiveEquipmentAccess = requestedEquipmentAccess.length > 0
+    ? requestedEquipmentAccess
+    : Array.isArray(profile.equipment_access)
+      ? profile.equipment_access
+      : []
+
   const randomizedWorkouts = buildRandomizedTemplateWorkouts({
     template: selectedTemplate,
     exercises: (exercisesResult.data ?? []) as ExerciseLibraryRecord[],
     sessionsPerWeek: resolvedSessionsPerWeek,
-    equipmentAccess: Array.isArray(profile.equipment_access) ? profile.equipment_access : [],
+    equipmentAccess: effectiveEquipmentAccess,
   })
 
   if (randomizedWorkouts.length === 0) {
@@ -129,6 +138,7 @@ export async function POST(req: NextRequest) {
       ...storedPlan,
       generatedFromTemplateId: selectedTemplate.id,
       generatedFromTemplateTitle: selectedTemplate.title,
+      generatedWithEquipmentAccess: [...new Set(['bodyweight', ...effectiveEquipmentAccess])],
       generatedByCoachId: coachId,
       generatedBy: 'coach_quick_generate',
     },

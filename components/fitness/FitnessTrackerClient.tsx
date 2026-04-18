@@ -225,27 +225,6 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     setSetLogState(prev => ({ ...prev, exerciseName: '', notes: '' }))
   }
 
-  async function handleGeneratePlan() {
-    setBusy('plan')
-    setStatus(null)
-
-    const res = await fetch('/api/workouts/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionsPerWeek: profile?.training_days_per_week ?? 3 }),
-    })
-    const payload = await res.json()
-    setBusy(null)
-
-    if (!res.ok) {
-      setStatus(payload.error ?? 'Could not generate plan')
-      return
-    }
-
-    setPlan(payload.plan as WorkoutPlanRecord)
-    setStatus('New NASM OPT workout plan generated.')
-  }
-
   async function handleLogWorkout(e: React.FormEvent) {
     e.preventDefault()
     setBusy('log')
@@ -373,14 +352,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
       <div className="fitness-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
           <div className="fitness-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Workout Generator</h2>
-            <button
-              onClick={handleGeneratePlan}
-              disabled={busy === 'plan'}
-              style={{ border: 0, background: 'var(--gold)', color: '#0D1B2A', padding: '10px 14px', fontFamily: 'Bebas Neue, sans-serif', fontSize: 17, letterSpacing: '0.06em', minHeight: 44 }}
-            >
-              {busy === 'plan' ? 'Generating...' : 'Generate NASM Plan'}
-            </button>
+            <h2 style={{ margin: 0, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Current Workout Plan</h2>
           </div>
 
           {planWorkouts.length === 0 ? (

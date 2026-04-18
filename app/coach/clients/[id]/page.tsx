@@ -49,7 +49,7 @@ export default async function CoachClientPage({ params }: PageProps) {
     .eq('client_id', id)
     .order('scheduled_at', { ascending: false })
 
-  const [latestPlansResult, templatesResult, exercisesResult, equipmentResult] = await Promise.all([
+  const [latestPlansResult, templatesResult, exercisesResult, equipmentResult, fitnessProfileResult] = await Promise.all([
     admin
       .from('workout_plans')
       .select('*')
@@ -73,6 +73,11 @@ export default async function CoachClientPage({ params }: PageProps) {
       .eq('is_active', true)
       .order('name', { ascending: true })
       .limit(250),
+    admin
+      .from('fitness_profiles')
+      .select('equipment_access')
+      .eq('user_id', id)
+      .maybeSingle(),
   ])
 
   const totalRemaining = (packages ?? []).reduce(
@@ -289,7 +294,12 @@ export default async function CoachClientPage({ params }: PageProps) {
 
         {/* Sessions */}
         <div style={{ marginBottom: 14 }}>
-          <GenerateClientPlanButton clientId={id} />
+          <GenerateClientPlanButton
+            clientId={id}
+            initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)
+              ? fitnessProfileResult.data.equipment_access
+              : []}
+          />
         </div>
 
         <CoachProgramBuilder
