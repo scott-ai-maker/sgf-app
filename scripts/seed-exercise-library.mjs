@@ -83,12 +83,36 @@ function buildNasmExerciseUrl(slug) {
   return `https://www.nasm.org/resource-center/exercise-library/${slug}`
 }
 
+function formatExerciseDescription(description) {
+  const text = String(description ?? '').replace(/\r/g, '').trim()
+  if (!text) return null
+
+  const numberedSteps = text.match(/Step\s*\d+\s*:[\s\S]*?(?=(?:\s*Step\s*\d+\s*:)|$)/gi)
+  if (numberedSteps && numberedSteps.length > 1) {
+    return numberedSteps
+      .map(step => step.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
+  const lines = text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  if (lines.length > 1) {
+    return lines.join('\n\n')
+  }
+
+  return text.replace(/\s+/g, ' ')
+}
+
 function parseCoachingCues(description) {
-  const text = normalizeText(description)
+  const text = formatExerciseDescription(description)
   if (!text) return []
 
   const rawLines = text
-    .split('\n')
+    .split(/\n+/)
     .map(line => normalizeText(line.replace(/^Step\s*\d+\s*:\s*/i, '')))
     .filter(Boolean)
 
@@ -345,14 +369,15 @@ async function fetchNasmEdgePlaylistEntries() {
     const slugBase = slugify(normalizedTitle || entry.title || `video-${entry.videoId}`)
     const rowSlug = slugify(`${slugBase}-${sequence}`)
     const inferredEquipment = inferEquipmentFromText(`${normalizedTitle} ${entry.description}`)
+    const formattedDescription = formatExerciseDescription(entry.description)
 
     return {
       source,
       source_id: `yt-${entry.videoId}-${sequence}`,
       slug: rowSlug,
       name: titleCaseFromSlug(slugBase),
-      description: entry.description || null,
-      coaching_cues: parseCoachingCues(entry.description),
+      description: formattedDescription,
+      coaching_cues: parseCoachingCues(formattedDescription),
       primary_equipment: inferredEquipment,
       media_video_url: entry.videoUrl,
       metadata_json: {
@@ -394,6 +419,7 @@ for (const item of catalog) {
   const nasmUrl = buildNasmExerciseUrl(slug)
   const bodyParts = uniqueByLower(parseList(item?.['Body Part']))
   const equipment = uniqueByLower(parseList(item?.Equipment))
+  const formattedDescription = formatExerciseDescription(item?.Description)
 
   bySlug.set(slug, {
     source,
@@ -401,8 +427,8 @@ for (const item of catalog) {
     slug,
     // User requested naming based on NASM slug (slug is source of truth).
     name: titleCaseFromSlug(slug),
-    description: normalizeText(item?.Description) || null,
-    coaching_cues: parseCoachingCues(item?.Description),
+    description: formattedDescription,
+    coaching_cues: parseCoachingCues(formattedDescription),
     primary_equipment: equipment,
     media_video_url: normalizeText(item?.['Video URL']) || nasmUrl,
     metadata_json: {

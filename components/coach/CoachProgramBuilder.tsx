@@ -137,6 +137,23 @@ function initialDaysFromPlan(plan: LatestWorkoutPlan | null) {
   return workouts.map((workout, index) => toBuilderDay(workout, index + 1))
 }
 
+function formatExerciseDescriptionLines(description: string | null | undefined) {
+  const text = String(description ?? '').replace(/\r/g, '').trim()
+  if (!text) return []
+
+  const numberedSteps = text.match(/Step\s*\d+\s*:[\s\S]*?(?=(?:\s*Step\s*\d+\s*:)|$)/gi)
+  if (numberedSteps && numberedSteps.length > 1) {
+    return numberedSteps.map(step => step.replace(/\s+/g, ' ').trim()).filter(Boolean)
+  }
+
+  const lines = text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  return lines.length > 0 ? lines : [text]
+}
+
 export default function CoachProgramBuilder({ clientId, latestPlan, templates, exercises, equipment }: CoachProgramBuilderProps) {
   const router = useRouter()
   const exerciseListId = `exercise-library-${clientId}`
@@ -513,9 +530,24 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                         />
                       )}
                       <div>
-                        {exercise.description && (
-                          <p style={{ margin: 0, color: 'var(--white)', fontSize: 13, lineHeight: 1.5 }}>{exercise.description}</p>
-                        )}
+                        {exercise.description && (() => {
+                          const lines = formatExerciseDescriptionLines(exercise.description)
+                          if (lines.length === 0) return null
+
+                          if (lines.length === 1) {
+                            return <p style={{ margin: 0, color: 'var(--white)', fontSize: 13, lineHeight: 1.5 }}>{lines[0]}</p>
+                          }
+
+                          return (
+                            <div style={{ display: 'grid', gap: 6 }}>
+                              {lines.map((line, index) => (
+                                <p key={`${exercise.id}-desc-${index}`} style={{ margin: 0, color: 'var(--white)', fontSize: 13, lineHeight: 1.5 }}>
+                                  {line}
+                                </p>
+                              ))}
+                            </div>
+                          )
+                        })()}
                         {exercise.primaryEquipment.length > 0 && (
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                             {exercise.primaryEquipment.map(item => (

@@ -87,6 +87,23 @@ interface FitnessTrackerClientProps {
   latestAnalysis: BodyAnalysisRecord | null
 }
 
+function formatExerciseDescriptionLines(description: string | null | undefined) {
+  const text = String(description ?? '').replace(/\r/g, '').trim()
+  if (!text) return []
+
+  const numberedSteps = text.match(/Step\s*\d+\s*:[\s\S]*?(?=(?:\s*Step\s*\d+\s*:)|$)/gi)
+  if (numberedSteps && numberedSteps.length > 1) {
+    return numberedSteps.map(step => step.replace(/\s+/g, ' ').trim()).filter(Boolean)
+  }
+
+  const lines = text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  return lines.length > 0 ? lines : [text]
+}
+
 export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis }: FitnessTrackerClientProps) {
   const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
   const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
@@ -380,9 +397,24 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                           {ex.tempo ? ` · Tempo ${ex.tempo}` : ''}
                           {ex.rest ? ` · Rest ${ex.rest}` : ''}
                         </div>
-                        {ex.description && (
-                          <p style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{ex.description}</p>
-                        )}
+                        {ex.description && (() => {
+                          const lines = formatExerciseDescriptionLines(ex.description)
+                          if (lines.length === 0) return null
+
+                          if (lines.length === 1) {
+                            return <p style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{lines[0]}</p>
+                          }
+
+                          return (
+                            <div style={{ marginTop: 6, display: 'grid', gap: 6 }}>
+                              {lines.map((line, index) => (
+                                <p key={`${workout.day}-${ex.name}-desc-${index}`} style={{ margin: 0, color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>
+                                  {line}
+                                </p>
+                              ))}
+                            </div>
+                          )
+                        })()}
                         {ex.notes && (
                           <p style={{ margin: '4px 0 0', color: 'var(--gold)', fontSize: 13 }}>{ex.notes}</p>
                         )}
