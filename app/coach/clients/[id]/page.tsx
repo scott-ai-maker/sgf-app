@@ -11,6 +11,8 @@ import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
+const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+
 interface PageProps {
   params: Promise<{ id: string }>
 }
@@ -65,12 +67,14 @@ export default async function CoachClientPage({ params }: PageProps) {
       .from('exercise_library_entries')
       .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
       .eq('is_active', true)
+      .eq('source', EXERCISE_LIBRARY_SOURCE)
       .order('name', { ascending: true })
       .limit(1000),
     admin
       .from('equipment_library_entries')
       .select('id, name, slug, description, media_image_url')
       .eq('is_active', true)
+      .eq('source', EXERCISE_LIBRARY_SOURCE)
       .order('name', { ascending: true })
       .limit(250),
     admin

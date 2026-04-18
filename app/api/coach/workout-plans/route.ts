@@ -9,6 +9,8 @@ import {
 } from '@/lib/coach-programs'
 import { supabaseAdmin } from '@/lib/supabase'
 
+const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+
 function parsePayload(body: Record<string, unknown>): CoachProgramPayload | null {
   const workouts = Array.isArray(body.workouts) ? body.workouts : []
   const name = String(body.name ?? '').trim()
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
           .from('exercise_library_entries')
           .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
           .eq('is_active', true)
+          .eq('source', EXERCISE_LIBRARY_SOURCE)
           .in('id', exerciseIds)
       : Promise.resolve({ data: [] as ExerciseLibraryRecord[] }),
     exerciseNames.length
@@ -99,12 +102,14 @@ export async function POST(req: NextRequest) {
           .from('exercise_library_entries')
           .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
           .eq('is_active', true)
+          .eq('source', EXERCISE_LIBRARY_SOURCE)
           .in('name', exerciseNames)
       : Promise.resolve({ data: [] as ExerciseLibraryRecord[] }),
     admin
       .from('equipment_library_entries')
       .select('id, name, slug, description, media_image_url')
-      .eq('is_active', true),
+      .eq('is_active', true)
+      .eq('source', EXERCISE_LIBRARY_SOURCE),
   ])
 
   const exerciseMap = new Map<string, ExerciseLibraryRecord>()

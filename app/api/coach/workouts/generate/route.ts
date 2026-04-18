@@ -4,6 +4,8 @@ import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } 
 import { buildPlanName, buildStoredProgramPlan, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
 import { buildRandomizedTemplateWorkouts } from '@/lib/coach-template-generator'
 
+const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+
 export async function POST(req: NextRequest) {
   let coachId = ''
   try {
@@ -63,11 +65,13 @@ export async function POST(req: NextRequest) {
       .from('exercise_library_entries')
       .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url, metadata_json')
       .eq('is_active', true)
+      .eq('source', EXERCISE_LIBRARY_SOURCE)
       .limit(3000),
     admin
       .from('equipment_library_entries')
       .select('id, name, slug, description, media_image_url')
-      .eq('is_active', true),
+      .eq('is_active', true)
+      .eq('source', EXERCISE_LIBRARY_SOURCE),
   ])
 
   const templates = (templatesResult.data ?? []) as WorkoutProgramTemplateRecord[]
