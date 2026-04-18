@@ -15,7 +15,7 @@ test.describe('Launch funnel flow', () => {
     })
 
     await page.goto('/')
-    await page.getByRole('link', { name: /apply for coaching/i }).first().click()
+    await page.getByRole('link', { name: /(get your custom program|apply for custom program)/i }).first().click()
     await expect(page).toHaveURL(/\/apply$/)
 
     await expect(page.getByRole('heading', { name: /find your best coaching starting tier/i })).toBeVisible()
