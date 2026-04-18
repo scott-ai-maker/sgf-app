@@ -116,6 +116,15 @@ function normalizePlaylistTitle(title) {
     .trim()
 }
 
+function canonicalExerciseKey(value) {
+  return normalizeText(value)
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function inferEquipmentFromText(value) {
   const text = normalizeText(value).toLowerCase()
   const equipment = []
@@ -365,11 +374,21 @@ const source = 'nasm_exercise_library'
 const catalog = await fetchNasmCatalog()
 const edgePlaylistEntries = await fetchNasmEdgePlaylistEntries()
 const bySlug = new Map()
+const edgeExerciseKeys = new Set(
+  edgePlaylistEntries
+    .map(entry => {
+      const edgeTitle = entry?.metadata_json?.nasmEdgeTitle || entry?.name
+      return canonicalExerciseKey(normalizePlaylistTitle(edgeTitle))
+    })
+    .filter(Boolean)
+)
 
 for (const item of catalog) {
   const title = normalizeText(item?.Title)
   const slug = extractSlugFromThumbnail(item?.['Video Thumbnail']) || slugify(title)
   if (!slug) continue
+  const titleKey = canonicalExerciseKey(title)
+  if (titleKey && edgeExerciseKeys.has(titleKey)) continue
   if (bySlug.has(slug)) continue
 
   const nasmUrl = buildNasmExerciseUrl(slug)
