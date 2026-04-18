@@ -13,7 +13,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 })
 
 function slugify(value) {
-  return String(value)
+  return String(value ?? '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
@@ -21,201 +21,150 @@ function slugify(value) {
 
 const nasmExerciseUrlTemplate = String(process.env.NASM_EXERCISE_URL_TEMPLATE ?? '').trim()
 
-function buildNasmExerciseUrl(exercise) {
-  const explicit = String(exercise.nasm_url ?? '').trim()
-  if (explicit) return explicit
-
-  if (!nasmExerciseUrlTemplate) return null
-
-  const id = String(exercise.nasm_id ?? exercise.source_id ?? '').trim()
-  const slug = slugify(exercise.name)
-
-  if (!id && !slug) return null
-
-  return nasmExerciseUrlTemplate
-    .replace('{id}', encodeURIComponent(id))
-    .replace('{slug}', encodeURIComponent(slug))
+function normalizeText(value) {
+  return String(value ?? '').trim()
 }
 
-const exercises = [
-  {
-    source_id: 'ex-back-squat',
-    name: 'Back Squat',
-    description: 'Barbell squat variation targeting quads, glutes, and trunk stability.',
-    coaching_cues: ['Brace before descent', 'Drive through mid-foot', 'Keep chest tall'],
-    primary_equipment: ['Barbell', 'Squat Rack'],
-  },
-  {
-    source_id: 'ex-front-squat',
-    name: 'Front Squat',
-    description: 'Anterior-loaded squat emphasizing upright torso and quad strength.',
-    coaching_cues: ['Elbows high', 'Keep pressure mid-foot', 'Sit between hips'],
-    primary_equipment: ['Barbell', 'Squat Rack'],
-  },
-  {
-    source_id: 'ex-romanian-deadlift',
-    name: 'Romanian Deadlift',
-    description: 'Hip hinge for posterior-chain strength and hamstring development.',
-    coaching_cues: ['Push hips back', 'Soft knees', 'Keep lats engaged'],
-    primary_equipment: ['Barbell'],
-  },
-  {
-    source_id: 'ex-deadlift',
-    name: 'Conventional Deadlift',
-    description: 'Full-body pull from the floor to train posterior-chain power.',
-    coaching_cues: ['Bar over mid-foot', 'Pull slack out of bar', 'Stand tall at lockout'],
-    primary_equipment: ['Barbell'],
-  },
-  {
-    source_id: 'ex-bench-press',
-    name: 'Barbell Bench Press',
-    description: 'Horizontal press focused on chest, shoulders, and triceps.',
-    coaching_cues: ['Set shoulder blades', 'Wrists stacked over elbows', 'Press through full range'],
-    primary_equipment: ['Barbell', 'Bench'],
-  },
-  {
-    source_id: 'ex-incline-dumbbell-press',
-    name: 'Incline Dumbbell Press',
-    description: 'Upper-body press emphasizing upper chest and shoulder stability.',
-    coaching_cues: ['Keep ribcage down', 'Press up and slightly in', 'Control the lowering phase'],
-    primary_equipment: ['Dumbbells', 'Bench'],
-  },
-  {
-    source_id: 'ex-overhead-press',
-    name: 'Standing Overhead Press',
-    description: 'Vertical pressing pattern for shoulder and trunk strength.',
-    coaching_cues: ['Squeeze glutes', 'Press in straight path', 'Head through at top'],
-    primary_equipment: ['Barbell'],
-  },
-  {
-    source_id: 'ex-lat-pulldown',
-    name: 'Lat Pulldown',
-    description: 'Vertical pull targeting lats with adjustable loading.',
-    coaching_cues: ['Drive elbows down', 'Avoid shrugging', 'Control return to top'],
-    primary_equipment: ['Cable Machine'],
-  },
-  {
-    source_id: 'ex-seated-cable-row',
-    name: 'Seated Cable Row',
-    description: 'Horizontal row for upper-back strength and posture support.',
-    coaching_cues: ['Lead with elbows', 'Pause at torso', 'Avoid lower-back extension'],
-    primary_equipment: ['Cable Machine'],
-  },
-  {
-    source_id: 'ex-pull-up',
-    name: 'Pull-Up',
-    description: 'Bodyweight vertical pull building back and grip strength.',
-    coaching_cues: ['Initiate from scapula', 'Keep ribs down', 'Full range each rep'],
-    primary_equipment: ['Pull-Up Bar'],
-  },
-  {
-    source_id: 'ex-bulgarian-split-squat',
-    name: 'Bulgarian Split Squat',
-    description: 'Unilateral lower-body movement for quad and glute strength.',
-    coaching_cues: ['Stay tall through torso', 'Track front knee over foot', 'Drive through front leg'],
-    primary_equipment: ['Bench', 'Dumbbells'],
-  },
-  {
-    source_id: 'ex-walking-lunge',
-    name: 'Walking Lunge',
-    description: 'Dynamic unilateral pattern for lower-body strength and control.',
-    coaching_cues: ['Step long enough for 90-degree knees', 'Stay upright', 'Push through full foot'],
-    primary_equipment: ['Dumbbells'],
-  },
-  {
-    source_id: 'ex-hip-thrust',
-    name: 'Barbell Hip Thrust',
-    description: 'Glute-focused bridge pattern with high loading potential.',
-    coaching_cues: ['Ribs down at top', 'Chin tucked', 'Drive through heels'],
-    primary_equipment: ['Barbell', 'Bench'],
-  },
-  {
-    source_id: 'ex-leg-press',
-    name: 'Leg Press',
-    description: 'Machine-based squat pattern for lower-body volume training.',
-    coaching_cues: ['Control depth', 'Keep low back stable', 'Press through full foot'],
-    primary_equipment: ['Leg Press Machine'],
-  },
-  {
-    source_id: 'ex-leg-curl',
-    name: 'Seated Leg Curl',
-    description: 'Machine hamstring isolation movement for knee flexion strength.',
-    coaching_cues: ['Keep hips pinned', 'Full squeeze each rep', 'Control eccentric'],
-    primary_equipment: ['Leg Curl Machine'],
-  },
-  {
-    source_id: 'ex-leg-extension',
-    name: 'Leg Extension',
-    description: 'Machine quad isolation movement for knee extension strength.',
-    coaching_cues: ['Set knee with machine axis', 'Pause at top', 'Lower under control'],
-    primary_equipment: ['Leg Extension Machine'],
-  },
-  {
-    source_id: 'ex-plank',
-    name: 'Front Plank',
-    description: 'Anti-extension core drill for trunk endurance.',
-    coaching_cues: ['Squeeze glutes', 'Ribs down', 'Push floor away'],
-    primary_equipment: ['Bodyweight'],
-  },
-  {
-    source_id: 'ex-side-plank',
-    name: 'Side Plank',
-    description: 'Lateral core stability drill targeting obliques and hips.',
-    coaching_cues: ['Stack shoulders and hips', 'Drive elbow into floor', 'Keep body straight'],
-    primary_equipment: ['Bodyweight'],
-  },
-  {
-    source_id: 'ex-pallof-press',
-    name: 'Pallof Press',
-    description: 'Anti-rotation core movement performed with cable resistance.',
-    coaching_cues: ['Stay square to anchor', 'Press straight forward', 'Minimize trunk rotation'],
-    primary_equipment: ['Cable Machine'],
-  },
-  {
-    source_id: 'ex-farmer-carry',
-    name: 'Farmer Carry',
-    description: 'Loaded carry for grip, trunk, and gait strength.',
-    coaching_cues: ['Stand tall', 'Short controlled steps', 'Keep shoulders packed'],
-    primary_equipment: ['Dumbbells'],
-  },
-]
+function parseList(value) {
+  return normalizeText(value)
+    .split(',')
+    .map(item => normalizeText(item))
+    .filter(Boolean)
+}
 
-const source = 'manual_seed'
+function uniqueByLower(values) {
+  const seen = new Set()
+  const out = []
+  for (const value of values) {
+    const key = value.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(value)
+  }
+  return out
+}
 
-const exerciseRows = exercises.map(exercise => {
-  // URL resolution order:
-  // 1) exercise.nasm_url (explicit per item)
-  // 2) NASM_EXERCISE_URL_TEMPLATE env var using {id} and/or {slug}
-  // 3) null
-  const nasmExerciseUrl = buildNasmExerciseUrl(exercise)
+function titleCaseFromSlug(slug) {
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
 
-  return {
+function extractSlugFromThumbnail(value) {
+  const text = normalizeText(value)
+  if (!text) return null
+  const match = text.match(/\/exercises\/([^/?#.]+)\./i)
+  if (!match) return null
+  return slugify(match[1])
+}
+
+function buildNasmExerciseUrl(slug) {
+  if (!slug) return null
+
+  if (nasmExerciseUrlTemplate) {
+    return nasmExerciseUrlTemplate
+      .replace('{id}', encodeURIComponent(slug))
+      .replace('{slug}', encodeURIComponent(slug))
+  }
+
+  return `https://www.nasm.org/resource-center/exercise-library/${slug}`
+}
+
+function parseCoachingCues(description) {
+  const text = normalizeText(description)
+  if (!text) return []
+
+  const rawLines = text
+    .split('\n')
+    .map(line => normalizeText(line.replace(/^Step\s*\d+\s*:\s*/i, '')))
+    .filter(Boolean)
+
+  if (rawLines.length > 0) {
+    return rawLines.slice(0, 4)
+  }
+
+  return text
+    .split('.')
+    .map(line => normalizeText(line))
+    .filter(Boolean)
+    .slice(0, 4)
+}
+
+async function fetchNasmCatalog() {
+  const response = await fetch('https://www.nasm.org/documents/exercises.json')
+
+  if (!response.ok) {
+    console.error(`Failed to fetch NASM catalog: ${response.status}`)
+    process.exit(1)
+  }
+
+  const payload = await response.json()
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : []
+
+  if (items.length === 0) {
+    console.error('NASM catalog is empty or unexpected format.')
+    process.exit(1)
+  }
+
+  return items
+}
+
+const source = 'nasm_exercise_library'
+
+const catalog = await fetchNasmCatalog()
+const bySlug = new Map()
+
+for (const item of catalog) {
+  const title = normalizeText(item?.Title)
+  const slug = extractSlugFromThumbnail(item?.['Video Thumbnail']) || slugify(title)
+  if (!slug) continue
+  if (bySlug.has(slug)) continue
+
+  const nasmUrl = buildNasmExerciseUrl(slug)
+  const bodyParts = uniqueByLower(parseList(item?.['Body Part']))
+  const equipment = uniqueByLower(parseList(item?.Equipment))
+
+  bySlug.set(slug, {
     source,
-    source_id: exercise.source_id,
-    slug: slugify(exercise.name),
-    name: exercise.name,
-    description: exercise.description,
-    coaching_cues: exercise.coaching_cues,
-    primary_equipment: exercise.primary_equipment,
-    media_video_url: nasmExerciseUrl,
+    source_id: slug,
+    slug,
+    // User requested naming based on NASM slug (slug is source of truth).
+    name: titleCaseFromSlug(slug),
+    description: normalizeText(item?.Description) || null,
+    coaching_cues: parseCoachingCues(item?.Description),
+    primary_equipment: equipment,
+    media_video_url: normalizeText(item?.['Video URL']) || nasmUrl,
     metadata_json: {
       seededBy: 'scripts/seed-exercise-library.mjs',
-      version: 2,
-      nasmUrl: nasmExerciseUrl,
+      version: 3,
+      nasmTitle: title || null,
+      nasmSlug: slug,
+      nasmUrl,
+      nasmVideoThumbnail: normalizeText(item?.['Video Thumbnail']) || null,
+      difficulty: normalizeText(item?.Difficulty) || null,
+      bodyParts,
     },
     is_active: true,
-  }
-})
+  })
+}
 
-const equipmentNames = [...new Set(exercises.flatMap(exercise => exercise.primary_equipment))]
+const exerciseRows = [...bySlug.values()]
+
+const equipmentNames = uniqueByLower(exerciseRows.flatMap(exercise => exercise.primary_equipment))
 
 const equipmentRows = equipmentNames.map(name => ({
   source,
   source_id: `eq-${slugify(name)}`,
   slug: slugify(name),
   name,
-  description: `${name} used in programmed exercises.`,
-  metadata_json: { seededBy: 'scripts/seed-exercise-library.mjs', version: 1 },
+  description: `${name} listed in NASM exercise library.`,
+  metadata_json: { seededBy: 'scripts/seed-exercise-library.mjs', version: 2 },
   is_active: true,
 }))
 
