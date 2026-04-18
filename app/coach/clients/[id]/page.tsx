@@ -303,6 +303,7 @@ export default async function CoachClientPage({ params }: PageProps) {
             initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)
               ? fitnessProfileResult.data.equipment_access
               : []}
+            libraryEquipmentNames={(equipmentResult.data ?? []).map(item => String(item.name ?? '').trim()).filter(Boolean)}
           />
         </div>
 

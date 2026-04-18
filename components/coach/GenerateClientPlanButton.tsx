@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface GenerateClientPlanButtonProps {
   clientId: string
   initialEquipmentAccess?: string[]
+  libraryEquipmentNames?: string[]
 }
 
 const PHASE_OPTIONS = [
@@ -29,7 +30,28 @@ const EQUIPMENT_OPTIONS = [
   { value: 'medicine-ball', label: 'Medicine Ball' },
 ]
 
-export default function GenerateClientPlanButton({ clientId, initialEquipmentAccess = [] }: GenerateClientPlanButtonProps) {
+const EQUIPMENT_PROFILE_HINTS: Record<string, string[]> = {
+  bodyweight: ['body weight', 'bodyweight'],
+  dumbbells: ['dumbbell'],
+  barbell: ['barbell'],
+  bench: ['bench'],
+  'cable-machine': ['cable'],
+  machines: ['machine', 'lever', 'smith', 'press'],
+  kettlebells: ['kettlebell'],
+  bands: ['band', 'tubing'],
+  trx: ['trx', 'suspension'],
+  'medicine-ball': ['medicine ball'],
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? '').trim().toLowerCase()
+}
+
+export default function GenerateClientPlanButton({
+  clientId,
+  initialEquipmentAccess = [],
+  libraryEquipmentNames = [],
+}: GenerateClientPlanButtonProps) {
   const router = useRouter()
   const [sessionsPerWeek, setSessionsPerWeek] = useState('4')
   const [nasmOptPhase, setNasmOptPhase] = useState('1')
@@ -40,6 +62,19 @@ export default function GenerateClientPlanButton({ clientId, initialEquipmentAcc
   })
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+
+  const availableEquipmentOptions = useMemo(() => {
+    const normalizedNames = [...new Set(libraryEquipmentNames.map(item => normalizeText(item)).filter(Boolean))]
+
+    return EQUIPMENT_OPTIONS.filter(option => {
+      if (option.value === 'bodyweight') return true
+
+      const profileHints = EQUIPMENT_PROFILE_HINTS[option.value] ?? []
+      if (profileHints.length === 0) return false
+
+      return normalizedNames.some(name => profileHints.some(hint => name.includes(hint)))
+    })
+  }, [libraryEquipmentNames])
 
   function toggleEquipment(value: string) {
     setEquipmentAccess(current => {
@@ -128,7 +163,7 @@ export default function GenerateClientPlanButton({ clientId, initialEquipmentAcc
           Equipment (bodyweight always included)
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {EQUIPMENT_OPTIONS.map(option => {
+          {availableEquipmentOptions.map(option => {
             const active = equipmentAccess.includes(option.value)
             const locked = option.value === 'bodyweight'
 
