@@ -1,12 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import type { CoachProgramDraft } from '@/lib/coach-programs'
 
 interface GenerateClientPlanButtonProps {
   clientId: string
   initialEquipmentAccess?: string[]
   libraryEquipmentNames?: string[]
+  onDraftGenerated?: (draft: CoachProgramDraft) => void
 }
 
 const PHASE_OPTIONS = [
@@ -51,8 +52,8 @@ export default function GenerateClientPlanButton({
   clientId,
   initialEquipmentAccess = [],
   libraryEquipmentNames = [],
+  onDraftGenerated,
 }: GenerateClientPlanButtonProps) {
-  const router = useRouter()
   const availableEquipmentOptions = useMemo<EquipmentOption[]>(() => {
     const names = [...new Set(libraryEquipmentNames.map(item => String(item ?? '').trim()).filter(Boolean))]
       .filter(name => normalizeText(name) !== 'none')
@@ -137,12 +138,15 @@ export default function GenerateClientPlanButton({
       return
     }
 
-    const templateTitle = String(payload?.template?.title ?? '').trim()
+    const draft = payload?.draft as CoachProgramDraft | undefined
+    const templateTitle = String(draft?.templateTitle ?? payload?.template?.title ?? '').trim()
     const selectedPhase = PHASE_OPTIONS.find(option => option.value === nasmOptPhase)?.label ?? `Phase ${nasmOptPhase}`
+    if (draft) {
+      onDraftGenerated?.(draft)
+    }
     setStatus(templateTitle
-      ? `Workout plan generated for ${selectedPhase} using ${templateTitle}.`
-      : 'Workout plan generated for client successfully.')
-    router.refresh()
+      ? `Draft generated for ${selectedPhase} using ${templateTitle}. Review and accept below.`
+      : 'Draft generated for client successfully. Review and accept below.')
     setBusy(false)
   }
 

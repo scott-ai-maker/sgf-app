@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
-import { buildPlanName, buildStoredProgramPlan, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
+import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
 import { buildRandomizedTemplateWorkouts } from '@/lib/coach-template-generator'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
@@ -130,36 +130,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No valid workouts were generated from template rules.' }, { status: 400 })
   }
 
-  const row = {
-    user_id: clientId,
-    name: buildPlanName(payload),
+  const generatedWithEquipmentAccess = [...new Set(['bodyweight', ...effectiveEquipmentAccess])]
+
+  const draft: CoachProgramDraft = {
+    clientId,
+    name: payload.name,
     goal: payload.goal,
-    nasm_opt_phase: Math.max(1, Math.min(5, Number(payload.nasmOptPhase))),
-    phase_name: payload.phaseName,
-    sessions_per_week: payload.sessionsPerWeek,
-    estimated_duration_mins: payload.estimatedDurationMins,
-    plan_json: {
-      ...storedPlan,
-      generatedFromTemplateId: selectedTemplate.id,
-      generatedFromTemplateTitle: selectedTemplate.title,
-      generatedWithEquipmentAccess: [...new Set(['bodyweight', ...effectiveEquipmentAccess])],
-      generatedByCoachId: coachId,
-      generatedBy: 'coach_quick_generate',
-    },
-  }
-
-  const { data, error } = await admin
-    .from('workout_plans')
-    .insert(row)
-    .select('*')
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    nasmOptPhase: Math.max(1, Math.min(5, Number(payload.nasmOptPhase))),
+    phaseName: payload.phaseName,
+    sessionsPerWeek: payload.sessionsPerWeek,
+    estimatedDurationMins: payload.estimatedDurationMins,
+    startDate: payload.startDate,
+    templateId: selectedTemplate.id,
+    templateTitle: selectedTemplate.title,
+    generatedAt: storedPlan.createdAt,
+    generatedWithEquipmentAccess,
+    workouts: storedPlan.workouts,
   }
 
   return NextResponse.json({
-    plan: data,
+    draft,
     template: {
       id: selectedTemplate.id,
       title: selectedTemplate.title,

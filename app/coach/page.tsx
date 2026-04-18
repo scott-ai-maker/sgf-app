@@ -7,7 +7,7 @@ import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
-type CoachPageSearchParams = Promise<{ focus?: string | string[] | undefined }>
+type CoachPageSearchParams = Promise<{ focus?: string | string[] | undefined; tab?: string | string[] | undefined }>
 
 type FocusFilter =
   | 'all'
@@ -19,6 +19,8 @@ type FocusFilter =
   | 'low-credits'
   | 'inactive'
   | 'no-upcoming'
+
+type CoachDashboardTab = 'overview' | 'roster' | 'intake'
 
 function normalizeFocusFilter(value: string | string[] | undefined): FocusFilter {
   const rawValue = Array.isArray(value) ? value[0] : value
@@ -53,8 +55,30 @@ function dedupeChips(chips: Array<{ label: string; tone: 'gold' | 'green' | 'gra
   })
 }
 
+function normalizeCoachDashboardTab(value: string | string[] | undefined): CoachDashboardTab {
+  const rawValue = Array.isArray(value) ? value[0] : value
+
+  switch (rawValue) {
+    case 'roster':
+    case 'intake':
+      return rawValue
+    default:
+      return 'overview'
+  }
+}
+
+function buildCoachTabHref(tab: CoachDashboardTab, focus: FocusFilter) {
+  const params = new URLSearchParams()
+  if (tab !== 'overview') params.set('tab', tab)
+  if (focus !== 'all') params.set('focus', focus)
+  const query = params.toString()
+  return query ? `/coach?${query}` : '/coach'
+}
+
 export default async function CoachPage({ searchParams }: { searchParams: CoachPageSearchParams }) {
-  const selectedFocus = normalizeFocusFilter((await searchParams).focus)
+  const resolvedSearchParams = await searchParams
+  const selectedFocus = normalizeFocusFilter(resolvedSearchParams.focus)
+  const activeTab = normalizeCoachDashboardTab(resolvedSearchParams.tab)
   const supabase = await createClient()
   const {
     data: { user },
@@ -340,203 +364,148 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
           COACH DASHBOARD
         </h1>
 
-        {/* Stats */}
-        <div
-          className="coach-stats-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 1,
-            background: 'rgba(255,255,255,0.06)',
-            marginBottom: 48,
-          }}
-        >
-          {stats.map(stat => (
-            <a
-              key={stat.label}
-              href={stat.key === 'all' ? '/coach#assigned-clients' : `/coach?focus=${stat.key}#assigned-clients`}
-              style={{
-                background: selectedFocus === stat.key ? 'rgba(212,160,23,0.1)' : 'var(--navy)',
-                padding: '28px 24px',
-                textDecoration: 'none',
-                border: selectedFocus === stat.key ? '1px solid rgba(212,160,23,0.4)' : '1px solid transparent',
-              }}
-            >
-              <div
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+          {[
+            { key: 'overview' as const, label: 'Overview' },
+            { key: 'roster' as const, label: 'Assigned Roster' },
+            { key: 'intake' as const, label: 'Unassigned Intake' },
+          ].map(tab => {
+            const active = activeTab === tab.key
+            return (
+              <a
+                key={tab.key}
+                href={buildCoachTabHref(tab.key, selectedFocus)}
                 style={{
-                  fontFamily: 'Bebas Neue, sans-serif',
-                  fontSize: 56,
-                  color: 'var(--gold)',
-                  lineHeight: 1,
-                }}
-              >
-                {stat.value}
-              </div>
-              <div
-                style={{
+                  padding: '10px 14px',
+                  border: active ? '1px solid rgba(212,160,23,0.45)' : '1px solid rgba(255,255,255,0.12)',
+                  background: active ? 'rgba(212,160,23,0.12)' : 'var(--navy-mid)',
+                  color: active ? 'var(--gold-lt)' : 'var(--white)',
+                  textDecoration: 'none',
                   fontFamily: 'Raleway, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 11,
-                  color: 'var(--gray)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginTop: 6,
-                }}
-              >
-                {stat.label}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Raleway, sans-serif',
-                  fontSize: 12,
-                  color: 'var(--gray)',
-                  marginTop: 4,
-                }}
-              >
-                {stat.hint}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Raleway, sans-serif',
-                  fontSize: 12,
-                  color: 'var(--gray)',
-                  marginTop: 10,
-                }}
-              >
-                {stat.cta}
-              </div>
-            </a>
-          ))}
-        </div>
-
-        <h2
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 24,
-            color: 'var(--white)',
-            letterSpacing: '0.06em',
-            marginBottom: 16,
-          }}
-        >
-          ATTENTION NEEDED
-        </h2>
-
-        <div
-          className="coach-attention-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 1,
-            background: 'rgba(255,255,255,0.06)',
-            marginBottom: 40,
-          }}
-        >
-          {attentionItems.map(item => (
-            <a
-              key={item.label}
-              href={`/coach?focus=${item.key}#assigned-clients`}
-              style={{
-                background: selectedFocus === item.key ? 'rgba(212,160,23,0.1)' : 'var(--navy-mid)',
-                padding: '20px 24px',
-                textDecoration: 'none',
-                border: selectedFocus === item.key ? '1px solid rgba(212,160,23,0.4)' : '1px solid transparent',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'Bebas Neue, sans-serif',
-                  fontSize: 40,
-                  lineHeight: 1,
-                  color: item.value > 0 ? 'var(--gold)' : 'var(--gray)',
-                }}
-              >
-                {item.value}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Raleway, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 11,
-                  color: 'var(--gray)',
-                  textTransform: 'uppercase',
+                  fontSize: 13,
+                  fontWeight: 700,
                   letterSpacing: '0.08em',
-                  marginTop: 6,
+                  textTransform: 'uppercase',
                 }}
               >
-                {item.label}
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Raleway, sans-serif',
-                  fontSize: 12,
-                  color: 'var(--gray)',
-                  marginTop: 10,
-                }}
-              >
-                Review clients
-              </div>
-            </a>
-          ))}
+                {tab.label}
+              </a>
+            )
+          })}
         </div>
 
-        {/* Assigned clients */}
-        <h2
-          id="assigned-clients"
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 24,
-            color: 'var(--white)',
-            letterSpacing: '0.06em',
-            marginBottom: 16,
-          }}
-        >
-          ASSIGNED CLIENTS
-        </h2>
-
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 16,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontSize: 13,
-              color: 'var(--gray)',
-            }}
-          >
-            Showing: {focusLabelByKey[selectedFocus]}
-          </span>
-          {selectedFocus !== 'all' ? (
-            <a
-              href="/coach#assigned-clients"
+        {activeTab === 'overview' && (
+          <>
+            <div
+              className="coach-stats-grid"
               style={{
-                fontFamily: 'Raleway, sans-serif',
-                fontWeight: 600,
-                fontSize: 13,
-                color: 'var(--gold)',
-                textDecoration: 'none',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 1,
+                background: 'rgba(255,255,255,0.06)',
+                marginBottom: 48,
               }}
             >
-              Clear filter
-            </a>
-          ) : null}
-          <span
-            style={{
-              fontFamily: 'Raleway, sans-serif',
-              fontSize: 13,
-              color: 'var(--gray)',
-            }}
-          >
-            {filteredAssignedClients.length} client{filteredAssignedClients.length === 1 ? '' : 's'}
-          </span>
-        </div>
+              {stats.map(stat => (
+                <a
+                  key={stat.label}
+                  href={stat.key === 'all' ? '/coach?tab=roster#assigned-clients' : `/coach?tab=roster&focus=${stat.key}#assigned-clients`}
+                  style={{
+                    background: selectedFocus === stat.key ? 'rgba(212,160,23,0.1)' : 'var(--navy)',
+                    padding: '28px 24px',
+                    textDecoration: 'none',
+                    border: selectedFocus === stat.key ? '1px solid rgba(212,160,23,0.4)' : '1px solid transparent',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 56, color: 'var(--gold)', lineHeight: 1 }}>{stat.value}</div>
+                  <div style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 6 }}>{stat.label}</div>
+                  <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 4 }}>{stat.hint}</div>
+                  <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 10 }}>{stat.cta}</div>
+                </a>
+              ))}
+            </div>
 
-        {!assignedClients || assignedClients.length === 0 ? (
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 16 }}>
+              ATTENTION NEEDED
+            </h2>
+
+            <div
+              className="coach-attention-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 1,
+                background: 'rgba(255,255,255,0.06)',
+                marginBottom: 40,
+              }}
+            >
+              {attentionItems.map(item => (
+                <a
+                  key={item.label}
+                  href={`/coach?tab=roster&focus=${item.key}#assigned-clients`}
+                  style={{
+                    background: selectedFocus === item.key ? 'rgba(212,160,23,0.1)' : 'var(--navy-mid)',
+                    padding: '20px 24px',
+                    textDecoration: 'none',
+                    border: selectedFocus === item.key ? '1px solid rgba(212,160,23,0.4)' : '1px solid transparent',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 40, lineHeight: 1, color: item.value > 0 ? 'var(--gold)' : 'var(--gray)' }}>{item.value}</div>
+                  <div style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 6 }}>{item.label}</div>
+                  <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 10 }}>Review clients</div>
+                </a>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'roster' && (
+          <>
+            <h2
+              id="assigned-clients"
+              style={{
+                fontFamily: 'Bebas Neue, sans-serif',
+                fontSize: 24,
+                color: 'var(--white)',
+                letterSpacing: '0.06em',
+                marginBottom: 16,
+              }}
+            >
+              ASSIGNED CLIENTS
+            </h2>
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)' }}>
+                Showing: {focusLabelByKey[selectedFocus]}
+              </span>
+              {selectedFocus !== 'all' ? (
+                <a
+                  href="/coach?tab=roster#assigned-clients"
+                  style={{
+                    fontFamily: 'Raleway, sans-serif',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    color: 'var(--gold)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Clear filter
+                </a>
+              ) : null}
+              <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)' }}>
+                {filteredAssignedClients.length} client{filteredAssignedClients.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {!assignedClients || assignedClients.length === 0 ? (
           <div
             style={{
               background: 'var(--navy-mid)',
@@ -549,7 +518,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
               No clients assigned to you yet.
             </p>
           </div>
-        ) : filteredAssignedClients.length === 0 ? (
+            ) : filteredAssignedClients.length === 0 ? (
           <div
             style={{
               background: 'var(--navy-mid)',
@@ -562,7 +531,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
               No assigned clients match this filter.
             </p>
           </div>
-        ) : (
+            ) : (
           <div
             style={{
               display: 'flex',
@@ -695,22 +664,26 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
                 </div>
               ))}
           </div>
+            )}
+          </>
         )}
 
-        <h2
-          style={{
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 24,
-            color: 'var(--white)',
-            letterSpacing: '0.06em',
-            marginTop: 40,
-            marginBottom: 16,
-          }}
-        >
-          UNASSIGNED CLIENTS
-        </h2>
+        {activeTab === 'intake' && (
+          <>
+            <h2
+              style={{
+                fontFamily: 'Bebas Neue, sans-serif',
+                fontSize: 24,
+                color: 'var(--white)',
+                letterSpacing: '0.06em',
+                marginTop: 40,
+                marginBottom: 16,
+              }}
+            >
+              UNASSIGNED CLIENTS
+            </h2>
 
-        {!unassignedClients || unassignedClients.length === 0 ? (
+            {!unassignedClients || unassignedClients.length === 0 ? (
           <div
             style={{
               background: 'var(--navy-mid)',
@@ -723,7 +696,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
               No unassigned clients available.
             </p>
           </div>
-        ) : (
+            ) : (
           <div
             style={{
               display: 'flex',
@@ -795,6 +768,8 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
               </div>
             ))}
           </div>
+            )}
+          </>
         )}
       </div>
     </main>

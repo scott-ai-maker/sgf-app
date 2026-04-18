@@ -1,15 +1,17 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
 import type {
+  CoachProgramDraft,
   ExerciseLibraryRecord,
   EquipmentLibraryRecord,
   WorkoutProgramTemplateRecord,
 } from '@/lib/coach-programs'
 
 interface LatestWorkoutPlan {
+  id?: string | null
   name?: string | null
   goal?: string | null
   nasm_opt_phase?: number | null
@@ -62,6 +64,8 @@ interface CoachProgramBuilderProps {
   templates: WorkoutProgramTemplateRecord[]
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
+  draftPlan?: CoachProgramDraft | null
+  onPlanSaved?: () => void
 }
 
 function uid() {
@@ -154,20 +158,74 @@ function formatExerciseDescriptionLines(description: string | null | undefined) 
   return lines.length > 0 ? lines : [text]
 }
 
-export default function CoachProgramBuilder({ clientId, latestPlan, templates, exercises, equipment }: CoachProgramBuilderProps) {
+function isDraftPlan(plan: LatestWorkoutPlan | CoachProgramDraft | null): plan is CoachProgramDraft {
+  return Boolean(plan && 'generatedAt' in plan)
+}
+
+function toEditorState(plan: LatestWorkoutPlan | CoachProgramDraft | null) {
+  const workouts = isDraftPlan(plan) ? plan.workouts : plan?.plan_json?.workouts
+
+  return {
+    templateId: String((isDraftPlan(plan) ? plan.templateId : '') ?? '').trim(),
+    name: String(plan?.name ?? '').trim(),
+    goal: String(plan?.goal ?? '').trim(),
+    nasmOptPhase: String((isDraftPlan(plan) ? plan.nasmOptPhase : plan?.nasm_opt_phase) ?? 1),
+    phaseName: String((isDraftPlan(plan) ? plan.phaseName : plan?.phase_name) ?? 'Stabilization Endurance').trim(),
+    sessionsPerWeek: String((isDraftPlan(plan) ? plan.sessionsPerWeek : plan?.sessions_per_week) ?? 3),
+    estimatedDurationMins: String((isDraftPlan(plan) ? plan.estimatedDurationMins : plan?.estimated_duration_mins) ?? 60),
+    startDate: String((isDraftPlan(plan) ? plan.startDate : '') ?? '').trim() || new Date().toISOString().slice(0, 10),
+    days: Array.isArray(workouts) && workouts.length > 0
+      ? workouts.map((day, index) => toBuilderDay(day as BuilderWorkoutDay, index + 1))
+      : [toBuilderDay(undefined, 1)],
+  }
+}
+
+export default function CoachProgramBuilder({ clientId, latestPlan, templates, exercises, equipment, draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
   const router = useRouter()
   const exerciseListId = `exercise-library-${clientId}`
-  const [templateId, setTemplateId] = useState('')
-  const [name, setName] = useState(String(latestPlan?.name ?? '').trim())
-  const [goal, setGoal] = useState(String(latestPlan?.goal ?? '').trim())
-  const [nasmOptPhase, setNasmOptPhase] = useState(String(latestPlan?.nasm_opt_phase ?? 1))
-  const [phaseName, setPhaseName] = useState(String(latestPlan?.phase_name ?? 'Stabilization Endurance').trim())
-  const [sessionsPerWeek, setSessionsPerWeek] = useState(String(latestPlan?.sessions_per_week ?? 3))
-  const [estimatedDurationMins, setEstimatedDurationMins] = useState(String(latestPlan?.estimated_duration_mins ?? 60))
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10))
-  const [days, setDays] = useState(() => initialDaysFromPlan(latestPlan))
+  const initialEditorState = toEditorState(latestPlan)
+  const [templateId, setTemplateId] = useState(initialEditorState.templateId)
+  const [name, setName] = useState(initialEditorState.name)
+  const [goal, setGoal] = useState(initialEditorState.goal)
+  const [nasmOptPhase, setNasmOptPhase] = useState(initialEditorState.nasmOptPhase)
+  const [phaseName, setPhaseName] = useState(initialEditorState.phaseName)
+  const [sessionsPerWeek, setSessionsPerWeek] = useState(initialEditorState.sessionsPerWeek)
+  const [estimatedDurationMins, setEstimatedDurationMins] = useState(initialEditorState.estimatedDurationMins)
+  const [startDate, setStartDate] = useState(initialEditorState.startDate)
+  const [days, setDays] = useState(initialEditorState.days)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!draftPlan) return
+
+    const nextState = toEditorState(draftPlan)
+    setTemplateId(nextState.templateId)
+    setName(nextState.name)
+    setGoal(nextState.goal)
+    setNasmOptPhase(nextState.nasmOptPhase)
+    setPhaseName(nextState.phaseName)
+    setSessionsPerWeek(nextState.sessionsPerWeek)
+    setEstimatedDurationMins(nextState.estimatedDurationMins)
+    setStartDate(nextState.startDate)
+    setDays(nextState.days)
+    setStatus('Quick-generated draft loaded. Review, adjust, then accept by saving.')
+  }, [draftPlan])
+
+  useEffect(() => {
+    if (draftPlan) return
+
+    const nextState = toEditorState(latestPlan)
+    setTemplateId(nextState.templateId)
+    setName(nextState.name)
+    setGoal(nextState.goal)
+    setNasmOptPhase(nextState.nasmOptPhase)
+    setPhaseName(nextState.phaseName)
+    setSessionsPerWeek(nextState.sessionsPerWeek)
+    setEstimatedDurationMins(nextState.estimatedDurationMins)
+    setStartDate(nextState.startDate)
+    setDays(nextState.days)
+  }, [draftPlan, latestPlan])
 
   const exerciseMap = useMemo(() => {
     return new Map(exercises.map(exercise => [exercise.name.trim().toLowerCase(), exercise]))
@@ -368,7 +426,8 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
         return
       }
 
-      setStatus('Custom program saved for this client.')
+      setStatus(draftPlan ? 'Draft accepted and saved for this client.' : 'Custom program saved for this client.')
+      onPlanSaved?.()
       router.refresh()
     } catch {
       setStatus('Failed to save custom workout plan. Check your connection and try again.')
@@ -401,6 +460,17 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
           <Metric label="Equipment" value={String(equipment.length)} />
         </div>
       </div>
+
+      {draftPlan && (
+        <div style={{ marginBottom: 18, padding: '14px 16px', border: '1px solid rgba(212,160,23,0.35)', background: 'rgba(212,160,23,0.08)' }}>
+          <p style={{ margin: 0, color: 'var(--gold-lt)', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Quick Generate Draft Ready For Review
+          </p>
+          <p style={{ margin: '8px 0 0', color: 'var(--white)', fontSize: 14, lineHeight: 1.5 }}>
+            {draftPlan.templateTitle ? `${draftPlan.templateTitle} generated this plan. ` : ''}Review or adjust any day, exercise, load, or schedule here. Saving is the acceptance step.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 18 }}>
         <label style={labelStyle}>
@@ -581,12 +651,27 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
           <button type="button" onClick={addDay} style={secondaryButtonStyle}>
             Add Training Day
           </button>
-          <button type="button" onClick={() => setDays(initialDaysFromPlan(latestPlan))} style={secondaryButtonStyle}>
-            Reset To Latest Plan
+          <button
+            type="button"
+            onClick={() => {
+              const nextState = toEditorState(draftPlan ?? latestPlan)
+              setTemplateId(nextState.templateId)
+              setName(nextState.name)
+              setGoal(nextState.goal)
+              setNasmOptPhase(nextState.nasmOptPhase)
+              setPhaseName(nextState.phaseName)
+              setSessionsPerWeek(nextState.sessionsPerWeek)
+              setEstimatedDurationMins(nextState.estimatedDurationMins)
+              setStartDate(nextState.startDate)
+              setDays(nextState.days)
+            }}
+            style={secondaryButtonStyle}
+          >
+            {draftPlan ? 'Reset To Draft' : 'Reset To Latest Plan'}
           </button>
         </div>
         <button type="button" disabled={busy || validationMessages.length > 0} onClick={handleSubmit} style={primaryButtonStyle}>
-          {busy ? 'Saving...' : 'Save Custom Program'}
+          {busy ? 'Saving...' : draftPlan ? 'Accept And Save Plan' : 'Save Custom Program'}
         </button>
       </div>
 

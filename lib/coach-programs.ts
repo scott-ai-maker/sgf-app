@@ -62,6 +62,22 @@ export interface CoachProgramPayload {
   workouts: CoachProgramWorkoutInput[]
 }
 
+export interface CoachProgramDraft {
+  clientId: string
+  name: string
+  goal?: string | null
+  nasmOptPhase: number
+  phaseName: string
+  sessionsPerWeek: number
+  estimatedDurationMins: number
+  startDate?: string | null
+  templateId?: string | null
+  templateTitle?: string | null
+  generatedAt: string
+  generatedWithEquipmentAccess?: string[]
+  workouts: ProgramWorkoutSnapshot[]
+}
+
 export interface ProgramExerciseSnapshot {
   libraryExerciseId: string | null
   name: string
