@@ -11,6 +11,7 @@ import SiteHeader from '@/components/ui/SiteHeader'
 export const dynamic = 'force-dynamic'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+const EXCLUDED_EQUIPMENT_TERMS = ['chains', 'chain', 'safety collar', 'safety collars']
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -39,6 +40,11 @@ function normalizeClientTab(value: string | string[] | undefined): CoachClientTa
     default:
       return 'overview'
   }
+}
+
+function isExcludedEquipmentName(name: string) {
+  const normalized = String(name ?? '').trim().toLowerCase()
+  return EXCLUDED_EQUIPMENT_TERMS.some(term => normalized.includes(term))
 }
 
 export default async function CoachClientPage({ params, searchParams }: PageProps) {
@@ -199,6 +205,8 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     0
   )
 
+  const filteredEquipment = (equipmentResult.data ?? []).filter(item => !isExcludedEquipmentName(String(item.name ?? '')))
+
   const tabs: Array<{ key: CoachClientTab; label: string; href: string }> = [
     { key: 'overview', label: 'Overview', href: `/coach/clients/${id}` },
     { key: 'program', label: 'Program', href: `/coach/clients/${id}?tab=program` },
@@ -333,13 +341,13 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             templates={templatesResult.data ?? []}
             coachTemplates={coachTemplatesResult.data ?? []}
             exercises={exercisesResult.data ?? []}
-            equipment={equipmentResult.data ?? []}
+            equipment={filteredEquipment}
             contraindicationNotes={contraindicationNotes}
             readinessSummary={readinessSummary}
             initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)
               ? fitnessProfileResult.data.equipment_access
               : []}
-            libraryEquipmentNames={(equipmentResult.data ?? []).map(item => String(item.name ?? '').trim()).filter(Boolean)}
+            libraryEquipmentNames={filteredEquipment.map(item => String(item.name ?? '').trim()).filter(Boolean)}
           />
         )}
 

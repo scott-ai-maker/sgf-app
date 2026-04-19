@@ -136,6 +136,8 @@ const DEFAULT_EXERCISE_NOTE_SNIPPETS = [
   'Focus on full range with clean tempo before adding load.',
 ]
 
+const EXCLUDED_EQUIPMENT_TERMS = ['chains', 'chain', 'safety collar', 'safety collars']
+
 function normalizeSearchText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -237,6 +239,11 @@ function formatDayList(days: number[]) {
   }
 
   return `days ${days.join(', ')}`
+}
+
+function isExcludedEquipmentName(name: string) {
+  const normalized = String(name ?? '').trim().toLowerCase()
+  return EXCLUDED_EQUIPMENT_TERMS.some(term => normalized.includes(term))
 }
 
 function toBuilderExercise(exercise?: BuilderWorkoutDay['exercises'][number]): BuilderExercise {
@@ -374,7 +381,10 @@ function formatExerciseDescriptionLines(description: string | null | undefined) 
 
 function equipmentBadges(primaryEquipment: string[] | null | undefined) {
   const items = Array.isArray(primaryEquipment)
-    ? primaryEquipment.map(item => String(item ?? '').trim()).filter(Boolean)
+    ? primaryEquipment
+      .map(item => String(item ?? '').trim())
+      .filter(Boolean)
+      .filter(item => !isExcludedEquipmentName(item))
     : []
 
   return items.length > 0 ? items : ['Bodyweight']
@@ -555,7 +565,10 @@ function buildProgressionSuggestion(exercise: BuilderExercise, phaseNumber: numb
 }
 
 function normalizeEquipmentKey(primaryEquipment: string[] | null | undefined) {
-  const first = Array.isArray(primaryEquipment) ? String(primaryEquipment[0] ?? '').trim().toLowerCase() : ''
+  const firstRaw = Array.isArray(primaryEquipment)
+    ? primaryEquipment.map(item => String(item ?? '').trim()).find(item => item.length > 0 && !isExcludedEquipmentName(item))
+    : ''
+  const first = String(firstRaw ?? '').toLowerCase()
   if (!first || first === 'none') return 'Bodyweight'
   if (first.includes('dumbbell')) return 'Dumbbells'
   if (first.includes('barbell')) return 'Barbell'
