@@ -93,6 +93,16 @@ interface CategorizedExercise {
   equipmentKey: string
 }
 
+interface PlanDiffSummary {
+  changedDays: number
+  changedFocuses: number
+  changedDayNotes: number
+  addedExercises: number
+  removedExercises: number
+  changedExerciseDetails: number
+  totalChanges: number
+}
+
 type SearchMatchResult = {
   matched: boolean
   score: number
@@ -261,6 +271,73 @@ function toBuilderDay(day?: BuilderWorkoutDay, fallbackDay = 1) {
     exercises: Array.isArray(day?.exercises) && day.exercises.length > 0
       ? day.exercises.map(exercise => toBuilderExercise(exercise))
       : [createBlankExercise()],
+  }
+}
+
+function summarizePlanDiff(baselineDays: ReturnType<typeof toBuilderDay>[], currentDays: ReturnType<typeof toBuilderDay>[]): PlanDiffSummary {
+  let changedDays = Math.max(currentDays.length - baselineDays.length, 0)
+  let changedFocuses = 0
+  let changedDayNotes = 0
+  let addedExercises = 0
+  let removedExercises = 0
+  let changedExerciseDetails = 0
+
+  const comparableDayCount = Math.min(baselineDays.length, currentDays.length)
+
+  for (let dayIndex = 0; dayIndex < comparableDayCount; dayIndex += 1) {
+    const baseDay = baselineDays[dayIndex]
+    const currentDay = currentDays[dayIndex]
+
+    const baseFocus = String(baseDay.focus ?? '').trim()
+    const currentFocus = String(currentDay.focus ?? '').trim()
+    if (baseFocus !== currentFocus) changedFocuses += 1
+
+    const baseNotes = String(baseDay.notes ?? '').trim()
+    const currentNotes = String(currentDay.notes ?? '').trim()
+    if (baseNotes !== currentNotes) changedDayNotes += 1
+
+    const baseExercises = baseDay.exercises
+    const currentExercises = currentDay.exercises
+
+    if (currentExercises.length > baseExercises.length) {
+      addedExercises += currentExercises.length - baseExercises.length
+    } else if (baseExercises.length > currentExercises.length) {
+      removedExercises += baseExercises.length - currentExercises.length
+    }
+
+    const comparableExerciseCount = Math.min(baseExercises.length, currentExercises.length)
+    for (let exerciseIndex = 0; exerciseIndex < comparableExerciseCount; exerciseIndex += 1) {
+      const baseExercise = baseExercises[exerciseIndex]
+      const currentExercise = currentExercises[exerciseIndex]
+
+      const changed = [
+        String(baseExercise.name ?? '').trim() !== String(currentExercise.name ?? '').trim(),
+        String(baseExercise.block ?? '').trim() !== String(currentExercise.block ?? '').trim(),
+        String(baseExercise.sets ?? '').trim() !== String(currentExercise.sets ?? '').trim(),
+        String(baseExercise.reps ?? '').trim() !== String(currentExercise.reps ?? '').trim(),
+        String(baseExercise.tempo ?? '').trim() !== String(currentExercise.tempo ?? '').trim(),
+        String(baseExercise.rest ?? '').trim() !== String(currentExercise.rest ?? '').trim(),
+        String(baseExercise.notes ?? '').trim() !== String(currentExercise.notes ?? '').trim(),
+      ].some(Boolean)
+
+      if (changed) changedExerciseDetails += 1
+    }
+  }
+
+  if (baselineDays.length > currentDays.length) {
+    changedDays += baselineDays.length - currentDays.length
+  }
+
+  const totalChanges = changedDays + changedFocuses + changedDayNotes + addedExercises + removedExercises + changedExerciseDetails
+
+  return {
+    changedDays,
+    changedFocuses,
+    changedDayNotes,
+    addedExercises,
+    removedExercises,
+    changedExerciseDetails,
+    totalChanges,
   }
 }
 
@@ -560,6 +637,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   const [customExerciseSnippets, setCustomExerciseSnippets] = useState<string[]>([])
   const [copyExerciseModal, setCopyExerciseModal] = useState<{ dayId: string; exerciseId: string } | null>(null)
   const [saveTemplateModal, setSaveTemplateModal] = useState(false)
+  const [saveDiffModalOpen, setSaveDiffModalOpen] = useState(false)
   const [templateSaveBusy, setTemplateSaveBusy] = useState(false)
   const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null)
   const [restTimerTotal, setRestTimerTotal] = useState(60)
@@ -845,6 +923,14 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
 
     return messages
   }, [days])
+
+  const baselineDaysForDiff = useMemo(() => {
+    return toEditorState(draftPlan ?? latestPlan).days
+  }, [draftPlan, latestPlan])
+
+  const pendingSaveDiff = useMemo(() => {
+    return summarizePlanDiff(baselineDaysForDiff, days)
+  }, [baselineDaysForDiff, days])
 
   const dayDensity = useMemo(() => {
     return days.map(day => {
@@ -1333,7 +1419,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     }
   }
 
-  async function handleSubmit() {
+  async function submitProgram() {
     if (validationMessages.length > 0) {
       setStatus('Complete required fields before saving.')
       return
@@ -1390,6 +1476,15 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     } finally {
       setBusy(false)
     }
+  }
+
+  function handleSubmit() {
+    if (validationMessages.length > 0) {
+      setStatus('Complete required fields before saving.')
+      return
+    }
+
+    setSaveDiffModalOpen(true)
   }
 
   return (
@@ -2062,6 +2157,53 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {saveDiffModalOpen && (
+        <div style={pickerOverlayStyle}>
+          <div style={pickerPanelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--white)' }}>Review Changes Before Save</h3>
+              <button type="button" onClick={() => setSaveDiffModalOpen(false)} style={{ ...secondaryButtonStyle, padding: '6px 12px' }}>
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              <p style={{ margin: 0, color: 'var(--gray)', fontSize: 13 }}>
+                Compare current builder content against the latest baseline before confirming save.
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--white)', fontSize: 13, lineHeight: 1.5 }}>
+                <li>{pendingSaveDiff.changedDays} day count changes</li>
+                <li>{pendingSaveDiff.changedFocuses} day focus changes</li>
+                <li>{pendingSaveDiff.changedDayNotes} day note changes</li>
+                <li>{pendingSaveDiff.addedExercises} exercises added</li>
+                <li>{pendingSaveDiff.removedExercises} exercises removed</li>
+                <li>{pendingSaveDiff.changedExerciseDetails} exercise detail changes</li>
+              </ul>
+              <p style={{ margin: 0, color: 'var(--gold-lt)', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Total detected changes: {pendingSaveDiff.totalChanges}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveDiffModalOpen(false)
+                  void submitProgram()
+                }}
+                style={primaryButtonStyle}
+                disabled={busy}
+              >
+                {busy ? 'Saving...' : 'Confirm and Save'}
+              </button>
+              <button type="button" onClick={() => setSaveDiffModalOpen(false)} style={secondaryButtonStyle}>
+                Keep Editing
+              </button>
             </div>
           </div>
         </div>
