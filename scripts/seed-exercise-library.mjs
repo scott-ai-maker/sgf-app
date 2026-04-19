@@ -375,7 +375,7 @@ async function fetchNasmEdgePlaylistEntries() {
       source,
       source_id: `yt-${entry.videoId}-${sequence}`,
       slug: rowSlug,
-      name: titleCaseFromSlug(slugBase),
+      name: normalizedTitle || titleCaseFromSlug(slugBase),
       description: formattedDescription,
       coaching_cues: parseCoachingCues(formattedDescription),
       primary_equipment: inferredEquipment,
@@ -425,8 +425,8 @@ for (const item of catalog) {
     source,
     source_id: slug,
     slug,
-    // User requested naming based on NASM slug (slug is source of truth).
-    name: titleCaseFromSlug(slug),
+    // Preserve original NASM title (with apostrophes etc), fall back to slug-derived name if empty
+    name: title || titleCaseFromSlug(slug),
     description: formattedDescription,
     coaching_cues: parseCoachingCues(formattedDescription),
     primary_equipment: equipment,
