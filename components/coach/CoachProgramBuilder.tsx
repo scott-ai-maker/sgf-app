@@ -68,6 +68,17 @@ interface CoachProgramBuilderProps {
   onPlanSaved?: () => void
 }
 
+interface PickerTarget {
+  dayId: string
+  exerciseId: string
+}
+
+interface CategorizedExercise {
+  record: ExerciseLibraryRecord
+  category: string
+  equipmentKey: string
+}
+
 function uid() {
   return Math.random().toString(36).slice(2, 10)
 }
@@ -171,6 +182,53 @@ function equipmentBadges(primaryEquipment: string[] | null | undefined) {
   return items.length > 0 ? items : ['Bodyweight']
 }
 
+function inferExerciseCategory(name: string) {
+  const normalized = name.toLowerCase()
+
+  if (/(jump|plyo|power|medicine ball throw|slam)/.test(normalized)) return 'Power & Plyo'
+  if (/(plank|crunch|core|dead bug|hollow|rotation|woodchop|anti-rotation)/.test(normalized)) return 'Core'
+  if (/(squat|lunge|split squat|hinge|deadlift|hamstring|glute|calf|leg)/.test(normalized)) return 'Lower Body'
+  if (/(press|push up|push-up|dip|chest|tricep|shoulder press|incline press)/.test(normalized)) return 'Upper Push'
+  if (/(row|pull|chin up|chin-up|face pull|lat|rear delt|bicep)/.test(normalized)) return 'Upper Pull'
+  if (/(mobility|stretch|activation|stability|balance|corrective)/.test(normalized)) return 'Mobility & Corrective'
+  return 'Full Body & Other'
+}
+
+function normalizeEquipmentKey(primaryEquipment: string[] | null | undefined) {
+  const first = Array.isArray(primaryEquipment) ? String(primaryEquipment[0] ?? '').trim().toLowerCase() : ''
+  if (!first || first === 'none') return 'Bodyweight'
+  if (first.includes('dumbbell')) return 'Dumbbells'
+  if (first.includes('barbell')) return 'Barbell'
+  if (first.includes('kettlebell')) return 'Kettlebell'
+  if (first.includes('bench')) return 'Bench'
+  if (first.includes('cable')) return 'Cable'
+  if (first.includes('band') || first.includes('tube')) return 'Band'
+  if (first.includes('machine') || first.includes('smith')) return 'Machine'
+  return first.replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function hydrateExerciseFromRecord(exercise: BuilderExercise, match: ExerciseLibraryRecord | null) {
+  if (!match) {
+    return {
+      ...exercise,
+      libraryExerciseId: '',
+      description: '',
+      primaryEquipment: [],
+      imageUrl: '',
+      videoUrl: '',
+    }
+  }
+
+  return {
+    ...exercise,
+    libraryExerciseId: match.id,
+    description: String(match.description ?? '').trim(),
+    primaryEquipment: Array.isArray(match.primary_equipment) ? match.primary_equipment.filter(Boolean) : [],
+    imageUrl: String(match.media_image_url ?? '').trim(),
+    videoUrl: String(match.media_video_url ?? '').trim(),
+  }
+}
+
 function isDraftPlan(plan: LatestWorkoutPlan | CoachProgramDraft | null): plan is CoachProgramDraft {
   return Boolean(plan && 'generatedAt' in plan)
 }
@@ -208,6 +266,10 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   const [days, setDays] = useState(initialEditorState.days)
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null)
+  const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerCategory, setPickerCategory] = useState('All Categories')
+  const [pickerEquipment, setPickerEquipment] = useState('All Equipment')
 
   useEffect(() => {
     if (!draftPlan) return
@@ -243,6 +305,37 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   const exerciseMap = useMemo(() => {
     return new Map(exercises.map(exercise => [exercise.name.trim().toLowerCase(), exercise]))
   }, [exercises])
+
+  const exerciseCatalog = useMemo<CategorizedExercise[]>(() => {
+    return exercises.map(record => ({
+      record,
+      category: inferExerciseCategory(record.name),
+      equipmentKey: normalizeEquipmentKey(record.primary_equipment),
+    }))
+  }, [exercises])
+
+  const categoryOptions = useMemo(() => {
+    return ['All Categories', ...new Set(exerciseCatalog.map(item => item.category))]
+  }, [exerciseCatalog])
+
+  const equipmentOptions = useMemo(() => {
+    return ['All Equipment', ...new Set(exerciseCatalog.map(item => item.equipmentKey))]
+  }, [exerciseCatalog])
+
+  const filteredPickerExercises = useMemo(() => {
+    const query = pickerQuery.trim().toLowerCase()
+
+    return exerciseCatalog
+      .filter(item => (pickerCategory === 'All Categories' ? true : item.category === pickerCategory))
+      .filter(item => (pickerEquipment === 'All Equipment' ? true : item.equipmentKey === pickerEquipment))
+      .filter(item => {
+        if (!query) return true
+        const name = item.record.name.toLowerCase()
+        const equipmentText = equipmentBadges(item.record.primary_equipment).join(' ').toLowerCase()
+        return name.includes(query) || equipmentText.includes(query)
+      })
+      .slice(0, 80)
+  }, [exerciseCatalog, pickerCategory, pickerEquipment, pickerQuery])
 
   const calendarEntries = useMemo(() => {
     const parsedStart = parseDateOnly(startDate)
@@ -339,29 +432,48 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             if (field !== 'name') return nextExercise
 
             const match = exerciseMap.get(String(value).trim().toLowerCase())
-            if (!match) {
-              return {
-                ...nextExercise,
-                libraryExerciseId: '',
-                description: '',
-                primaryEquipment: [],
-                imageUrl: '',
-                videoUrl: '',
-              }
-            }
-
-            return {
-              ...nextExercise,
-              libraryExerciseId: match.id,
-              description: String(match.description ?? '').trim(),
-              primaryEquipment: Array.isArray(match.primary_equipment) ? match.primary_equipment.filter(Boolean) : [],
-              imageUrl: String(match.media_image_url ?? '').trim(),
-              videoUrl: String(match.media_video_url ?? '').trim(),
-            }
+            return hydrateExerciseFromRecord(nextExercise, match ?? null)
           }),
         }
       })
     )
+  }
+
+  function openPicker(dayId: string, exerciseId: string) {
+    setPickerTarget({ dayId, exerciseId })
+    setPickerQuery('')
+    setPickerCategory('All Categories')
+    setPickerEquipment('All Equipment')
+  }
+
+  function closePicker() {
+    setPickerTarget(null)
+  }
+
+  function selectExerciseFromPicker(record: ExerciseLibraryRecord) {
+    if (!pickerTarget) return
+
+    setDays(current =>
+      current.map(day => {
+        if (day.id !== pickerTarget.dayId) return day
+
+        return {
+          ...day,
+          exercises: day.exercises.map(exercise => {
+            if (exercise.id !== pickerTarget.exerciseId) return exercise
+
+            const withName = {
+              ...exercise,
+              name: record.name,
+            }
+
+            return hydrateExerciseFromRecord(withName, record)
+          }),
+        }
+      })
+    )
+
+    closePicker()
   }
 
   function addDay() {
@@ -570,6 +682,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                         style={inputStyle}
                         placeholder={exercises.length > 0 ? 'Search the imported library' : 'Enter exercise name'}
                       />
+                      <button type="button" onClick={() => openPicker(day.id, exercise.id)} style={pickerButtonStyle}>
+                        Browse Categories
+                      </button>
                     </label>
                     <label style={labelStyle}>
                       Sets
@@ -732,6 +847,74 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
           subtitle="Adjust day dates above, or use Calendar Start + Sessions/Week for generated spacing."
         />
       </div>
+
+      {pickerTarget && (
+        <div style={pickerOverlayStyle}>
+          <div style={pickerPanelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h3 style={{ margin: 0, color: 'var(--white)', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.08em', fontSize: 24 }}>
+                Choose Exercise
+              </h3>
+              <button type="button" onClick={closePicker} style={secondaryButtonStyle}>Close</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 12 }}>
+              <label style={labelStyle}>
+                Search
+                <input
+                  value={pickerQuery}
+                  onChange={event => setPickerQuery(event.target.value)}
+                  style={inputStyle}
+                  placeholder="Exercise or equipment"
+                />
+              </label>
+              <label style={labelStyle}>
+                Category
+                <select value={pickerCategory} onChange={event => setPickerCategory(event.target.value)} style={inputStyle}>
+                  {categoryOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={labelStyle}>
+                Equipment
+                <select value={pickerEquipment} onChange={event => setPickerEquipment(event.target.value)} style={inputStyle}>
+                  {equipmentOptions.map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Showing up to 80 results for fast mobile browsing
+            </p>
+
+            <div style={{ display: 'grid', gap: 8, maxHeight: '55vh', overflowY: 'auto', paddingRight: 4 }}>
+              {filteredPickerExercises.length === 0 && (
+                <p style={{ margin: 0, color: 'var(--gray)', fontSize: 14 }}>No matching exercises. Try clearing one of the filters.</p>
+              )}
+
+              {filteredPickerExercises.map(item => (
+                <button
+                  key={item.record.id}
+                  type="button"
+                  onClick={() => selectExerciseFromPicker(item.record)}
+                  style={pickerListButtonStyle}
+                >
+                  <div style={{ color: 'var(--white)', fontSize: 15, fontWeight: 700, textAlign: 'left' }}>{item.record.name}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                    <span style={chipStyle}>{item.category}</span>
+                    {equipmentBadges(item.record.primary_equipment).slice(0, 2).map(equipmentItem => (
+                      <span key={`${item.record.id}-${equipmentItem}`} style={chipStyle}>{equipmentItem}</span>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -788,6 +971,19 @@ const secondaryButtonStyle: React.CSSProperties = {
   minHeight: 42,
 }
 
+const pickerButtonStyle: React.CSSProperties = {
+  marginTop: 8,
+  border: '1px solid rgba(212,160,23,0.35)',
+  background: 'rgba(212,160,23,0.1)',
+  color: 'var(--gold-lt)',
+  padding: '8px 10px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 12,
+  letterSpacing: '0.04em',
+  cursor: 'pointer',
+  minHeight: 42,
+}
+
 const chipStyle: React.CSSProperties = {
   border: '1px solid rgba(212,160,23,0.22)',
   background: 'rgba(212,160,23,0.12)',
@@ -804,4 +1000,33 @@ const videoLinkStyle: React.CSSProperties = {
   color: 'var(--gold-lt)',
   textDecoration: 'none',
   fontSize: 13,
+}
+
+const pickerOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(5, 10, 17, 0.72)',
+  zIndex: 90,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'flex-end',
+  padding: 10,
+}
+
+const pickerPanelStyle: React.CSSProperties = {
+  width: 'min(980px, 100%)',
+  maxHeight: '85vh',
+  background: 'linear-gradient(180deg, rgba(18,35,54,0.98), rgba(13,27,42,0.98))',
+  border: '1px solid rgba(212,160,23,0.3)',
+  padding: 14,
+  overflow: 'hidden',
+}
+
+const pickerListButtonStyle: React.CSSProperties = {
+  width: '100%',
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(11, 24, 39, 0.9)',
+  padding: '10px 12px',
+  textAlign: 'left',
+  cursor: 'pointer',
 }
