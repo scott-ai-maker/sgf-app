@@ -32,6 +32,23 @@ export interface WorkoutProgramTemplateRecord {
   } | null
 }
 
+export interface CoachProgramTemplateRecord {
+  id: string
+  coach_id: string
+  title: string
+  goal?: string | null
+  nasm_opt_phase?: number | null
+  phase_name?: string | null
+  sessions_per_week?: number | null
+  estimated_duration_mins?: number | null
+  template_json?: {
+    workouts?: CoachProgramWorkoutInput[]
+  } | null
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
 export interface CoachProgramExerciseInput {
   libraryExerciseId?: string | null
   name: string

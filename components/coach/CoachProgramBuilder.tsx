@@ -298,6 +298,10 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   const [pickerMultiAdd, setPickerMultiAdd] = useState(false)
   const [recentExerciseIds, setRecentExerciseIds] = useState<string[]>([])
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>([])
+  const [copyExerciseModal, setCopyExerciseModal] = useState<{ dayId: string; exerciseId: string } | null>(null)
+  const [saveTemplateModal, setSaveTemplateModal] = useState(false)
+  const [templateSaveBusy, setTemplateSaveBusy] = useState(false)
+  const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null)
 
   useEffect(() => {
     if (!draftPlan) return
@@ -717,6 +721,108 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
     )
   }
 
+  function copyExerciseToDay(fromDayId: string, exerciseId: string, toDayId: string) {
+    setDays(current => {
+      let sourceExercise: BuilderExercise | null = null
+
+      // First pass: find the source exercise
+      const withFoundSource = current.map(day => {
+        if (day.id === fromDayId) {
+          const found = day.exercises.find(exercise => exercise.id === exerciseId)
+          if (found) sourceExercise = found
+        }
+        return day
+      })
+
+      if (!sourceExercise) return current
+
+      // Second pass: copy to target day
+      return withFoundSource.map(day => {
+        if (day.id !== toDayId) return day
+
+        const copy = toBuilderExercise({
+          libraryExerciseId: sourceExercise!.libraryExerciseId,
+          name: sourceExercise!.name,
+          block: sourceExercise!.block,
+          sets: sourceExercise!.sets,
+          reps: sourceExercise!.reps,
+          tempo: sourceExercise!.tempo,
+          rest: sourceExercise!.rest,
+          notes: sourceExercise!.notes,
+          description: sourceExercise!.description,
+          primaryEquipment: sourceExercise!.primaryEquipment,
+          imageUrl: sourceExercise!.imageUrl,
+          videoUrl: sourceExercise!.videoUrl,
+        })
+
+        return {
+          ...day,
+          exercises: [...day.exercises, copy],
+        }
+      })
+    })
+    setCopyExerciseModal(null)
+  }
+
+  async function saveAsTemplate() {
+    if (!name || !phaseName) {
+      setTemplateSaveStatus('Title and phase name are required.')
+      return
+    }
+
+    setTemplateSaveBusy(true)
+    setTemplateSaveStatus(null)
+
+    try {
+      const res = await fetch('/api/coach/program-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: name,
+          goal: goal || null,
+          nasmOptPhase: Number(nasmOptPhase),
+          phaseName,
+          sessionsPerWeek: Number(sessionsPerWeek),
+          estimatedDurationMins: Number(estimatedDurationMins),
+          workouts: days.map((day, index) => ({
+            day: index + 1,
+            focus: day.focus,
+            scheduledDate: day.scheduledDate,
+            notes: day.notes,
+            exercises: day.exercises.map(exercise => ({
+              libraryExerciseId: exercise.libraryExerciseId || null,
+              name: exercise.name,
+              block: exercise.block || null,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              tempo: exercise.tempo,
+              rest: exercise.rest,
+              notes: exercise.notes,
+            })),
+          })),
+        }),
+      })
+
+      const payload = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setTemplateSaveStatus(payload.error ?? 'Failed to save template.')
+        return
+      }
+
+      setTemplateSaveStatus('Template saved successfully! You can use this as a starting point for future clients.')
+      setTimeout(() => {
+        setSaveTemplateModal(false)
+        setTemplateSaveStatus(null)
+      }, 2000)
+    } catch (error) {
+      console.error('Error saving template:', error)
+      setTemplateSaveStatus('Failed to save template. Check your connection and try again.')
+    } finally {
+      setTemplateSaveBusy(false)
+    }
+  }
+
   async function handleSubmit() {
     if (validationMessages.length > 0) {
       setStatus('Complete required fields before saving.')
@@ -942,6 +1048,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                       <button type="button" onClick={() => duplicateExercise(day.id, exercise.id)} style={miniActionButtonStyle}>
                         Duplicate
                       </button>
+                      <button type="button" onClick={() => setCopyExerciseModal({ dayId: day.id, exerciseId: exercise.id })} style={miniActionButtonStyle}>
+                        Copy To...
+                      </button>
                       <button type="button" onClick={() => removeExercise(day.id, exercise.id)} style={secondaryButtonStyle}>
                         Remove
                       </button>
@@ -1049,6 +1158,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             style={secondaryButtonStyle}
           >
             {draftPlan ? 'Reset To Draft' : 'Reset To Latest Plan'}
+          </button>
+          <button type="button" onClick={() => setSaveTemplateModal(true)} style={secondaryButtonStyle}>
+            Save as Template
           </button>
         </div>
         <button type="button" disabled={busy || validationMessages.length > 0} onClick={handleSubmit} style={primaryButtonStyle}>
@@ -1203,6 +1315,91 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Exercise Modal */}
+      {copyExerciseModal && (
+        <div style={pickerOverlayStyle}>
+          <div style={pickerPanelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--white)' }}>Copy Exercise To...</h3>
+              <button type="button" onClick={() => setCopyExerciseModal(null)} style={{ ...secondaryButtonStyle, padding: '6px 12px' }}>
+                Close
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {days.map((day, dayIndex) => (
+                <button
+                  key={day.id}
+                  type="button"
+                  onClick={() => copyExerciseModal && copyExerciseToDay(copyExerciseModal.dayId, copyExerciseModal.exerciseId, day.id)}
+                  style={{
+                    ...secondaryButtonStyle,
+                    textAlign: 'left',
+                    order: day.id === copyExerciseModal.dayId ? -1 : dayIndex,
+                  }}
+                  disabled={day.id === copyExerciseModal.dayId}
+                >
+                  {day.id === copyExerciseModal.dayId ? `Day ${day.day} (Source)` : `Day ${day.day} – ${day.focus || 'Untitled'}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save as Template Modal */}
+      {saveTemplateModal && (
+        <div style={pickerOverlayStyle}>
+          <div style={pickerPanelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--white)' }}>Save as Template</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveTemplateModal(false)
+                  setTemplateSaveStatus(null)
+                }}
+                style={{ ...secondaryButtonStyle, padding: '6px 12px' }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <p style={{ margin: 0, color: 'var(--gray)', fontSize: 13 }}>
+                This program will be saved as a personal template. You can reuse it when building plans for other clients in the future.
+              </p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={templateSaveBusy || !name || !phaseName}
+                  onClick={saveAsTemplate}
+                  style={{
+                    ...primaryButtonStyle,
+                    opacity: templateSaveBusy ? 0.6 : 1,
+                  }}
+                >
+                  {templateSaveBusy ? 'Saving...' : 'Save Template'}
+                </button>
+                {templateSaveStatus && (
+                  <p
+                    style={{
+                      margin: 0,
+                      padding: '10px 12px',
+                      border: templateSaveStatus.toLowerCase().includes('success') ? '1px solid rgba(76,175,80,0.45)' : '1px solid rgba(255,61,87,0.45)',
+                      background: templateSaveStatus.toLowerCase().includes('success') ? 'rgba(76,175,80,0.08)' : 'rgba(255,61,87,0.08)',
+                      color: templateSaveStatus.toLowerCase().includes('success') ? 'var(--success)' : 'var(--error)',
+                      fontSize: 13,
+                      borderRadius: 4,
+                    }}
+                  >
+                    {templateSaveStatus}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

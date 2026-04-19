@@ -503,6 +503,23 @@ create table if not exists workout_program_templates (
   updated_at                timestamptz default now()
 );
 
+create table if not exists coach_program_templates (
+  id                        uuid primary key default gen_random_uuid(),
+  coach_id                  uuid not null references clients(id) on delete cascade,
+  title                     text not null,
+  goal                      text,
+  nasm_opt_phase            int check (nasm_opt_phase between 1 and 5),
+  phase_name                text,
+  sessions_per_week         int,
+  estimated_duration_mins   int,
+  template_json             jsonb not null default '{}'::jsonb,
+  is_active                 boolean not null default true,
+  created_at                timestamptz default now(),
+  updated_at                timestamptz default now()
+);
+
+create index if not exists coach_program_templates_coach_idx on coach_program_templates(coach_id, created_at desc);
+
 create table if not exists exercise_library_entries (
   id                        uuid primary key default gen_random_uuid(),
   source                    text not null default 'licensed_import',
@@ -633,6 +650,7 @@ alter table workout_logs enable row level security;
 alter table workout_set_logs enable row level security;
 alter table body_composition_analyses enable row level security;
 alter table workout_program_templates enable row level security;
+alter table coach_program_templates enable row level security;
 alter table exercise_library_entries enable row level security;
 alter table equipment_library_entries enable row level security;
 
@@ -723,6 +741,22 @@ create policy "User writes own body composition analyses" on body_composition_an
 drop policy if exists "Authenticated reads workout program templates" on workout_program_templates;
 create policy "Authenticated reads workout program templates" on workout_program_templates
   for select to authenticated using (is_active = true);
+
+drop policy if exists "Coach reads own program templates" on coach_program_templates;
+create policy "Coach reads own program templates" on coach_program_templates
+  for select to authenticated using (auth.uid() = coach_id and is_active = true);
+
+drop policy if exists "Coach creates own program templates" on coach_program_templates;
+create policy "Coach creates own program templates" on coach_program_templates
+  for insert to authenticated with check (auth.uid() = coach_id);
+
+drop policy if exists "Coach updates own program templates" on coach_program_templates;
+create policy "Coach updates own program templates" on coach_program_templates
+  for update to authenticated using (auth.uid() = coach_id) with check (auth.uid() = coach_id);
+
+drop policy if exists "Coach deletes own program templates" on coach_program_templates;
+create policy "Coach deletes own program templates" on coach_program_templates
+  for delete to authenticated using (auth.uid() = coach_id);
 
 drop policy if exists "Authenticated reads exercise library" on exercise_library_entries;
 create policy "Authenticated reads exercise library" on exercise_library_entries
