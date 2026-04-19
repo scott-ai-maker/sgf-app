@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
 import type {
   CoachProgramDraft,
+  CoachProgramTemplateRecord,
   ExerciseLibraryRecord,
   EquipmentLibraryRecord,
   WorkoutProgramTemplateRecord,
@@ -64,6 +65,7 @@ interface CoachProgramBuilderProps {
   clientId: string
   latestPlan: LatestWorkoutPlan | null
   templates: WorkoutProgramTemplateRecord[]
+  coachTemplates?: CoachProgramTemplateRecord[]
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
   draftPlan?: CoachProgramDraft | null
@@ -276,7 +278,7 @@ function toEditorState(plan: LatestWorkoutPlan | CoachProgramDraft | null) {
   }
 }
 
-export default function CoachProgramBuilder({ clientId, latestPlan, templates, exercises, equipment, draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
+export default function CoachProgramBuilder({ clientId, latestPlan, templates, coachTemplates = [], exercises, equipment, draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
   const router = useRouter()
   const exerciseListId = `exercise-library-${clientId}`
   const initialEditorState = toEditorState(latestPlan)
@@ -474,7 +476,12 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
       return
     }
 
-    const template = templates.find(item => item.id === nextTemplateId)
+    // Search for template in both licensed templates and coach templates
+    let template = templates.find(item => item.id === nextTemplateId)
+    if (!template) {
+      template = coachTemplates.find(item => item.id === nextTemplateId)
+    }
+    
     if (!template) {
       return
     }
@@ -485,9 +492,10 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
     setPhaseName(String(template.phase_name ?? 'Custom Phase').trim())
     setSessionsPerWeek(String(template.sessions_per_week ?? 3))
     setEstimatedDurationMins(String(template.estimated_duration_mins ?? 60))
+    const workouts = template.template_json?.workouts
     setDays(
-      Array.isArray(template.template_json?.workouts) && template.template_json?.workouts.length > 0
-        ? template.template_json.workouts.map((day, index) => toBuilderDay(day, index + 1))
+      Array.isArray(workouts) && workouts.length > 0
+        ? workouts.map((day, index) => toBuilderDay(day as BuilderWorkoutDay, index + 1))
         : [toBuilderDay(undefined, 1)]
     )
   }
@@ -923,11 +931,24 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
           Template
           <select value={templateId} onChange={event => applyTemplate(event.target.value)} style={inputStyle}>
             <option value="">Start from scratch</option>
-            {templates.map(template => (
-              <option key={template.id} value={template.id}>
-                {template.title}
-              </option>
-            ))}
+            {coachTemplates.length > 0 && (
+              <optgroup label="Your Saved Templates">
+                {coachTemplates.map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {templates.length > 0 && (
+              <optgroup label="Library Templates">
+                {templates.map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
         <label style={labelStyle}>
@@ -1141,6 +1162,26 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
           <button type="button" onClick={addDay} style={secondaryButtonStyle}>
             Add Training Day
           </button>
+          {latestPlan && (
+            <button
+              type="button"
+              onClick={() => {
+                const nextState = toEditorState(latestPlan)
+                setTemplateId(nextState.templateId)
+                setName(nextState.name)
+                setGoal(nextState.goal)
+                setNasmOptPhase(nextState.nasmOptPhase)
+                setPhaseName(nextState.phaseName)
+                setSessionsPerWeek(nextState.sessionsPerWeek)
+                setEstimatedDurationMins(nextState.estimatedDurationMins)
+                setStartDate(nextState.startDate)
+                setDays(nextState.days)
+              }}
+              style={secondaryButtonStyle}
+            >
+              Use Latest Accepted Plan
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

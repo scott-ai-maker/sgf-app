@@ -67,7 +67,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     .eq('client_id', id)
     .order('scheduled_at', { ascending: false })
 
-  const [latestPlansResult, templatesResult, exercisesResult, equipmentResult, fitnessProfileResult] = await Promise.all([
+  const [latestPlansResult, templatesResult, coachTemplatesResult, exercisesResult, equipmentResult, fitnessProfileResult] = await Promise.all([
     admin
       .from('workout_plans')
       .select('*')
@@ -77,6 +77,12 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     admin
       .from('workout_program_templates')
       .select('id, title, slug, goal, nasm_opt_phase, phase_name, sessions_per_week, estimated_duration_mins, template_json')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false }),
+    admin
+      .from('coach_program_templates')
+      .select('id, coach_id, title, goal, nasm_opt_phase, phase_name, sessions_per_week, estimated_duration_mins, template_json')
+      .eq('coach_id', user.id)
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
     admin
@@ -237,6 +243,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             clientId={id}
             latestPlan={latestPlansResult.data?.[0] ?? null}
             templates={templatesResult.data ?? []}
+            coachTemplates={coachTemplatesResult.data ?? []}
             exercises={exercisesResult.data ?? []}
             equipment={equipmentResult.data ?? []}
             initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)

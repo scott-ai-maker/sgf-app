@@ -5,6 +5,7 @@ import GenerateClientPlanButton from '@/components/coach/GenerateClientPlanButto
 import CoachProgramBuilder from '@/components/coach/CoachProgramBuilder'
 import type {
   CoachProgramDraft,
+  CoachProgramTemplateRecord,
   EquipmentLibraryRecord,
   ExerciseLibraryRecord,
   WorkoutProgramTemplateRecord,
@@ -45,6 +46,7 @@ interface CoachProgramWorkspaceProps {
   clientId: string
   latestPlan: LatestWorkoutPlan | null
   templates: WorkoutProgramTemplateRecord[]
+  coachTemplates: CoachProgramTemplateRecord[]
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
   initialEquipmentAccess?: string[]
@@ -55,6 +57,7 @@ export default function CoachProgramWorkspace({
   clientId,
   latestPlan,
   templates,
+  coachTemplates,
   exercises,
   equipment,
   initialEquipmentAccess = [],
@@ -88,6 +91,7 @@ export default function CoachProgramWorkspace({
         clientId={clientId}
         latestPlan={latestPlan}
         templates={templates}
+        coachTemplates={coachTemplates}
         exercises={exercises}
         equipment={equipment}
         draftPlan={draftPlan}
