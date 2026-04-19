@@ -8,11 +8,11 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
   process.exit(1)
 }
 
@@ -48,7 +48,22 @@ function extractMuscleGroups(exerciseName, description) {
 
 async function backfillMuscleGroups() {
   try {
-    console.log('🔄 Finding exercises without muscle_groups metadata...')
+    // Ensure column exists by testing with a count query
+    console.log('🔄 Checking muscle_groups column...')
+    const { error: colCheckError } = await client
+      .from('exercise_library_entries')
+      .select('muscle_groups')
+      .limit(1)
+
+    if (colCheckError?.message?.includes('column') && colCheckError?.message?.includes('does not exist')) {
+      console.error('❌ Column muscle_groups does not exist yet.')
+      console.error('')
+      console.error('Run this SQL in your Supabase SQL editor:')
+      console.error('  ALTER TABLE exercise_library_entries ADD COLUMN IF NOT EXISTS muscle_groups text[] DEFAULT ARRAY[]::text[];')
+      process.exit(1)
+    }
+
+    console.log('✅ Column exists. Finding exercises to update...')
 
     // Get all active exercises
     const { data: exercises, error: fetchError } = await client
