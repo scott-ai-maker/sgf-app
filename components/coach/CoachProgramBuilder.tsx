@@ -865,6 +865,19 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     setRestTimerRemaining(restTimerTotal)
   }
 
+  function resetFromPlan(plan: LatestWorkoutPlan | CoachProgramDraft | null) {
+    const nextState = toEditorState(plan)
+    setTemplateId(nextState.templateId)
+    setName(nextState.name)
+    setGoal(nextState.goal)
+    setNasmOptPhase(nextState.nasmOptPhase)
+    setPhaseName(nextState.phaseName)
+    setSessionsPerWeek(nextState.sessionsPerWeek)
+    setEstimatedDurationMins(nextState.estimatedDurationMins)
+    setStartDate(nextState.startDate)
+    setDays(nextState.days)
+  }
+
   function updateDay(dayId: string, field: 'focus' | 'scheduledDate' | 'notes', value: string) {
     setDays(current => current.map(day => (day.id === dayId ? { ...day, [field]: value } : day)))
   }
@@ -1257,6 +1270,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
 
   return (
     <section
+      className="coach-program-builder-section"
       style={{
         background: 'linear-gradient(180deg, rgba(18,35,54,0.98), rgba(13,27,42,0.96))',
         border: '1px solid rgba(212,160,23,0.22)',
@@ -1617,18 +1631,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
           {latestPlan && (
             <button
               type="button"
-              onClick={() => {
-                const nextState = toEditorState(latestPlan)
-                setTemplateId(nextState.templateId)
-                setName(nextState.name)
-                setGoal(nextState.goal)
-                setNasmOptPhase(nextState.nasmOptPhase)
-                setPhaseName(nextState.phaseName)
-                setSessionsPerWeek(nextState.sessionsPerWeek)
-                setEstimatedDurationMins(nextState.estimatedDurationMins)
-                setStartDate(nextState.startDate)
-                setDays(nextState.days)
-              }}
+              onClick={() => resetFromPlan(latestPlan)}
               style={secondaryButtonStyle}
             >
               Use Latest Accepted Plan
@@ -1636,18 +1639,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
           )}
           <button
             type="button"
-            onClick={() => {
-              const nextState = toEditorState(draftPlan ?? latestPlan)
-              setTemplateId(nextState.templateId)
-              setName(nextState.name)
-              setGoal(nextState.goal)
-              setNasmOptPhase(nextState.nasmOptPhase)
-              setPhaseName(nextState.phaseName)
-              setSessionsPerWeek(nextState.sessionsPerWeek)
-              setEstimatedDurationMins(nextState.estimatedDurationMins)
-              setStartDate(nextState.startDate)
-              setDays(nextState.days)
-            }}
+            onClick={() => resetFromPlan(draftPlan ?? latestPlan)}
             style={secondaryButtonStyle}
           >
             {draftPlan ? 'Reset To Draft' : 'Reset To Latest Plan'}
@@ -1658,6 +1650,18 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
         </div>
         <button type="button" disabled={busy || validationMessages.length > 0} onClick={handleSubmit} style={primaryButtonStyle}>
           {busy ? 'Saving...' : draftPlan ? 'Accept And Save Plan' : 'Save Custom Program'}
+        </button>
+      </div>
+
+      <div className="coach-program-mobile-action-bar" style={mobileActionBarStyle}>
+        <button type="button" onClick={addDay} style={mobileActionSecondaryButtonStyle}>
+          Add Day
+        </button>
+        <button type="button" onClick={() => setSaveTemplateModal(true)} style={mobileActionSecondaryButtonStyle}>
+          Save Template
+        </button>
+        <button type="button" disabled={busy || validationMessages.length > 0} onClick={handleSubmit} style={mobileActionPrimaryButtonStyle}>
+          {busy ? 'Saving...' : draftPlan ? 'Accept Plan' : 'Save Program'}
         </button>
       </div>
 
@@ -2013,6 +2017,46 @@ const densityPanelStyle: React.CSSProperties = {
   background: 'rgba(11,24,39,0.72)',
   padding: '10px 12px',
   marginBottom: 12,
+}
+
+const mobileActionBarStyle: React.CSSProperties = {
+  display: 'none',
+  position: 'fixed',
+  left: 12,
+  right: 12,
+  bottom: 'max(10px, env(safe-area-inset-bottom))',
+  zIndex: 60,
+  gap: 8,
+  padding: '10px',
+  border: '1px solid rgba(212,160,23,0.28)',
+  background: 'linear-gradient(180deg, rgba(18,35,54,0.98), rgba(13,27,42,0.98))',
+  boxShadow: '0 10px 24px rgba(5,10,17,0.35)',
+}
+
+const mobileActionSecondaryButtonStyle: React.CSSProperties = {
+  flex: 1,
+  border: '1px solid var(--navy-lt)',
+  background: 'rgba(13,27,42,0.86)',
+  color: 'var(--white)',
+  padding: '10px 8px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 12,
+  letterSpacing: '0.03em',
+  cursor: 'pointer',
+  minHeight: 42,
+}
+
+const mobileActionPrimaryButtonStyle: React.CSSProperties = {
+  flex: 1.35,
+  border: 0,
+  background: 'var(--gold)',
+  color: '#0D1B2A',
+  padding: '10px 8px',
+  fontFamily: 'Bebas Neue, sans-serif',
+  fontSize: 16,
+  letterSpacing: '0.07em',
+  cursor: 'pointer',
+  minHeight: 42,
 }
 
 const videoLinkStyle: React.CSSProperties = {

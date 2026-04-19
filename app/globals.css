@@ -427,6 +427,15 @@ body {
     grid-column: span 2;
   }
 
+  .coach-program-builder-section {
+    padding-bottom: 120px !important;
+  }
+
+  .coach-program-mobile-action-bar {
+    display: flex !important;
+    align-items: center;
+  }
+
   .coach-session-card {
     padding: 16px !important;
   }
