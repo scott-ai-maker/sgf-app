@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
-import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
+import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type CoachProgramExerciseInput, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
 import {
-  selectExercisesForWorkoutDay,
+  selectOptWorkoutBlueprint,
+  OPT_SECTION_PRESCRIPTIONS,
   getPhasePrescription,
   type ClientProfile,
   type ExerciseRecord,
@@ -192,39 +193,52 @@ async function buildIntelligentTemplateWorkouts({
     equipmentAccess: normalizedEquipmentAccess,
   }
 
-  // Build workouts with intelligent exercise selection
+  // Build workouts using the 6-section NASM OPT template blueprint
   const usedExerciseIds = new Set<string>()
   const workouts: CoachProgramWorkoutInput[] = templateWorkouts.map((workout, workoutIndex) => {
     const dayFocus = String(workout.focus ?? `Training Day ${workoutIndex + 1}`).trim() || `Training Day ${workoutIndex + 1}`
 
-    // Intelligently select exercises based on NASM OPT principles
-    const dayExerciseCount = prescription.exercisesPerBodypart * 2 // Adjust based on phase
-    const selectedExercises = selectExercisesForWorkoutDay(
+    const blueprint = selectOptWorkoutBlueprint(
       nasmOptPhase,
       dayFocus,
       exercisesForSelection,
       clientProfile,
-      dayExerciseCount,
-      usedExerciseIds
+      usedExerciseIds,
     )
 
-    for (const exercise of selectedExercises) {
-      usedExerciseIds.add(exercise.id)
-    }
+    type OptSectionKey = 'warm-up' | 'activation' | 'skill-development' | 'resistance' | 'clients-choice' | 'cool-down'
 
-    // Map back to CoachProgramExerciseInput format
-    const dayExercises = selectedExercises.map(ex => {
-      const libraryMatch = availableExercises.find(lib => lib.name === ex.name)
-      return {
-        libraryExerciseId: libraryMatch?.id ?? ex.id,
-        name: ex.name,
-        sets: prescription.sets,
-        reps: prescription.reps,
-        tempo: prescription.tempo,
-        rest: prescription.rest,
-        notes: null,
+    const sectionOrder: OptSectionKey[] = [
+      'warm-up',
+      'activation',
+      'skill-development',
+      'resistance',
+      'clients-choice',
+      'cool-down',
+    ]
+
+    const dayExercises: CoachProgramExerciseInput[] = []
+
+    for (const section of sectionOrder) {
+      const sectionExercises = blueprint[section]
+      if (sectionExercises.length === 0) continue
+
+      const rx = OPT_SECTION_PRESCRIPTIONS[section](nasmOptPhase)
+
+      for (const ex of sectionExercises) {
+        const libraryMatch = availableExercises.find(lib => lib.name === ex.name)
+        dayExercises.push({
+          libraryExerciseId: libraryMatch?.id ?? ex.id,
+          name: ex.name,
+          block: section,
+          sets: rx.sets,
+          reps: rx.reps,
+          tempo: rx.tempo,
+          rest: rx.rest,
+          notes: null,
+        })
       }
-    })
+    }
 
     return {
       day: Number(workout.day) || workoutIndex + 1,

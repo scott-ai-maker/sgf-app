@@ -569,6 +569,191 @@ export function getPhasePrescription(phase: number): PhasePrescription {
   return PHASE_PRESCRIPTIONS[phase] || PHASE_PRESCRIPTIONS[1]
 }
 
+// ── NASM OPT SECTION DEFINITIONS ─────────────────────────────
+export type OptSection =
+  | 'warm-up'
+  | 'activation'
+  | 'skill-development'
+  | 'resistance'
+  | 'clients-choice'
+  | 'cool-down'
+
+export const OPT_SECTION_LABELS: Record<OptSection, string> = {
+  'warm-up': 'WARM-UP',
+  'activation': 'ACTIVATION (core & balance)',
+  'skill-development': 'SKILL DEVELOPMENT (plyometric & SAQ)',
+  'resistance': 'RESISTANCE TRAINING',
+  'clients-choice': "CLIENT'S CHOICE",
+  'cool-down': 'COOL-DOWN',
+}
+
+// Section prescriptions per NASM OPT template guidelines
+export interface OptSectionPrescription {
+  sets: string
+  reps: string
+  tempo: string
+  rest: string
+}
+
+export const OPT_SECTION_PRESCRIPTIONS: Record<OptSection, (phase: number) => OptSectionPrescription> = {
+  'warm-up': () => ({ sets: '1', reps: '5-10 min', tempo: 'slow', rest: '—' }),
+  'activation': (_phase) => ({ sets: '1-2', reps: '10-15', tempo: '2/2/2', rest: '30s' }),
+  'skill-development': (phase) => ({
+    sets: phase >= 4 ? '3-5' : '2-3',
+    reps: phase >= 4 ? '3-5' : '8-10',
+    tempo: 'explosive',
+    rest: phase >= 4 ? '2-3m' : '60-90s',
+  }),
+  'resistance': (phase) => {
+    const p = PHASE_PRESCRIPTIONS[phase] || PHASE_PRESCRIPTIONS[1]
+    return { sets: p.sets, reps: p.reps, tempo: p.tempo, rest: p.rest }
+  },
+  'clients-choice': (_phase) => ({ sets: '2-3', reps: '10-15', tempo: '2/0/2', rest: '60s' }),
+  'cool-down': () => ({ sets: '1', reps: '30-60s hold', tempo: 'slow', rest: '—' }),
+}
+
+// Classify a named exercise into an OPT section based on name/description patterns
+export function classifyExerciseToOptSection(name: string, description?: string): OptSection {
+  const text = `${name} ${description ?? ''}`.toLowerCase()
+
+  // Warm-up: light cardio, dynamic mobility
+  if (
+    /treadmill|elliptical|bike|cycling|light jog|warm.?up|march|jumping jack|arm circle|leg swing|dynamic stretch|hip circle|ankle circle|wrist circle|shoulder roll/.test(text)
+  ) return 'warm-up'
+
+  // Activation: core, balance, small stabilizer muscles
+  if (
+    /plank|dead bug|bird.?dog|pallof|glute bridge|clamshell|side.?lying|fire hydrant|monster walk|band walk|donkey kick|hip thrust bodyweight|balance|bosu|foam roll|activation|stability ball crunch|hollow body|superman/.test(text)
+  ) return 'activation'
+
+  // Skill development: plyometrics, SAQ
+  if (
+    /box jump|depth jump|tuck jump|broad jump|lateral bound|skater|jump squat|jump lunge|hurdle|agility|ladder|saq|sprint|shuffle|plyometric|power clean|hang clean|kettlebell swing|med.?ball slam|medicine.?ball slam|explosive|kipping/.test(text)
+  ) return 'skill-development'
+
+  // Cool-down: static stretches, light mobility
+  if (
+    /stretch|static|cool.?down|hip flexor stretch|quad stretch|hamstring stretch|pigeon|figure four|chest stretch|lat stretch|child.?s pose|cobra|cat.?cow|foam roll|breathing/.test(text)
+  ) return 'cool-down'
+
+  // Activation-adjacent: rotational, corrective, or bodyweight core
+  if (
+    /rotation|chop|woodchop|cable chop|anti.?rotation|single.?leg balance|balance reach|stability/.test(text)
+  ) return 'activation'
+
+  // Default: resistance training
+  return 'resistance'
+}
+
+export interface OptWorkoutBlueprint {
+  'warm-up': ExerciseRecord[]
+  'activation': ExerciseRecord[]
+  'skill-development': ExerciseRecord[]
+  'resistance': ExerciseRecord[]
+  'clients-choice': ExerciseRecord[]
+  'cool-down': ExerciseRecord[]
+}
+
+/**
+ * Selects exercises for all 6 NASM OPT sections in a structured workout.
+ * Returns a blueprint keyed by section, with count targets appropriate for the phase.
+ */
+export function selectOptWorkoutBlueprint(
+  phase: number,
+  dayFocus: string,
+  exercises: ExerciseRecord[],
+  client: ClientProfile,
+  usedExerciseIds?: Set<string>
+): OptWorkoutBlueprint {
+  const dominated = usedExerciseIds ?? new Set<string>()
+  const experienceLevel = getClientTrainingLevel(client)
+  const complexityTarget = getComplexityRequirement(phase, experienceLevel)
+
+  // Pre-classify all exercises
+  const bySection = new Map<OptSection, ExerciseRecord[]>()
+  for (const section of Object.keys(OPT_SECTION_LABELS) as OptSection[]) {
+    bySection.set(section, [])
+  }
+  for (const ex of exercises) {
+    const section = classifyExerciseToOptSection(ex.name, ex.description)
+    bySection.get(section)!.push(ex)
+  }
+
+  function pickN(section: OptSection, n: number, useFocusScoring: boolean): ExerciseRecord[] {
+    const pool = bySection.get(section) ?? []
+    const candidates = pool.filter(ex =>
+      exerciseMatchesEquipment(ex, client.equipmentAccess) &&
+      exerciseMatchesComplexity(ex, complexityTarget) &&
+      isExerciseAppropriateForInjuries(ex, client.injuries_limitations) &&
+      !dominated.has(ex.id)
+    )
+    const source = candidates.length > 0 ? candidates : pool.slice(0, n * 3)
+
+    if (!useFocusScoring) {
+      // Random selection with dedup
+      const shuffled = [...source].sort(() => Math.random() - 0.5)
+      const seen = new Set<string>()
+      const result: ExerciseRecord[] = []
+      for (const ex of shuffled) {
+        if (result.length >= n) break
+        const key = ex.name.trim().toLowerCase()
+        if (!seen.has(key)) { seen.add(key); result.push(ex) }
+      }
+      return result
+    }
+
+    // Score by day focus muscle group relevance
+    const { targets, excludes } = resolveFocusMuscles(dayFocus)
+    const scored = source.map(ex => {
+      const allMuscles = dedupeStrings([
+        ...((ex.metadata?.muscleGroups ?? []) as string[]),
+        ...extractMuscleGroupsFromExercise(ex),
+      ])
+      let score = Math.random() * 5
+      if (targets.length > 0) {
+        score += allMuscles.filter(m => targets.includes(m)).length * 40
+        score -= allMuscles.filter(m => excludes.includes(m)).length * 30
+      }
+      return { ex, score }
+    })
+    scored.sort((a, b) => b.score - a.score)
+
+    const seen = new Set<string>()
+    const result: ExerciseRecord[] = []
+    for (const { ex } of scored) {
+      if (result.length >= n) break
+      const key = ex.name.trim().toLowerCase()
+      if (!seen.has(key)) { seen.add(key); result.push(ex) }
+    }
+    return result
+  }
+
+  // Phase-adjusted counts
+  const resistanceCount = phase <= 2 ? 4 : phase === 3 ? 6 : 4
+  const skillCount = phase <= 2 ? 2 : 3
+
+  const warmUp = pickN('warm-up', 2, false)
+  const activation = pickN('activation', 3, false)
+  const skillDev = phase >= 2 ? pickN('skill-development', skillCount, false) : []
+  const resistance = pickN('resistance', resistanceCount, true)
+  const clientsChoice = pickN('clients-choice', 1, true)
+  const coolDown = pickN('cool-down', 2, false)
+
+  // Register all selected ids as used
+  for (const ex of [...warmUp, ...activation, ...skillDev, ...resistance, ...clientsChoice, ...coolDown]) {
+    dominated.add(ex.id)
+  }
+
+  return {
+    'warm-up': warmUp,
+    'activation': activation,
+    'skill-development': skillDev,
+    'resistance': resistance,
+    'clients-choice': clientsChoice,
+    'cool-down': coolDown,
+  }
+}
+
 export function getClientExperienceProfile(client: ClientProfile): {
   level: number
   description: string

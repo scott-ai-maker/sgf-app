@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import LogoutButton from '@/components/auth/LogoutButton'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
+import CoachClientPipeline from '@/components/coach/CoachClientPipeline'
 import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ type FocusFilter =
   | 'inactive'
   | 'no-upcoming'
 
-type CoachDashboardTab = 'overview' | 'roster' | 'intake'
+type CoachDashboardTab = 'overview' | 'roster' | 'intake' | 'pipeline'
 
 function normalizeFocusFilter(value: string | string[] | undefined): FocusFilter {
   const rawValue = Array.isArray(value) ? value[0] : value
@@ -61,6 +62,7 @@ function normalizeCoachDashboardTab(value: string | string[] | undefined): Coach
   switch (rawValue) {
     case 'roster':
     case 'intake':
+    case 'pipeline':
       return rawValue
     default:
       return 'overview'
@@ -165,6 +167,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     { data: unreadMessages },
     { data: recentSetLogs },
     { data: bodyAnalyses },
+    { data: latestPlans },
   ] = assignedClientIds.length
     ? await Promise.all([
         admin
@@ -204,8 +207,13 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
           .select('id, user_id, estimated_bodyfat_percent, created_at')
           .in('user_id', assignedClientIds)
           .order('created_at', { ascending: false }),
+        admin
+          .from('workout_plans')
+          .select('user_id, created_at, nasm_opt_phase, phase_name')
+          .in('user_id', assignedClientIds)
+          .order('created_at', { ascending: false }),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
 
   // Build per-client remaining count
   const remainingByClient: Record<string, number> = {}
@@ -284,6 +292,21 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
   for (const row of bodyAnalyses ?? []) {
     if (latestBodyfatByClient[row.user_id] === undefined) {
       latestBodyfatByClient[row.user_id] = row.estimated_bodyfat_percent
+    }
+  }
+
+  const latestPlanByClient: Record<string, { nasm_opt_phase?: number | null; phase_name?: string | null; created_at?: string | null }> = {}
+  for (const row of latestPlans ?? []) {
+    if (!latestPlanByClient[row.user_id]) {
+      latestPlanByClient[row.user_id] = row
+    }
+  }
+
+  const nextUpcomingSessionByClient: Record<string, string | null> = {}
+  for (const row of upcomingSessions ?? []) {
+    const current = nextUpcomingSessionByClient[row.client_id]
+    if (!current || row.scheduled_at < current) {
+      nextUpcomingSessionByClient[row.client_id] = row.scheduled_at
     }
   }
 
@@ -424,6 +447,86 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     })
   ) as Record<string, Array<{ label: string; tone: keyof typeof chipStyles }>>
 
+  const birdsEyeRows = (assignedClients ?? []).map(client => ({
+    id: client.id,
+    name: client.full_name ?? 'Unnamed client',
+    href: `/coach/clients/${client.id}`,
+    nextSessionAt: nextUpcomingSessionByClient[client.id] ?? null,
+    lastWorkoutLogAt: lastWorkoutLogAtByClient[client.id] ?? null,
+    credits: remainingByClient[client.id] ?? 0,
+    unread: unreadMessageClientIds.has(client.id),
+    inactive: inactiveClientIds.has(client.id),
+    planPhase: latestPlanByClient[client.id]?.nasm_opt_phase ?? null,
+  }))
+    .sort((a, b) => {
+      const aScore = Number(a.unread) * 4 + Number(a.inactive) * 3 + Number(a.credits <= 2) * 2 + Number(!a.nextSessionAt)
+      const bScore = Number(b.unread) * 4 + Number(b.inactive) * 3 + Number(b.credits <= 2) * 2 + Number(!b.nextSessionAt)
+      return bScore - aScore
+    })
+
+  const pipelineColumns = [
+    {
+      key: 'intake',
+      title: 'Intake',
+      tone: 'gray' as const,
+      clients: (unassignedClients ?? []).map(client => ({
+        id: client.id,
+        name: client.full_name ?? 'Unnamed client',
+        email: client.email,
+        href: '/coach?tab=intake',
+        hint: 'Unassigned and waiting for coach claim.',
+      })),
+    },
+    {
+      key: 'onboarding',
+      title: 'Onboarding',
+      tone: 'gold' as const,
+      clients: (assignedClients ?? []).filter(client => !onboardingCompleteClientIds.has(client.id)).map(client => ({
+        id: client.id,
+        name: client.full_name ?? 'Unnamed client',
+        email: client.email,
+        href: `/coach/clients/${client.id}`,
+        hint: 'Assigned, but onboarding is not complete.',
+      })),
+    },
+    {
+      key: 'program-build',
+      title: 'Program Build',
+      tone: 'gold' as const,
+      clients: (assignedClients ?? []).filter(client => onboardingCompleteClientIds.has(client.id) && !latestPlanByClient[client.id]).map(client => ({
+        id: client.id,
+        name: client.full_name ?? 'Unnamed client',
+        email: client.email,
+        href: `/coach/clients/${client.id}?tab=program`,
+        hint: 'Onboarded and assigned, but no saved plan yet.',
+      })),
+    },
+    {
+      key: 'active',
+      title: 'Active',
+      tone: 'green' as const,
+      clients: (assignedClients ?? []).filter(client => onboardingCompleteClientIds.has(client.id) && latestPlanByClient[client.id] && !inactiveClientIds.has(client.id) && !lowCreditClientIds.has(client.id) && upcomingSessionsByClient.has(client.id)).map(client => ({
+        id: client.id,
+        name: client.full_name ?? 'Unnamed client',
+        email: client.email,
+        href: `/coach/clients/${client.id}`,
+        hint: 'Program active, recent check-in present, and future session booked.',
+      })),
+    },
+    {
+      key: 'at-risk',
+      title: 'At Risk',
+      tone: 'red' as const,
+      clients: (assignedClients ?? []).filter(client => inactiveClientIds.has(client.id) || lowCreditClientIds.has(client.id) || !upcomingSessionsByClient.has(client.id)).map(client => ({
+        id: client.id,
+        name: client.full_name ?? 'Unnamed client',
+        email: client.email,
+        href: `/coach/clients/${client.id}`,
+        hint: [inactiveClientIds.has(client.id) ? 'No workout check-in in 14d' : null, lowCreditClientIds.has(client.id) ? 'Low session credits' : null, !upcomingSessionsByClient.has(client.id) ? 'No upcoming session' : null].filter(Boolean).join(' · '),
+      })),
+    },
+  ]
+
   const clientMetricsSnapshotSection = (
     <>
       <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
@@ -502,6 +605,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
             { key: 'overview' as const, label: 'Overview' },
             { key: 'roster' as const, label: 'Assigned Roster' },
             { key: 'intake' as const, label: 'Unassigned Intake' },
+            { key: 'pipeline' as const, label: 'Pipeline' },
           ].map(tab => {
             const active = activeTab === tab.key
             return (
@@ -588,6 +692,31 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
                   <div style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)', marginTop: 10 }}>Review clients</div>
                 </a>
               ))}
+            </div>
+
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
+              BIRDS-EYE FLIGHT DECK
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 40 }}>
+              {birdsEyeRows.length === 0 ? (
+                <div style={{ background: 'var(--navy-mid)', padding: '18px 24px' }}>
+                  <p style={{ margin: 0, color: 'var(--gray)' }}>No assigned clients yet.</p>
+                </div>
+              ) : (
+                birdsEyeRows.slice(0, 10).map(row => (
+                  <div key={row.id} style={{ background: 'var(--navy-mid)', padding: '14px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 14, alignItems: 'center' }}>
+                    <div>
+                      <div style={{ color: 'var(--white)', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 14 }}>{row.name}</div>
+                      <div style={{ color: row.inactive ? 'var(--error)' : 'var(--gray)', fontSize: 12 }}>{formatRelativeDaysLabel(row.lastWorkoutLogAt, now)} last workout log</div>
+                    </div>
+                    <div style={{ color: 'var(--gray)', fontSize: 13 }}>{row.nextSessionAt ? new Date(row.nextSessionAt).toLocaleString() : 'No upcoming session'}</div>
+                    <div style={{ color: row.credits <= 2 ? 'var(--gold)' : 'var(--white)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 28 }}>{row.credits}</div>
+                    <div style={{ color: row.planPhase ? 'var(--white)' : 'var(--gray)', fontSize: 13 }}>{row.planPhase ? `Phase ${String(row.planPhase)}` : 'No plan'}</div>
+                    <a href={row.href} style={{ color: row.unread ? 'var(--gold)' : 'var(--white)', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>{row.unread ? 'Reply now →' : 'Open →'}</a>
+                  </div>
+                ))
+              )}
             </div>
 
             {clientMetricsSnapshotSection}
@@ -906,6 +1035,18 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
             ))}
           </div>
             )}
+          </>
+        )}
+
+        {activeTab === 'pipeline' && (
+          <>
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
+              CLIENT PIPELINE
+            </h2>
+            <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13, marginTop: 0, marginBottom: 14 }}>
+              Operational stages from intake through active delivery and at-risk follow-up.
+            </p>
+            <CoachClientPipeline columns={pipelineColumns} />
           </>
         )}
       </div>

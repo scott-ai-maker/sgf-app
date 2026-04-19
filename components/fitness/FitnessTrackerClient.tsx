@@ -6,6 +6,7 @@ import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
 import RestTimer from '@/components/fitness/RestTimer'
 import WeeklyCheckinForm from '@/components/fitness/WeeklyCheckinForm'
 import CardioLogForm from '@/components/fitness/CardioLogForm'
+import ProgressPhotoTimeline from '@/components/fitness/ProgressPhotoTimeline'
 
 interface FitnessProfile {
   preferred_units?: 'metric' | 'imperial'
@@ -32,6 +33,7 @@ interface WorkoutExercise {
   primaryEquipment?: string[] | null
   imageUrl?: string | null
   videoUrl?: string | null
+  block?: string | null
 }
 
 interface WorkoutDay {
@@ -102,6 +104,7 @@ interface FitnessTrackerClientProps {
   setLogs: WorkoutSetLogRecord[]
   latestAnalysis: BodyAnalysisRecord | null
   cardioLogs?: CardioLogEntry[]
+  progressPhotos?: ProgressPhotoEntry[]
 }
 
 interface CardioLogEntry {
@@ -112,6 +115,14 @@ interface CardioLogEntry {
   distance_km?: number | null
   avg_heart_rate?: number | null
   perceived_effort?: number | null
+}
+
+interface ProgressPhotoEntry {
+  id: string
+  photo_url: string
+  taken_at: string
+  notes?: string | null
+  created_at?: string | null
 }
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {
@@ -205,7 +216,7 @@ function parseSetTarget(value: string | null | undefined) {
   return Number(firstNumberMatch[0])
 }
 
-export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [] }: FitnessTrackerClientProps) {
+export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [], progressPhotos = [] }: FitnessTrackerClientProps) {
   const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
   const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
   const [inlineSetDrafts, setInlineSetDrafts] = useState<Record<string, InlineSetDraft>>({})
@@ -595,7 +606,19 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                     <p style={{ margin: '0 0 12px', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{workout.notes}</p>
                   )}
                   <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
-                    {workout.exercises.map(ex => {
+                    {(() => {
+                      const OPT_SECTION_ORDER = ['warm-up','activation','skill-development','resistance','clients-choice','cool-down']
+                      const OPT_SECTION_LABELS: Record<string, string> = {
+                        'warm-up': 'WARM-UP',
+                        'activation': 'ACTIVATION (core & balance)',
+                        'skill-development': 'SKILL DEVELOPMENT (plyometric & SAQ)',
+                        'resistance': 'RESISTANCE TRAINING',
+                        'clients-choice': "CLIENT'S CHOICE",
+                        'cool-down': 'COOL-DOWN',
+                      }
+                      const hasSections = workout.exercises.some(ex => ex.block && OPT_SECTION_ORDER.includes(ex.block))
+                      const seenSections = new Set<string>()
+                      return workout.exercises.map((ex, exIdx) => {
                         const exerciseKey = exerciseDraftKey(workout.day, ex.name)
                         const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly(), ex.reps)
                         const exerciseRecentLogs = (setLogsByExercise.get(normalizeExerciseName(ex.name)) ?? [])
@@ -605,8 +628,24 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                           .filter(row => extractWorkoutDayTag(row.notes) === workout.day && !row.is_warmup).length
                         const exTargetSets = parseSetTarget(ex.sets)
 
+                        const sectionHeader = hasSections && ex.block && OPT_SECTION_ORDER.includes(ex.block) && !seenSections.has(ex.block)
+                          ? (() => { seenSections.add(ex.block!); return (
+                            <div key={`sh-${ex.block}`} style={{
+                              margin: exIdx === 0 ? '0 0 6px' : '16px 0 6px',
+                              padding: '4px 10px',
+                              background: 'rgba(212,160,23,0.1)',
+                              borderLeft: '3px solid var(--gold)',
+                              fontFamily: 'Bebas Neue, sans-serif',
+                              fontSize: 13,
+                              letterSpacing: '0.1em',
+                              color: 'var(--gold)',
+                            }}>{OPT_SECTION_LABELS[ex.block!] ?? ex.block!.toUpperCase()}</div>
+                          ) })()
+                          : null
+
                         return (
-                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12 }}>
+                          <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12, listStyle: 'none' }}>
+                            {sectionHeader}
                         <details style={accordionExerciseStyle}>
                           <summary style={accordionExerciseSummaryStyle}>
                             <span style={{ color: 'var(--white)', fontWeight: 600 }}>
@@ -837,9 +876,10 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                           </form>
                           </div>
                         </details>
-                      </li>
-                          )
-                        })}
+                          </li>
+                        )
+                      })
+                    })()}
                   </ul>
                   </div>
                 </details>
@@ -996,6 +1036,10 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
         <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
       </section>
+
+      <div style={{ marginTop: 16 }}>
+        <ProgressPhotoTimeline initialPhotos={progressPhotos} canUpload />
+      </div>
 
       {/* Skip Exercise Modal */}
       {skipModal && (

@@ -19,7 +19,7 @@ export default async function FitnessTrackerPage() {
 
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: plans }, { data: logs }, { data: setLogs }, { data: analyses }, { data: cardioLogs }] = await Promise.all([
+  const [{ data: profile }, { data: plans }, { data: logs }, { data: setLogs }, { data: analyses }, { data: cardioLogs }, { data: progressPhotos }] = await Promise.all([
     supabase.from('fitness_profiles').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('workout_plans').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('workout_logs').select('*').eq('user_id', user.id).order('session_date', { ascending: false }).limit(8),
@@ -36,6 +36,12 @@ export default async function FitnessTrackerPage() {
       .eq('user_id', user.id)
       .order('session_date', { ascending: false })
       .limit(20),
+    supabase
+      .from('progress_photos')
+      .select('id, photo_url, taken_at, notes, created_at')
+      .eq('user_id', user.id)
+      .order('taken_at', { ascending: false })
+      .limit(24),
   ])
 
   if (!profile?.onboarding_completed_at) {
@@ -51,6 +57,18 @@ export default async function FitnessTrackerPage() {
     before_photo_path: beforePhotoPath || null,
     before_photo_url: signedBeforePhotoUrl ?? null,
   }
+
+  const signedProgressPhotos = await Promise.all((progressPhotos ?? []).map(async photo => {
+    const storedPath = /^https?:\/\//i.test(String(photo.photo_url ?? '').trim())
+      ? extractPhotoPathFromLegacyUrl(photo.photo_url)
+      : normalizePhotoPath(photo.photo_url)
+    const signedUrl = storedPath ? await createSignedFitnessPhotoUrl(supabase, storedPath) : null
+
+    return {
+      ...photo,
+      photo_url: signedUrl ?? photo.photo_url,
+    }
+  }))
 
   return (
     <main className="dashboard-fitness-page" style={{ minHeight: '100vh', background: 'var(--navy)', padding: '26px 24px 40px' }}>
@@ -79,6 +97,7 @@ export default async function FitnessTrackerPage() {
           setLogs={setLogs ?? []}
           latestAnalysis={analyses?.[0] ?? null}
           cardioLogs={cardioLogs ?? []}
+          progressPhotos={signedProgressPhotos}
         />
       </div>
     </main>

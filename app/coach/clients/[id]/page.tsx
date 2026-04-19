@@ -8,6 +8,12 @@ import CoachCommerceTools from '@/components/coach/CoachCommerceTools'
 import CoachProgramWorkspace from '@/components/coach/CoachProgramWorkspace'
 import SiteHeader from '@/components/ui/SiteHeader'
 import CoachCheckinReview from '@/components/coach/CoachCheckinReview'
+import ProgressPhotoTimeline from '@/components/fitness/ProgressPhotoTimeline'
+import {
+  createSignedFitnessPhotoUrl,
+  extractPhotoPathFromLegacyUrl,
+  normalizePhotoPath,
+} from '@/lib/fitness-photos'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,6 +100,9 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     fitnessProfileResult,
     intakeFormResult,
     workoutLogsResult,
+    workoutSetLogsResult,
+    cardioLogsResult,
+    progressPhotosResult,
   ] = await Promise.all([
     admin
       .from('workout_plans')
@@ -142,6 +151,24 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .eq('user_id', id)
       .order('session_date', { ascending: false })
       .limit(60),
+    admin
+      .from('workout_set_logs')
+      .select('session_date, reps, weight_kg, rpe')
+      .eq('user_id', id)
+      .order('session_date', { ascending: false })
+      .limit(240),
+    admin
+      .from('cardio_logs')
+      .select('session_date, duration_mins, activity_type, distance_km, perceived_effort')
+      .eq('user_id', id)
+      .order('session_date', { ascending: false })
+      .limit(40),
+    admin
+      .from('progress_photos')
+      .select('id, photo_url, taken_at, notes, created_at')
+      .eq('user_id', id)
+      .order('taken_at', { ascending: false })
+      .limit(24),
   ])
 
     const { data: weeklyCheckins } = await admin
@@ -209,6 +236,82 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     readiness,
     recommendation,
   }
+
+  const setLogs = workoutSetLogsResult.data ?? []
+  const cardioLogs = cardioLogsResult.data ?? []
+
+  const setLogsLast7d = setLogs.filter(log => {
+    if (!log.session_date) return false
+    const sessionDate = new Date(`${log.session_date}T00:00:00Z`)
+    const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays <= 7
+  })
+  const cardioLogsLast7d = cardioLogs.filter(log => {
+    if (!log.session_date) return false
+    const sessionDate = new Date(`${log.session_date}T00:00:00Z`)
+    const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays <= 7
+  })
+
+  const weeklySummary = {
+    completedWorkouts: completed7d.length,
+    totalSets: setLogsLast7d.length,
+    totalReps: setLogsLast7d.reduce((sum, row) => sum + Number(row.reps ?? 0), 0),
+    totalVolumeKg: Math.round(setLogsLast7d.reduce((sum, row) => sum + Number(row.reps ?? 0) * Number(row.weight_kg ?? 0), 0)),
+    avgRpe: (() => {
+      const rpeRows = setLogsLast7d.filter(row => Number(row.rpe ?? 0) > 0)
+      if (rpeRows.length === 0) return null
+      return Math.round((rpeRows.reduce((sum, row) => sum + Number(row.rpe ?? 0), 0) / rpeRows.length) * 10) / 10
+    })(),
+    cardioMinutes: cardioLogsLast7d.reduce((sum, row) => sum + Number(row.duration_mins ?? 0), 0),
+    cardioSessions: cardioLogsLast7d.length,
+  }
+
+  const currentPhase = Number(latestPlansResult.data?.[0]?.nasm_opt_phase ?? 0)
+  const phaseSuggestion = (() => {
+    if (!currentPhase) {
+      return {
+        label: 'No active phase',
+        tone: 'gray' as const,
+        body: 'Generate or accept a plan before progression rules can apply.',
+      }
+    }
+
+    if (completionRate14d >= 80 && (avgRpe14d === null || avgRpe14d <= 7.5) && currentPhase < 5) {
+      return {
+        label: `Advance to Phase ${String(currentPhase + 1)}`,
+        tone: 'green' as const,
+        body: 'Adherence and effort look stable enough to consider progressing this client to the next NASM phase.',
+      }
+    }
+
+    if (completionRate14d < 50 || (avgRpe14d !== null && avgRpe14d >= 8.5)) {
+      return {
+        label: `Hold Phase ${String(currentPhase)}`,
+        tone: 'red' as const,
+        body: 'Keep the client in the current phase or reduce complexity until adherence and fatigue normalize.',
+      }
+    }
+
+    return {
+      label: `Maintain Phase ${String(currentPhase)}`,
+      tone: 'gold' as const,
+      body: 'Progress is steady, but the signal is not strong enough yet to auto-suggest a phase jump.',
+    }
+  })()
+
+  const signedProgressPhotos = await Promise.all((progressPhotosResult.data ?? []).map(async photo => {
+    const rawValue = String(photo.photo_url ?? '').trim()
+    const storedPath = /^https?:\/\//i.test(rawValue)
+      ? extractPhotoPathFromLegacyUrl(rawValue)
+      : normalizePhotoPath(rawValue)
+    const signedUrl = storedPath ? await createSignedFitnessPhotoUrl(admin, storedPath) : null
+
+    return {
+      ...photo,
+      photo_url: signedUrl ?? rawValue,
+    }
+  }))
 
   const totalRemaining = (packages ?? []).reduce(
     (sum, p) => sum + (p.sessions_remaining ?? 0),
@@ -338,6 +441,38 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
               <SummaryCard label="Sessions Remaining" value={String(totalRemaining)} hint="Across all purchased packages" />
               <SummaryCard label="Saved Program" value={latestPlansResult.data?.[0] ? 'Yes' : 'No'} hint={latestPlansResult.data?.[0]?.name ?? 'No program accepted yet'} />
               <SummaryCard label="Session History" value={String((sessions ?? []).length)} hint="Booked sessions on record" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24 }}>
+              <div style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 16 }}>
+                <p style={{ margin: 0, color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Auto Week Summary</p>
+                <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Completed workouts</span><span style={{ color: 'var(--white)' }}>{weeklySummary.completedWorkouts}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Logged sets</span><span style={{ color: 'var(--white)' }}>{weeklySummary.totalSets}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Volume</span><span style={{ color: 'var(--white)' }}>{weeklySummary.totalVolumeKg} kg</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Avg RPE</span><span style={{ color: 'var(--white)' }}>{weeklySummary.avgRpe ?? '-'}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Cardio</span><span style={{ color: 'var(--white)' }}>{weeklySummary.cardioSessions} session{weeklySummary.cardioSessions === 1 ? '' : 's'} / {weeklySummary.cardioMinutes} min</span></div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 16 }}>
+                <p style={{ margin: 0, color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Phase Progression Suggestion</p>
+                <div style={{ marginTop: 10, color: phaseSuggestion.tone === 'green' ? 'var(--success)' : phaseSuggestion.tone === 'red' ? 'var(--error)' : phaseSuggestion.tone === 'gold' ? 'var(--gold)' : 'var(--gray)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 30, letterSpacing: '0.05em' }}>
+                  {phaseSuggestion.label}
+                </div>
+                <p style={{ margin: '8px 0 0', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{phaseSuggestion.body}</p>
+                <p style={{ margin: '10px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+                  14d completion: {completionRate14d}%{avgRpe14d !== null ? ` • Avg RPE ${avgRpe14d}` : ''}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <ProgressPhotoTimeline
+                initialPhotos={signedProgressPhotos}
+                title="Progress Photo Timeline"
+                subtitle="Recent physique check-ins for coach review."
+              />
             </div>
 
             <div style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
