@@ -12,6 +12,33 @@ import { generateIntelligentProgramming, generateIntelligentNotes } from '@/lib/
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
 
+function deriveMovementPattern(name: string, description?: string | null): string | undefined {
+  const text = `${name} ${description ?? ''}`.toLowerCase()
+
+  if (/squat|leg press|wall sit/.test(text)) return 'squat'
+  if (/lunge|split squat|step up|step-up|step down/.test(text)) return 'lunge'
+  if (/row|pull up|pull-up|chin up|chin-up|lat pulldown/.test(text)) return 'pull'
+  if (/push up|push-up|bench|chest press|shoulder press|overhead press|dip/.test(text)) return 'push'
+  if (/rotation|chop|woodchop|pallof/.test(text)) return 'rotation'
+  if (/carry|farmer|walk|march/.test(text)) return 'gait'
+
+  return undefined
+}
+
+function deriveComplexity(name: string, description?: string | null): 'beginner' | 'intermediate' | 'advanced' {
+  const text = `${name} ${description ?? ''}`.toLowerCase()
+
+  if (/depth jump|tuck jump|hurdle jump|snatch|clean and press|olympic|pistol squat|turkish|get up/.test(text)) {
+    return 'advanced'
+  }
+
+  if (/single leg|single-arm|single arm|box jump|jump|renegade row|bulgarian|trx|stability ball|bosu|kettlebell swing|rotation/.test(text)) {
+    return 'intermediate'
+  }
+
+  return 'beginner'
+}
+
 function normalizeEquipmentAccess(items: string[]) {
   return [...new Set(items.map(item => String(item ?? '').trim().toLowerCase()).filter(Boolean))]
 }
@@ -45,6 +72,9 @@ function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAcce
 function convertExerciseLibraryToInternalFormat(
   libraryExercise: ExerciseLibraryRecord
 ): ExerciseRecord {
+  const movementPattern = deriveMovementPattern(libraryExercise.name, libraryExercise.description)
+  const complexity = deriveComplexity(libraryExercise.name, libraryExercise.description)
+
   return {
     id: libraryExercise.id,
     name: libraryExercise.name,
@@ -56,11 +86,11 @@ function convertExerciseLibraryToInternalFormat(
       ? libraryExercise.coaching_cues.map(c => String(c).trim()).filter(Boolean)
       : [],
     metadata: {
-      movementPattern: undefined,
+      movementPattern,
       muscleGroups: Array.isArray(libraryExercise.muscle_groups)
         ? libraryExercise.muscle_groups.map(m => String(m).trim()).filter(Boolean)
         : [],
-      complexity: 'intermediate',
+      complexity,
       nasmPhases: [1, 2, 3, 4, 5],
     },
   }
@@ -105,6 +135,7 @@ async function buildIntelligentTemplateWorkouts({
     age: Number(profile.age) || 30,
     sexe: profile.sex,
     experienceLevel: profile.experience_level,
+    activityLevel: profile.activity_level,
     fitnessGoal: profile.fitness_goal,
     injuries_limitations: profile.injuries_limitations,
     equipmentAccess: normalizedEquipmentAccess,
@@ -301,6 +332,7 @@ export async function POST(req: NextRequest) {
           age: Number(profile.age) || 30,
           sexe: profile.sex,
           experienceLevel: profile.experience_level,
+          activityLevel: profile.activity_level,
           fitnessGoal: profile.fitness_goal,
           injuries_limitations: profile.injuries_limitations,
           equipmentAccess: effectiveEquipmentAccess,

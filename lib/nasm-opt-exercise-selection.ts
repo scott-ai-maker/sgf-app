@@ -15,6 +15,7 @@ export interface ClientProfile {
   age: number
   sexe?: string
   experienceLevel?: string
+  activityLevel?: string
   fitnessGoal?: string
   injuries_limitations?: string
   equipmentAccess: string[]
@@ -143,6 +144,17 @@ function getExperienceLevelAsNumber(level?: string): number {
   return 1 // default to beginner
 }
 
+function getClientTrainingLevel(client: ClientProfile): number {
+  const experienceLevel = getExperienceLevelAsNumber(client.experienceLevel)
+  const activity = String(client.activityLevel ?? '').toLowerCase()
+
+  if (experienceLevel > 1) return experienceLevel
+  if (activity.includes('very active') || activity.includes('athlete')) return 3
+  if (activity.includes('active') || activity.includes('moderate')) return 2
+
+  return experienceLevel
+}
+
 function getComplexityRequirement(phase: number, experienceLevel: number): 'beginner' | 'intermediate' | 'advanced' {
   if (experienceLevel === 1) return 'beginner'
   if (phase === 1 || phase === 2) return 'beginner'
@@ -165,8 +177,41 @@ function exerciseMatchesComplexity(exercise: ExerciseRecord, targetComplexity: s
 }
 
 // Extract muscle groups from exercise name/description (legacy fallback)
-function extractMuscleGroupsFromExercise(_exercise: ExerciseRecord): string[] {
-  return []
+function extractMuscleGroupsFromExercise(exercise: ExerciseRecord): string[] {
+  const text = `${exercise.name} ${exercise.description ?? ''}`.toLowerCase()
+  const detected = new Set<string>()
+
+  if (/squat|lunge|split squat|step up|deadlift|rdl|leg press|jump|hamstring|quad|calf|glute|hip thrust/.test(text)) {
+    if (/quad|squat|leg press|step up|lunge|jump/.test(text)) detected.add('quadriceps')
+    if (/deadlift|rdl|hamstring|hip hinge|glute bridge|hip thrust|jump/.test(text)) detected.add('hamstrings')
+    if (/glute|hip thrust|bridge|squat|lunge|jump/.test(text)) detected.add('glutes')
+    if (/calf|jump|hop|plyo/.test(text)) detected.add('calves')
+    detected.add('legs')
+  }
+
+  if (/bench|push up|push-up|chest|press|fly|dip/.test(text)) {
+    detected.add('chest')
+    detected.add('triceps')
+  }
+
+  if (/shoulder|overhead|lateral raise|front raise|arnold|press/.test(text)) {
+    detected.add('shoulders')
+  }
+
+  if (/row|pull|lat|chin up|chin-up|pull up|pull-up/.test(text)) {
+    detected.add('back')
+    detected.add('biceps')
+  }
+
+  if (/curl/.test(text) && !/leg curl|hamstring curl/.test(text)) {
+    detected.add('biceps')
+  }
+
+  if (/plank|rotation|chop|carry|crawl|dead bug|bird dog|crunch|core|balance|stability/.test(text)) {
+    detected.add('core')
+  }
+
+  return [...detected]
 }
 
 function exerciseMatchesEquipment(exercise: ExerciseRecord, availableEquipment: string[]): boolean {
@@ -253,16 +298,26 @@ function dedupeStrings(items: string[]): string[] {
   return [...new Set(items.map(item => String(item).toLowerCase().trim()).filter(Boolean))]
 }
 
-function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: string[] } {
+function getFocusFlags(dayFocus: string) {
   const normalized = dayFocus.toLowerCase().replace(/[+/_-]+/g, ' ').replace(/\s+/g, ' ').trim()
   const includesAny = (terms: string[]) => terms.some(term => normalized.includes(term))
 
-  const hasTotal = includesAny(['total body', 'full body'])
-  const hasCore = includesAny(['core', 'abs', 'abdom', 'balance', 'stability'])
-  const hasLower = includesAny(['lower body', ' lower', 'legs', 'leg ', 'quad', 'hamstring', 'glute', 'calf', 'hip'])
-  const hasUpper = includesAny(['upper body', ' upper', 'chest', 'back', 'shoulder', 'arm'])
-  const hasPush = includesAny(['push', 'chest', 'bench', 'press', 'tricep'])
-  const hasPull = includesAny(['pull', 'back', 'row', 'lat', 'bicep'])
+  return {
+    normalized,
+    hasTotal: includesAny(['total body', 'full body']),
+    hasCore: includesAny(['core', 'abs', 'abdom', 'balance', 'stability']),
+    hasLower: includesAny(['lower body', ' lower', 'legs', 'leg ', 'quad', 'hamstring', 'glute', 'calf', 'hip']),
+    hasUpper: includesAny(['upper body', ' upper', 'chest', 'back', 'shoulder', 'arm']),
+    hasPush: includesAny(['push', 'chest', 'bench', 'press', 'tricep']),
+    hasPull: includesAny(['pull', 'back', 'row', 'lat', 'bicep']),
+    hasPower: includesAny(['power', 'plyo', 'explosive']),
+    hasStrength: includesAny(['strength', 'maximal']),
+  }
+}
+
+function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: string[] } {
+  const { hasTotal, hasCore, hasLower, hasUpper, hasPush, hasPull, hasPower } = getFocusFlags(dayFocus)
+  const includesAny = (terms: string[]) => terms.some(term => dayFocus.toLowerCase().includes(term))
 
   let targets: string[] = []
   let excludes: string[] = []
@@ -304,7 +359,7 @@ function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: s
     targets = [...targets, 'glutes', 'hamstrings']
   }
 
-  if (includesAny(['power'])) {
+  if (hasPower) {
     if (hasLower || hasTotal) {
       targets = [...targets, 'calves']
     }
@@ -317,6 +372,52 @@ function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: s
   }
 }
 
+function exerciseMatchesDayFocus(exercise: ExerciseRecord, dayFocus: string): boolean {
+  const flags = getFocusFlags(dayFocus)
+  const muscles = dedupeStrings([
+    ...((exercise.metadata?.muscleGroups ?? []) as string[]),
+    ...extractMuscleGroupsFromExercise(exercise),
+  ])
+  const pattern = getMovementPatternForExercise(exercise)
+
+  const isLowerDominant = muscles.some(muscle => ['quadriceps', 'hamstrings', 'glutes', 'calves', 'legs'].includes(muscle))
+  const isUpperPush = muscles.some(muscle => ['chest', 'triceps', 'shoulders'].includes(muscle)) || pattern === 'push'
+  const isUpperPull = muscles.some(muscle => ['back', 'biceps'].includes(muscle)) || pattern === 'pull'
+  const isCore = muscles.includes('core') || pattern === 'rotation'
+
+  if (flags.hasTotal) return true
+  if (flags.hasLower) return isLowerDominant && !isUpperPush && !isUpperPull
+  if (flags.hasUpper && flags.hasPush) return isUpperPush && !isLowerDominant
+  if (flags.hasUpper && flags.hasPull) return isUpperPull && !isLowerDominant
+  if (flags.hasPush) return isUpperPush && !isLowerDominant
+  if (flags.hasPull) return isUpperPull && !isLowerDominant
+  if (flags.hasCore && !flags.hasUpper && !flags.hasLower) return isCore
+  if (flags.hasUpper) return (isUpperPush || isUpperPull) && !isLowerDominant
+
+  return true
+}
+
+function exerciseIsTooAdvancedForClient(exercise: ExerciseRecord, client: ClientProfile, phase: number): boolean {
+  const trainingLevel = getClientTrainingLevel(client)
+  if (trainingLevel >= 3) return false
+
+  const text = `${exercise.name} ${exercise.description ?? ''}`.toLowerCase()
+  const explosive = /depth jump|box jump|tuck jump|hurdle jump|repeat jump|plyo|snatch|clean|power|explosive/.test(text)
+  const highlyTechnical = /single arm swing|renegade row|turkish|get up|pistol squat|olympic|overhead squat/.test(text)
+  const unstable = /bosu|single leg|single-arm.*balance|balance reach|stability ball.*press/.test(text)
+
+  if (trainingLevel === 1) {
+    if (explosive || highlyTechnical) return true
+    if (phase <= 2 && unstable && !text.includes('plank') && !text.includes('bird dog')) return true
+  }
+
+  if (trainingLevel === 2 && phase <= 2 && explosive && /depth jump|tuck jump|hurdle jump/.test(text)) {
+    return true
+  }
+
+  return false
+}
+
 // ── PRIMARY EXERCISE SELECTION ENGINE ────────────────────────
 export function selectExercisesForWorkoutDay(
   phase: number,
@@ -326,7 +427,7 @@ export function selectExercisesForWorkoutDay(
   exerciseCountTarget: number = 4,
   excludedExerciseIds?: Set<string>
 ): ExerciseRecord[] {
-  const experienceLevel = getExperienceLevelAsNumber(client.experienceLevel)
+  const experienceLevel = getClientTrainingLevel(client)
   const complexityTarget = getComplexityRequirement(phase, experienceLevel)
   const { targets, excludes } = resolveFocusMuscles(dayFocus)
 
@@ -335,6 +436,8 @@ export function selectExercisesForWorkoutDay(
     if (!exerciseMatchesEquipment(exercise, client.equipmentAccess)) return false
     if (!exerciseMatchesComplexity(exercise, complexityTarget)) return false
     if (!isExerciseAppropriateForInjuries(exercise, client.injuries_limitations)) return false
+    if (!exerciseMatchesDayFocus(exercise, dayFocus)) return false
+    if (exerciseIsTooAdvancedForClient(exercise, client, phase)) return false
     return true
   })
 
