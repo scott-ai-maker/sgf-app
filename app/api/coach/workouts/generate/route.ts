@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
 import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
+import {
+  selectExercisesForWorkoutDay,
+  getPhasePrescription,
+  type ClientProfile,
+  type ExerciseRecord,
+} from '@/lib/nasm-opt-exercise-selection'
+import { generateIntelligentProgramming, generateIntelligentNotes } from '@/lib/openai-program-generation'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
 
@@ -35,51 +42,92 @@ function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAcce
   })
 }
 
-function phasePrescription(nasmOptPhase: number) {
-  switch (nasmOptPhase) {
-    case 1:
-      return { sets: '2-3', reps: '12-20', tempo: '4/2/1', rest: '0-90s' }
-    case 2:
-      return { sets: '2-4', reps: '8-12', tempo: '2/0/2', rest: '0-60s' }
-    case 3:
-      return { sets: '3-5', reps: '6-12', tempo: '2/0/2', rest: '30-60s' }
-    case 4:
-      return { sets: '4-6', reps: '1-5', tempo: 'x/x/x', rest: '3-5m' }
-    case 5:
-      return { sets: '3-5', reps: '1-10', tempo: 'x/x/x', rest: '1-2m' }
-    default:
-      return { sets: '3', reps: '8-12', tempo: '2/0/2', rest: '60s' }
+function convertExerciseLibraryToInternalFormat(
+  libraryExercise: ExerciseLibraryRecord
+): ExerciseRecord {
+  return {
+    id: libraryExercise.id,
+    name: libraryExercise.name,
+    description: libraryExercise.description ?? undefined,
+    primaryEquipment: Array.isArray(libraryExercise.primary_equipment)
+      ? libraryExercise.primary_equipment.map(e => String(e).toLowerCase().trim())
+      : [],
+    coachingCues: Array.isArray(libraryExercise.coaching_cues)
+      ? libraryExercise.coaching_cues.map(c => String(c).trim()).filter(Boolean)
+      : [],
+    metadata: {
+      movementPattern: undefined,
+      muscleGroups: [],
+      complexity: 'intermediate',
+      nasmPhases: [1, 2, 3, 4, 5],
+    },
   }
 }
 
-function buildRandomizedTemplateWorkouts({
+async function buildIntelligentTemplateWorkouts({
   template,
   exercises,
   sessionsPerWeek,
   equipmentAccess,
+  profile,
+  nasmOptPhase,
 }: {
   template: WorkoutProgramTemplateRecord
   exercises: ExerciseLibraryRecord[]
   sessionsPerWeek: number
   equipmentAccess: string[]
+  profile: any
+  nasmOptPhase: number
 }) {
   const normalizedEquipmentAccess = normalizeEquipmentAccess(equipmentAccess)
   const filteredExercises = exercises.filter(exercise => exerciseMatchesEquipment(exercise, normalizedEquipmentAccess))
-  const pool = filteredExercises.length > 0 ? filteredExercises : exercises
-  const prescription = phasePrescription(Number(template.nasm_opt_phase ?? 1))
-  const templateWorkouts: CoachProgramWorkoutInput[] = Array.isArray(template.template_json?.workouts) && template.template_json.workouts.length > 0
+  const availableExercises = filteredExercises.length > 0 ? filteredExercises : exercises
+
+  // Convert to internal format for intelligent selection
+  const exercisesForSelection = availableExercises.map(convertExerciseLibraryToInternalFormat)
+
+  const prescription = getPhasePrescription(nasmOptPhase)
+  const templateWorkouts: CoachProgramWorkoutInput[] = Array.isArray(template.template_json?.workouts)
+    && template.template_json.workouts.length > 0
     ? template.template_json.workouts.slice(0, Math.max(1, sessionsPerWeek))
-    : Array.from({ length: Math.max(1, sessionsPerWeek) }, (_, index) => ({ day: index + 1, focus: `Training Day ${index + 1}`, scheduledDate: null, notes: null, exercises: [] }))
+    : Array.from({ length: Math.max(1, sessionsPerWeek) }, (_, index) => ({
+        day: index + 1,
+        focus: `Training Day ${index + 1}`,
+        scheduledDate: null,
+        notes: null,
+        exercises: [],
+      }))
 
-  return templateWorkouts.map((workout, workoutIndex) => {
+  // Build client profile for intelligent selection
+  const clientProfile: ClientProfile = {
+    age: Number(profile.age) || 30,
+    sexe: profile.sex,
+    experienceLevel: profile.experience_level,
+    fitnessGoal: profile.fitness_goal,
+    injuries_limitations: profile.injuries_limitations,
+    equipmentAccess: normalizedEquipmentAccess,
+  }
+
+  // Build workouts with intelligent exercise selection
+  const workouts: CoachProgramWorkoutInput[] = templateWorkouts.map((workout, workoutIndex) => {
     const dayFocus = String(workout.focus ?? `Training Day ${workoutIndex + 1}`).trim() || `Training Day ${workoutIndex + 1}`
-    const dayExerciseCount = Math.min(6, Math.max(4, pool.length > 0 ? 5 : 0))
-    const dayExercises = Array.from({ length: dayExerciseCount }, (_, exerciseIndex) => {
-      const selected = pool[(workoutIndex * dayExerciseCount + exerciseIndex) % pool.length]
 
+    // Intelligently select exercises based on NASM OPT principles
+    const dayExerciseCount = prescription.exercisesPerBodypart * 2 // Adjust based on phase
+    const selectedExercises = selectExercisesForWorkoutDay(
+      nasmOptPhase,
+      dayFocus,
+      exercisesForSelection,
+      clientProfile,
+      dayExerciseCount
+    )
+
+    // Map back to CoachProgramExerciseInput format
+    const dayExercises = selectedExercises.map(ex => {
+      const libraryMatch = availableExercises.find(lib => lib.name === ex.name)
       return {
-        libraryExerciseId: selected?.id ?? null,
-        name: selected?.name ?? `Exercise ${exerciseIndex + 1}`,
+        libraryExerciseId: libraryMatch?.id ?? ex.id,
+        name: ex.name,
         sets: prescription.sets,
         reps: prescription.reps,
         tempo: prescription.tempo,
@@ -96,6 +144,8 @@ function buildRandomizedTemplateWorkouts({
       exercises: dayExercises,
     }
   })
+
+  return workouts
 }
 
 export async function POST(req: NextRequest) {
@@ -188,20 +238,23 @@ export async function POST(req: NextRequest) {
       ? profile.equipment_access
       : []
 
-  const randomizedWorkouts = buildRandomizedTemplateWorkouts({
+  // Use INTELLIGENT exercise selection instead of randomized
+  const intelligentWorkouts = await buildIntelligentTemplateWorkouts({
     template: selectedTemplate,
     exercises: (exercisesResult.data ?? []) as ExerciseLibraryRecord[],
     sessionsPerWeek: resolvedSessionsPerWeek,
     equipmentAccess: effectiveEquipmentAccess,
+    profile,
+    nasmOptPhase: selectedPhase ?? 1,
   })
 
-  if (randomizedWorkouts.length === 0) {
-    return NextResponse.json({ error: 'Unable to build a randomized workout from the selected template.' }, { status: 400 })
+  if (intelligentWorkouts.length === 0) {
+    return NextResponse.json({ error: 'Unable to build a workout from the selected template.' }, { status: 400 })
   }
 
   const payload: CoachProgramPayload = {
     clientId,
-    name: `${selectedTemplate.title} Quick Plan`,
+    name: `${selectedTemplate.title} - AI Personalized`,
     goal: selectedTemplate.goal ?? profile.fitness_goal ?? null,
     nasmOptPhase: Number(selectedTemplate.nasm_opt_phase ?? 1),
     phaseName: String(selectedTemplate.phase_name ?? 'Custom Phase'),
@@ -209,7 +262,7 @@ export async function POST(req: NextRequest) {
     estimatedDurationMins: Number(selectedTemplate.estimated_duration_mins ?? 60),
     startDate: null,
     templateId: selectedTemplate.id,
-    workouts: randomizedWorkouts,
+    workouts: intelligentWorkouts,
   }
 
   const storedPlan = buildStoredProgramPlan(
@@ -223,6 +276,53 @@ export async function POST(req: NextRequest) {
   }
 
   const generatedWithEquipmentAccess = [...new Set(['bodyweight', ...effectiveEquipmentAccess])]
+
+  // Enhance workouts with AI-powered programming notes and coaching cues
+  try {
+    for (const workout of storedPlan.workouts) {
+      const plannedExercises = workout.exercises.map(ex => ({
+        name: ex.name,
+        muscleGroups: ex.primaryEquipment,
+      }))
+
+      const prescription = getPhasePrescription(payload.nasmOptPhase)
+
+      // Generate intelligent programming guidance
+      const programmeGuidance = await generateIntelligentProgramming({
+        clientProfile: {
+          age: Number(profile.age) || 30,
+          sexe: profile.sex,
+          experienceLevel: profile.experience_level,
+          fitnessGoal: profile.fitness_goal,
+          injuries_limitations: profile.injuries_limitations,
+          equipmentAccess: effectiveEquipmentAccess,
+        },
+        phase: payload.nasmOptPhase,
+        prescription,
+        plannedExercises,
+        sessionFocus: workout.focus,
+        selectedEquipment: effectiveEquipmentAccess,
+      })
+
+      // Add programming guidance to workout notes
+      if (programmeGuidance.safetyConsiderations) {
+        workout.notes = `${workout.notes ? workout.notes + '\n\n' : ''}SAFETY: ${programmeGuidance.safetyConsiderations}`
+      }
+
+      // Enhance exercise notes with AI coaching cues
+      for (const exercise of workout.exercises) {
+        const aiCues = programmeGuidance.exerciseSpecificCues[exercise.name] || []
+        if (aiCues.length > 0) {
+          const existingCues = exercise.coachingCues || []
+          exercise.coachingCues = [...new Set([...aiCues, ...existingCues])].slice(0, 6)
+        }
+      }
+    }
+  } catch (aiError) {
+    // If AI generation fails, log but continue with the plan (graceful degradation)
+    console.error('AI programming generation error:', aiError instanceof Error ? aiError.message : 'Unknown error')
+    // The plan is still valid even without AI enhancements
+  }
 
   const draft: CoachProgramDraft = {
     clientId,
