@@ -306,22 +306,90 @@ export async function POST(req: NextRequest) {
 
       // Add programming guidance to workout notes
       if (programmeGuidance.safetyConsiderations) {
-        workout.notes = `${workout.notes ? workout.notes + '\n\n' : ''}SAFETY: ${programmeGuidance.safetyConsiderations}`
+        const safetyNote = `IMPORTANT SAFETY TIPS FOR ${workout.focus.toUpperCase()}:\n${programmeGuidance.safetyConsiderations}`
+        workout.notes = `${workout.notes ? workout.notes + '\n\n' : ''}${safetyNote}`
       }
 
       // Enhance exercise notes with AI coaching cues
       for (const exercise of workout.exercises) {
-        const aiCues = programmeGuidance.exerciseSpecificCues[exercise.name] || []
-        if (aiCues.length > 0) {
+        const aiCues = programmeGuidance.exerciseSpecificCues[exercise.name]
+        
+        if (aiCues && aiCues.length > 0) {
+          // Combine AI cues with existing coaching cues
           const existingCues = exercise.coachingCues || []
-          exercise.coachingCues = [...new Set([...aiCues, ...existingCues])].slice(0, 6)
+          const combinedCues = [...aiCues, ...existingCues]
+          
+          // Remove duplicates (case-insensitive) and limit to 6
+          const seen = new Set<string>()
+          exercise.coachingCues = combinedCues
+            .filter(cue => {
+              const normalized = cue.toLowerCase()
+              if (seen.has(normalized)) return false
+              seen.add(normalized)
+              return true
+            })
+            .slice(0, 6)
+        } else if (!exercise.coachingCues || exercise.coachingCues.length === 0) {
+          // Generate fallback cues if none available
+          const fallbackCues = generateFallbackCoachingCues(exercise.name, payload.nasmOptPhase)
+          exercise.coachingCues = fallbackCues
+        }
+
+        // Add progression note to exercise
+        if (programmeGuidance.progressionStrategy) {
+          exercise.notes = `${exercise.notes ? exercise.notes + ' | ' : ''}Progress: ${programmeGuidance.progressionStrategy.substring(0, 100)}`
         }
       }
     }
   } catch (aiError) {
-    // If AI generation fails, log but continue with the plan (graceful degradation)
+    // If AI generation fails, add fallback coaching cues to all exercises
     console.error('AI programming generation error:', aiError instanceof Error ? aiError.message : 'Unknown error')
-    // The plan is still valid even without AI enhancements
+    
+    for (const workout of storedPlan.workouts) {
+      for (const exercise of workout.exercises) {
+        if (!exercise.coachingCues || exercise.coachingCues.length === 0) {
+          exercise.coachingCues = generateFallbackCoachingCues(exercise.name, payload.nasmOptPhase)
+        }
+      }
+    }
+  }
+
+  function generateFallbackCoachingCues(exerciseName: string, phase: number): string[] {
+    const cues: Record<number, string[]> = {
+      1: [
+        'Focus on slow, controlled movement to build stability',
+        'Maintain perfect form above all else',
+        'Breathe rhythmically throughout the movement',
+        'Feel the working muscles with every rep',
+      ],
+      2: [
+        'Build strength in stabilizer muscles',
+        'Increase work capacity gradually',
+        'Maintain excellent form under moderate loads',
+        'Control the negative (eccentric) portion',
+      ],
+      3: [
+        'Focus on the muscle contraction at the top',
+        'Control the weight, do not rely on momentum',
+        'Maintain consistent tempo throughout sets',
+        'Feel the stretch in the bottom position',
+      ],
+      4: [
+        'Maximize force production with intent',
+        'Use proper form with heavier loads',
+        'Full recovery between sets is essential',
+        'Progress load week-to-week systematically',
+      ],
+      5: [
+        'Move with explosive intent and control',
+        'Quality over quantity in power training',
+        'Full recovery between sets for power',
+        'Focus on bar speed and movement quality',
+      ],
+    }
+
+    const phaseCues = cues[phase] || cues[3]
+    return phaseCues
   }
 
   const draft: CoachProgramDraft = {

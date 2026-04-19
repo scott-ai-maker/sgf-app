@@ -210,76 +210,76 @@ function parseNASMProgrammingResponse(
   content: string,
   request: GenerationRequest
 ): ProgrammingOutput {
-  // Parse the structured response from OpenAI
-  const sections = content.split(/\*\*[0-9]+\.\s+/)
+  // Clean up markdown formatting
+  const cleanContent = content.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\n{3,}/g, '\n\n')
 
-  let workoutSummary = ''
-  let modificationNotes = ''
-  let safetyConsiderations = ''
-  let progressionStrategy = ''
+  // Parse the structured response from OpenAI
   const exerciseSpecificCues: Record<string, string[]> = {}
 
-  // Extract each section (crude parsing, more sophisticated regex could be used)
-  for (const section of sections) {
-    if (section.includes('WORKOUT SUMMARY') || section.includes('Summary')) {
-      workoutSummary = extractSectionContent(section)
-    } else if (section.includes('MODIFICATION') || section.includes('Modification')) {
-      modificationNotes = extractSectionContent(section)
-    } else if (section.includes('SAFETY') || section.includes('Safety')) {
-      safetyConsiderations = extractSectionContent(section)
-    } else if (section.includes('PROGRESSION') || section.includes('Progression')) {
-      progressionStrategy = extractSectionContent(section)
-    } else if (section.includes('EXERCISE') || section.includes('Coaching Cues')) {
-      parseExerciseCues(section, request.plannedExercises, exerciseSpecificCues)
+  // Try to extract coaching cues for each exercise
+  for (const exercise of request.plannedExercises) {
+    const exerciseName = exercise.name.toLowerCase().trim()
+    
+    // Look for sections mentioning this exercise with various patterns
+    const patterns = [
+      new RegExp(`(?:${exerciseName}|${exerciseName.split(/\s+/)[0]})[:\s]+([^]*?)(?:(?:^(?:[0-9]+\\.|##|###|-|•))|$)`, 'gimui'),
+      new RegExp(`(?:cue|tip|note)s? for ${exerciseName}[:\s]*([^]*?)(?:(?:^(?:[0-9]+\\.|##|###|-|•))|$)`, 'gimui'),
+      new RegExp(`${exerciseName.split(/\s+/)[0]}[:\s]*([^]*?)(?=(?:\\n\\n|###:|##:|^[0-9]\\.)`, 'gimui'),
+    ]
+
+    for (const pattern of patterns) {
+      const match = cleanContent.match(pattern)
+      if (match && match[1]) {
+        const cuesText = match[1]
+        const bulletPoints = cuesText.split(/[•\-\*]\s*/).filter(Boolean)
+        
+        if (bulletPoints.length > 0) {
+          const cues = bulletPoints
+            .map(c => c.trim())
+            .filter(c => c.length > 10 && c.length < 200)
+            .slice(0, 5)
+          
+          if (cues.length > 0) {
+            exerciseSpecificCues[exercise.name] = cues
+            break
+          }
+        }
+      }
     }
   }
 
-  // Fallback: if parsing didn't work well, use the whole content
-  if (!workoutSummary && content.length > 0) {
-    workoutSummary = content.substring(0, Math.min(500, content.length))
+  // Extract key sections
+  let workoutSummary = ''
+  let safetyConsiderations = ''
+  let progressionStrategy = ''
+
+  // Try to extract summary (usually after "SUMMARY" or first paragraph)
+  let summaryMatch = cleanContent.match(/(?:summary|overview|strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|progression|exercise))[^\n]*)*)/i)
+  if (summaryMatch) {
+    workoutSummary = summaryMatch[1].trim().substring(0, 400)
+  } else {
+    // Use first substantial paragraph
+    workoutSummary = cleanContent.substring(0, Math.min(400, cleanContent.length))
+  }
+
+  // Extract safety
+  let safetyMatch = cleanContent.match(/(?:safety|safety considerations)[:\s]*([^\n]*(?:\n(?!(?:modification|progression|exercise))[^\n]*)*)/i)
+  if (safetyMatch) {
+    safetyConsiderations = safetyMatch[1].trim().substring(0, 300)
+  }
+
+  // Extract progression
+  let progressionMatch = cleanContent.match(/(?:progression|progression strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|exercise))[^\n]*)*)/i)
+  if (progressionMatch) {
+    progressionStrategy = progressionMatch[1].trim().substring(0, 200)
   }
 
   return {
-    workoutSummary,
-    modificationNotes,
+    workoutSummary: workoutSummary || cleanContent.substring(0, Math.min(300, cleanContent.length)),
+    modificationNotes: '',
     safetyConsiderations,
     progressionStrategy,
     exerciseSpecificCues,
-  }
-}
-
-function extractSectionContent(section: string): string {
-  // Remove markdown formatting and extra whitespace
-  return section
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-    .substring(0, 1000)
-}
-
-function parseExerciseCues(
-  section: string,
-  plannedExercises: Array<{ name: string }>,
-  output: Record<string, string[]>
-): void {
-  // Try to extract coaching cues for each exercise
-  for (const exercise of plannedExercises) {
-    const exerciseName = exercise.name.toLowerCase()
-    // Look for mentions of this exercise and extract following bullet points
-    const regex = new RegExp(`${exerciseName}[:\\s]+((?:[•\\-].*?(?=\\n|$))+)`, 'i')
-    const match = section.match(regex)
-
-    if (match) {
-      const cuesText = match[1]
-      const cues = cuesText
-        .split(/[•\-\n]/)
-        .map(cue => cue.trim())
-        .filter(cue => cue.length > 0 && cue.length < 150)
-
-      if (cues.length > 0) {
-        output[exercise.name] = cues.slice(0, 5)
-      }
-    }
   }
 }
 

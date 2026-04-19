@@ -164,6 +164,35 @@ function exerciseMatchesComplexity(exercise: ExerciseRecord, targetComplexity: s
   return exerciseLevel <= targetLevel
 }
 
+// Extract muscle groups from exercise name/description
+function extractMuscleGroupsFromExercise(exercise: ExerciseRecord): string[] {
+  const text = `${exercise.name} ${exercise.description || ''}`.toLowerCase()
+
+  const muscleKeywords: Record<string, string[]> = {
+    chest: ['chest', 'pec', 'bench press'],
+    back: ['back', 'lat', 'row', 'pull'],
+    shoulders: ['shoulder', 'press', 'raise', 'delt'],
+    biceps: ['bicep', 'curl', 'arm'],
+    triceps: ['tricep', 'press', 'dip'],
+    forearms: ['forearm', 'wrist curl'],
+    quadriceps: ['quad', 'leg press', 'leg extension', 'squat'],
+    hamstrings: ['hamstring', 'leg curl', 'deadlift', 'rdl'],
+    glutes: ['glute', 'hip thrust', 'leg press', 'squat', 'lunge'],
+    calves: ['calf', 'ankle'],
+    core: ['core', 'crunch', 'plank', 'ab', 'core'],
+    legs: ['leg', 'squat', 'lunge', 'extension', 'curl'],
+  }
+
+  const detected = new Set<string>()
+  for (const [muscle, keywords] of Object.entries(muscleKeywords)) {
+    if (keywords.some(k => text.includes(k))) {
+      detected.add(muscle)
+    }
+  }
+
+  return Array.from(detected)
+}
+
 function exerciseMatchesEquipment(exercise: ExerciseRecord, availableEquipment: string[]): boolean {
   // Exercises with no primary equipment (bodyweight) always match
   if (exercise.primaryEquipment.length === 0) {
@@ -292,19 +321,26 @@ export function selectExercisesForWorkoutDay(
 
     // Prioritize exercises matching the day focus
     const dayFocusLower = dayFocus.toLowerCase()
-    const muscleGroups = exercise.metadata?.muscleGroups ?? []
+    
+    // Extract muscle groups from exercise name/description
+    const extractedMuscles = extractMuscleGroupsFromExercise(exercise)
+    const metadataMuscles = exercise.metadata?.muscleGroups ?? []
+    const allMuscles = [...new Set([...extractedMuscles, ...metadataMuscles.map(m => m.toLowerCase())])]
+    
+    // Check if any extracted muscle matches the day focus
     if (
-      muscleGroups.some(group => dayFocusLower.includes(group.toLowerCase())) ||
+      allMuscles.some(muscle => dayFocusLower.includes(muscle)) ||
+      allMuscles.some(muscle => dayFocusLower.includes(muscle.split(' ')[0])) ||
       exercise.name.toLowerCase().includes(dayFocusLower.split(' ')[0])
     ) {
-      score += 50
+      score += 80  // Increased from 50 for better matching
     }
 
     // Prefer exercises with multiple muscle group benefits
-    score += (exercise.metadata?.muscleGroups?.length ?? 0) * 10
+    score += allMuscles.length * 15
 
     // Add randomness to prevent repetitiveness
-    score += Math.random() * 20
+    score += Math.random() * 10  // Reduced from 20 to make scoring more deterministic
 
     return { exercise, score }
   })
