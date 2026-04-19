@@ -104,6 +104,20 @@ const EXERCISE_SEARCH_ALIASES: Record<string, string[]> = {
   calf: ['calf raise', 'standing calf', 'seated calf'],
 }
 
+const DEFAULT_DAY_NOTE_SNIPPETS = [
+  'Prioritize movement quality and stable tempo over load today.',
+  'Keep all sets at RPE 7-8 and stop 2 reps before technical breakdown.',
+  'Use regressions as needed and avoid symptom-provoking ranges.',
+  'Coach breathing and bracing on every primary lift.',
+]
+
+const DEFAULT_EXERCISE_NOTE_SNIPPETS = [
+  'Control eccentric for 3 seconds and pause before concentric.',
+  'Leave 1-2 reps in reserve across all working sets.',
+  'If pain appears, reduce ROM and switch to the listed regression.',
+  'Focus on full range with clean tempo before adding load.',
+]
+
 function normalizeSearchText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -315,6 +329,23 @@ function favoritesStorageKey(clientId: string) {
   return `coach-program-favorites:${clientId}`
 }
 
+function daySnippetsStorageKey(clientId: string) {
+  return `coach-program-day-snippets:${clientId}`
+}
+
+function exerciseSnippetsStorageKey(clientId: string) {
+  return `coach-program-exercise-snippets:${clientId}`
+}
+
+function appendSnippet(existingValue: string, snippet: string) {
+  const current = String(existingValue ?? '').trim()
+  const next = String(snippet ?? '').trim()
+  if (!next) return current
+  if (!current) return next
+  if (current.toLowerCase().includes(next.toLowerCase())) return current
+  return `${current} ${next}`.trim()
+}
+
 type ContraindicationRule = {
   profilePattern: RegExp
   exercisePattern: RegExp
@@ -517,6 +548,8 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   const [pickerMultiAdd, setPickerMultiAdd] = useState(false)
   const [recentExerciseIds, setRecentExerciseIds] = useState<string[]>([])
   const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>([])
+  const [customDaySnippets, setCustomDaySnippets] = useState<string[]>([])
+  const [customExerciseSnippets, setCustomExerciseSnippets] = useState<string[]>([])
   const [copyExerciseModal, setCopyExerciseModal] = useState<{ dayId: string; exerciseId: string } | null>(null)
   const [saveTemplateModal, setSaveTemplateModal] = useState(false)
   const [templateSaveBusy, setTemplateSaveBusy] = useState(false)
@@ -559,15 +592,23 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   useEffect(() => {
     const recentsRaw = window.localStorage.getItem(recentsStorageKey(clientId))
     const favoritesRaw = window.localStorage.getItem(favoritesStorageKey(clientId))
+    const daySnippetsRaw = window.localStorage.getItem(daySnippetsStorageKey(clientId))
+    const exerciseSnippetsRaw = window.localStorage.getItem(exerciseSnippetsStorageKey(clientId))
 
     try {
       const parsedRecents = recentsRaw ? JSON.parse(recentsRaw) : []
       const parsedFavorites = favoritesRaw ? JSON.parse(favoritesRaw) : []
+      const parsedDaySnippets = daySnippetsRaw ? JSON.parse(daySnippetsRaw) : []
+      const parsedExerciseSnippets = exerciseSnippetsRaw ? JSON.parse(exerciseSnippetsRaw) : []
       setRecentExerciseIds(Array.isArray(parsedRecents) ? parsedRecents.filter(Boolean).slice(0, 16) : [])
       setFavoriteExerciseIds(Array.isArray(parsedFavorites) ? parsedFavorites.filter(Boolean).slice(0, 32) : [])
+      setCustomDaySnippets(Array.isArray(parsedDaySnippets) ? parsedDaySnippets.filter(Boolean).slice(0, 12) : [])
+      setCustomExerciseSnippets(Array.isArray(parsedExerciseSnippets) ? parsedExerciseSnippets.filter(Boolean).slice(0, 16) : [])
     } catch {
       setRecentExerciseIds([])
       setFavoriteExerciseIds([])
+      setCustomDaySnippets([])
+      setCustomExerciseSnippets([])
     }
   }, [clientId])
 
@@ -578,6 +619,14 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   useEffect(() => {
     window.localStorage.setItem(favoritesStorageKey(clientId), JSON.stringify(favoriteExerciseIds.slice(0, 32)))
   }, [clientId, favoriteExerciseIds])
+
+  useEffect(() => {
+    window.localStorage.setItem(daySnippetsStorageKey(clientId), JSON.stringify(customDaySnippets.slice(0, 12)))
+  }, [clientId, customDaySnippets])
+
+  useEffect(() => {
+    window.localStorage.setItem(exerciseSnippetsStorageKey(clientId), JSON.stringify(customExerciseSnippets.slice(0, 16)))
+  }, [clientId, customExerciseSnippets])
 
   useEffect(() => {
     if (!restTimerRunning) return
@@ -664,6 +713,14 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   const favoriteExercises = useMemo(() => {
     return favoriteExerciseIds.map(id => exerciseById.get(id)).filter((item): item is ExerciseLibraryRecord => Boolean(item))
   }, [exerciseById, favoriteExerciseIds])
+
+  const dayNoteSnippets = useMemo(() => {
+    return [...DEFAULT_DAY_NOTE_SNIPPETS, ...customDaySnippets].slice(0, 16)
+  }, [customDaySnippets])
+
+  const exerciseNoteSnippets = useMemo(() => {
+    return [...DEFAULT_EXERCISE_NOTE_SNIPPETS, ...customExerciseSnippets].slice(0, 20)
+  }, [customExerciseSnippets])
 
   const contraindicationText = useMemo(() => {
     return contraindicationNotes.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ').toLowerCase()
@@ -882,6 +939,29 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     setDays(current => current.map(day => (day.id === dayId ? { ...day, [field]: value } : day)))
   }
 
+  function applyDaySnippet(dayId: string, snippet: string) {
+    setDays(current => current.map(day => (
+      day.id === dayId
+        ? { ...day, notes: appendSnippet(day.notes ?? '', snippet) }
+        : day
+    )))
+  }
+
+  function saveDaySnippet(dayId: string) {
+    const note = days.find(day => day.id === dayId)?.notes ?? ''
+    const normalized = String(note).trim()
+    if (normalized.length < 10) {
+      setStatus('Day note too short to save as snippet.')
+      return
+    }
+
+    setCustomDaySnippets(current => {
+      const withoutDuplicate = current.filter(item => item.toLowerCase() !== normalized.toLowerCase())
+      return [normalized, ...withoutDuplicate].slice(0, 12)
+    })
+    setStatus('Day note snippet saved.')
+  }
+
   function updateExercise(dayId: string, exerciseId: string, field: keyof BuilderExercise, value: string | boolean) {
     setDays(current =>
       current.map(day => {
@@ -905,6 +985,42 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
         }
       })
     )
+  }
+
+  function applyExerciseSnippet(dayId: string, exerciseId: string, snippet: string) {
+    setDays(current =>
+      current.map(day => {
+        if (day.id !== dayId) return day
+
+        return {
+          ...day,
+          exercises: day.exercises.map(exercise => (
+            exercise.id === exerciseId
+              ? { ...exercise, notes: appendSnippet(exercise.notes, snippet) }
+              : exercise
+          )),
+        }
+      })
+    )
+  }
+
+  function saveExerciseSnippet(dayId: string, exerciseId: string) {
+    const note = days
+      .find(day => day.id === dayId)
+      ?.exercises.find(exercise => exercise.id === exerciseId)
+      ?.notes ?? ''
+
+    const normalized = String(note).trim()
+    if (normalized.length < 10) {
+      setStatus('Exercise note too short to save as snippet.')
+      return
+    }
+
+    setCustomExerciseSnippets(current => {
+      const withoutDuplicate = current.filter(item => item.toLowerCase() !== normalized.toLowerCase())
+      return [normalized, ...withoutDuplicate].slice(0, 16)
+    })
+    setStatus('Exercise note snippet saved.')
   }
 
   function openPicker(dayId: string, exerciseId: string) {
@@ -1421,6 +1537,17 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
               <textarea value={day.notes} onChange={event => updateDay(day.id, 'notes', event.target.value)} style={{ ...inputStyle, minHeight: 72 }} placeholder="Session emphasis, regressions, intent" />
             </label>
 
+            <div style={snippetRowStyle}>
+              {dayNoteSnippets.slice(0, 4).map(snippet => (
+                <button key={`${day.id}-${snippet}`} type="button" onClick={() => applyDaySnippet(day.id, snippet)} style={snippetButtonStyle}>
+                  + {snippet.slice(0, 38)}{snippet.length > 38 ? '...' : ''}
+                </button>
+              ))}
+              <button type="button" onClick={() => saveDaySnippet(day.id)} style={snippetSaveButtonStyle}>
+                Save Note Snippet
+              </button>
+            </div>
+
             {(() => {
               const density = dayDensity.find(item => item.dayId === day.id)
               if (!density) return null
@@ -1523,6 +1650,17 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
                     Exercise Notes
                     <input value={exercise.notes} onChange={event => updateExercise(day.id, exercise.id, 'notes', event.target.value)} style={inputStyle} placeholder="Coaching cue, modification, target RPE" />
                   </label>
+
+                  <div style={snippetRowStyle}>
+                    {exerciseNoteSnippets.slice(0, 4).map(snippet => (
+                      <button key={`${exercise.id}-${snippet}`} type="button" onClick={() => applyExerciseSnippet(day.id, exercise.id, snippet)} style={snippetButtonStyle}>
+                        + {snippet.slice(0, 36)}{snippet.length > 36 ? '...' : ''}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => saveExerciseSnippet(day.id, exercise.id)} style={snippetSaveButtonStyle}>
+                      Save Exercise Snippet
+                    </button>
+                  </div>
 
                   {(() => {
                     const suggestion = buildProgressionSuggestion(exercise, currentPhaseNumber)
@@ -2017,6 +2155,35 @@ const densityPanelStyle: React.CSSProperties = {
   background: 'rgba(11,24,39,0.72)',
   padding: '10px 12px',
   marginBottom: 12,
+}
+
+const snippetRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  flexWrap: 'wrap',
+  marginTop: 8,
+}
+
+const snippetButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.16)',
+  background: 'rgba(13,27,42,0.82)',
+  color: 'var(--gray)',
+  padding: '6px 8px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 11,
+  cursor: 'pointer',
+  minHeight: 34,
+}
+
+const snippetSaveButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(212,160,23,0.35)',
+  background: 'rgba(212,160,23,0.1)',
+  color: 'var(--gold-lt)',
+  padding: '6px 10px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 11,
+  cursor: 'pointer',
+  minHeight: 34,
 }
 
 const mobileActionBarStyle: React.CSSProperties = {
