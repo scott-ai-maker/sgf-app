@@ -194,6 +194,28 @@ function inferExerciseCategory(name: string) {
   return 'Full Body & Other'
 }
 
+function suggestCategoryFromDayFocus(focus: string) {
+  const normalized = focus.toLowerCase()
+  if (!normalized) return 'All Categories'
+
+  if (/(push|chest|shoulder|tricep)/.test(normalized)) return 'Upper Push'
+  if (/(pull|back|lat|bicep|row)/.test(normalized)) return 'Upper Pull'
+  if (/(lower|leg|glute|squat|hinge|hamstring|quad)/.test(normalized)) return 'Lower Body'
+  if (/(core|abs|rotation|anti-rotation|stability)/.test(normalized)) return 'Core'
+  if (/(power|plyo|jump|explosive)/.test(normalized)) return 'Power & Plyo'
+  if (/(mobility|corrective|recovery|warmup|warm-up)/.test(normalized)) return 'Mobility & Corrective'
+
+  return 'All Categories'
+}
+
+function recentsStorageKey(clientId: string) {
+  return `coach-program-recents:${clientId}`
+}
+
+function favoritesStorageKey(clientId: string) {
+  return `coach-program-favorites:${clientId}`
+}
+
 function normalizeEquipmentKey(primaryEquipment: string[] | null | undefined) {
   const first = Array.isArray(primaryEquipment) ? String(primaryEquipment[0] ?? '').trim().toLowerCase() : ''
   if (!first || first === 'none') return 'Bodyweight'
@@ -270,6 +292,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerCategory, setPickerCategory] = useState('All Categories')
   const [pickerEquipment, setPickerEquipment] = useState('All Equipment')
+  const [pickerMultiAdd, setPickerMultiAdd] = useState(false)
+  const [recentExerciseIds, setRecentExerciseIds] = useState<string[]>([])
+  const [favoriteExerciseIds, setFavoriteExerciseIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!draftPlan) return
@@ -301,6 +326,29 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
     setStartDate(nextState.startDate)
     setDays(nextState.days)
   }, [draftPlan, latestPlan])
+
+  useEffect(() => {
+    const recentsRaw = window.localStorage.getItem(recentsStorageKey(clientId))
+    const favoritesRaw = window.localStorage.getItem(favoritesStorageKey(clientId))
+
+    try {
+      const parsedRecents = recentsRaw ? JSON.parse(recentsRaw) : []
+      const parsedFavorites = favoritesRaw ? JSON.parse(favoritesRaw) : []
+      setRecentExerciseIds(Array.isArray(parsedRecents) ? parsedRecents.filter(Boolean).slice(0, 16) : [])
+      setFavoriteExerciseIds(Array.isArray(parsedFavorites) ? parsedFavorites.filter(Boolean).slice(0, 32) : [])
+    } catch {
+      setRecentExerciseIds([])
+      setFavoriteExerciseIds([])
+    }
+  }, [clientId])
+
+  useEffect(() => {
+    window.localStorage.setItem(recentsStorageKey(clientId), JSON.stringify(recentExerciseIds.slice(0, 16)))
+  }, [clientId, recentExerciseIds])
+
+  useEffect(() => {
+    window.localStorage.setItem(favoritesStorageKey(clientId), JSON.stringify(favoriteExerciseIds.slice(0, 32)))
+  }, [clientId, favoriteExerciseIds])
 
   const exerciseMap = useMemo(() => {
     return new Map(exercises.map(exercise => [exercise.name.trim().toLowerCase(), exercise]))
@@ -334,8 +382,35 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
         const equipmentText = equipmentBadges(item.record.primary_equipment).join(' ').toLowerCase()
         return name.includes(query) || equipmentText.includes(query)
       })
+      .sort((a, b) => {
+        const aFavorite = favoriteExerciseIds.includes(a.record.id) ? 1 : 0
+        const bFavorite = favoriteExerciseIds.includes(b.record.id) ? 1 : 0
+        if (aFavorite !== bFavorite) return bFavorite - aFavorite
+
+        const aRecent = recentExerciseIds.indexOf(a.record.id)
+        const bRecent = recentExerciseIds.indexOf(b.record.id)
+        if (aRecent !== -1 || bRecent !== -1) {
+          if (aRecent === -1) return 1
+          if (bRecent === -1) return -1
+          return aRecent - bRecent
+        }
+
+        return a.record.name.localeCompare(b.record.name)
+      })
       .slice(0, 80)
-  }, [exerciseCatalog, pickerCategory, pickerEquipment, pickerQuery])
+  }, [exerciseCatalog, favoriteExerciseIds, pickerCategory, pickerEquipment, pickerQuery, recentExerciseIds])
+
+  const exerciseById = useMemo(() => {
+    return new Map(exercises.map(exercise => [exercise.id, exercise]))
+  }, [exercises])
+
+  const recentExercises = useMemo(() => {
+    return recentExerciseIds.map(id => exerciseById.get(id)).filter((item): item is ExerciseLibraryRecord => Boolean(item))
+  }, [exerciseById, recentExerciseIds])
+
+  const favoriteExercises = useMemo(() => {
+    return favoriteExerciseIds.map(id => exerciseById.get(id)).filter((item): item is ExerciseLibraryRecord => Boolean(item))
+  }, [exerciseById, favoriteExerciseIds])
 
   const calendarEntries = useMemo(() => {
     const parsedStart = parseDateOnly(startDate)
@@ -440,9 +515,12 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   }
 
   function openPicker(dayId: string, exerciseId: string) {
+    const day = days.find(item => item.id === dayId)
+    const suggestedCategory = suggestCategoryFromDayFocus(String(day?.focus ?? ''))
+
     setPickerTarget({ dayId, exerciseId })
     setPickerQuery('')
-    setPickerCategory('All Categories')
+    setPickerCategory(suggestedCategory)
     setPickerEquipment('All Equipment')
   }
 
@@ -453,27 +531,64 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   function selectExerciseFromPicker(record: ExerciseLibraryRecord) {
     if (!pickerTarget) return
 
+    let nextTarget: PickerTarget | null = null
+    const currentTarget = pickerTarget
+
     setDays(current =>
       current.map(day => {
-        if (day.id !== pickerTarget.dayId) return day
+        if (day.id !== currentTarget.dayId) return day
+
+        const currentIndex = day.exercises.findIndex(exercise => exercise.id === currentTarget.exerciseId)
 
         return {
           ...day,
-          exercises: day.exercises.map(exercise => {
-            if (exercise.id !== pickerTarget.exerciseId) return exercise
+          exercises: (() => {
+            const updated = day.exercises.map(exercise => {
+              if (exercise.id !== currentTarget.exerciseId) return exercise
 
-            const withName = {
-              ...exercise,
-              name: record.name,
+              const withName = {
+                ...exercise,
+                name: record.name,
+              }
+
+              return hydrateExerciseFromRecord(withName, record)
+            })
+
+            if (pickerMultiAdd) {
+              if (currentIndex >= 0 && currentIndex < updated.length - 1) {
+                nextTarget = { dayId: day.id, exerciseId: updated[currentIndex + 1].id }
+              } else {
+                const appended = createBlankExercise()
+                nextTarget = { dayId: day.id, exerciseId: appended.id }
+                return [...updated, appended]
+              }
             }
 
-            return hydrateExerciseFromRecord(withName, record)
-          }),
+            return updated
+          })(),
         }
       })
     )
 
+    setRecentExerciseIds(current => {
+      const withoutCurrent = current.filter(id => id !== record.id)
+      return [record.id, ...withoutCurrent].slice(0, 16)
+    })
+
+    if (pickerMultiAdd && nextTarget) {
+      setPickerTarget(nextTarget)
+      return
+    }
+
     closePicker()
+  }
+
+  function toggleFavorite(recordId: string) {
+    setFavoriteExerciseIds(current => (
+      current.includes(recordId)
+        ? current.filter(id => id !== recordId)
+        : [recordId, ...current].slice(0, 32)
+    ))
   }
 
   function addDay() {
@@ -855,8 +970,43 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
               <h3 style={{ margin: 0, color: 'var(--white)', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.08em', fontSize: 24 }}>
                 Choose Exercise
               </h3>
-              <button type="button" onClick={closePicker} style={secondaryButtonStyle}>Close</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setPickerMultiAdd(current => !current)}
+                  style={{ ...secondaryButtonStyle, border: pickerMultiAdd ? '1px solid rgba(212,160,23,0.45)' : '1px solid var(--navy-lt)', color: pickerMultiAdd ? 'var(--gold-lt)' : 'var(--white)' }}
+                >
+                  Multi-Add: {pickerMultiAdd ? 'On' : 'Off'}
+                </button>
+                <button type="button" onClick={closePicker} style={secondaryButtonStyle}>Close</button>
+              </div>
             </div>
+
+            {favoriteExercises.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Favorites</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {favoriteExercises.slice(0, 8).map(record => (
+                    <button key={`favorite-${record.id}`} type="button" onClick={() => selectExerciseFromPicker(record)} style={pickerQuickButtonStyle}>
+                      {record.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recentExercises.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Recent</p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {recentExercises.slice(0, 8).map(record => (
+                    <button key={`recent-${record.id}`} type="button" onClick={() => selectExerciseFromPicker(record)} style={pickerQuickButtonStyle}>
+                      {record.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 12 }}>
               <label style={labelStyle}>
@@ -896,20 +1046,31 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
               )}
 
               {filteredPickerExercises.map(item => (
-                <button
-                  key={item.record.id}
-                  type="button"
-                  onClick={() => selectExerciseFromPicker(item.record)}
-                  style={pickerListButtonStyle}
-                >
-                  <div style={{ color: 'var(--white)', fontSize: 15, fontWeight: 700, textAlign: 'left' }}>{item.record.name}</div>
+                <div key={item.record.id} style={pickerListButtonStyle}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => selectExerciseFromPicker(item.record)}
+                      style={pickerSelectButtonStyle}
+                    >
+                      {item.record.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(item.record.id)}
+                      style={{ ...pickerFavoriteButtonStyle, color: favoriteExerciseIds.includes(item.record.id) ? 'var(--gold)' : 'var(--gray)' }}
+                      aria-label={favoriteExerciseIds.includes(item.record.id) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      ★
+                    </button>
+                  </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                     <span style={chipStyle}>{item.category}</span>
                     {equipmentBadges(item.record.primary_equipment).slice(0, 2).map(equipmentItem => (
                       <span key={`${item.record.id}-${equipmentItem}`} style={chipStyle}>{equipmentItem}</span>
                     ))}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -1028,5 +1189,37 @@ const pickerListButtonStyle: React.CSSProperties = {
   background: 'rgba(11, 24, 39, 0.9)',
   padding: '10px 12px',
   textAlign: 'left',
+}
+
+const pickerSelectButtonStyle: React.CSSProperties = {
+  border: 0,
+  background: 'transparent',
+  color: 'var(--white)',
+  fontSize: 15,
+  fontWeight: 700,
+  textAlign: 'left',
+  padding: 0,
   cursor: 'pointer',
+  minHeight: 44,
+}
+
+const pickerFavoriteButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.2)',
+  background: 'rgba(13,27,42,0.8)',
+  fontSize: 16,
+  lineHeight: 1,
+  width: 36,
+  height: 36,
+  cursor: 'pointer',
+}
+
+const pickerQuickButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(212,160,23,0.25)',
+  background: 'rgba(212,160,23,0.08)',
+  color: 'var(--gold-lt)',
+  padding: '8px 10px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 12,
+  cursor: 'pointer',
+  minHeight: 42,
 }
