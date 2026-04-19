@@ -8,6 +8,14 @@ import {
   normalizePhotoPath,
 } from '@/lib/fitness-photos'
 
+const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+const EXCLUDED_EQUIPMENT_TERMS = ['chains', 'chain', 'safety collar', 'safety collars']
+
+function isExcludedEquipmentName(name: string) {
+  const normalized = String(name ?? '').trim().toLowerCase()
+  return EXCLUDED_EQUIPMENT_TERMS.some(term => normalized.includes(term))
+}
+
 export async function GET() {
   const supabase = await createClient()
   const {
@@ -22,10 +30,22 @@ export async function GET() {
     .eq('user_id', user.id)
     .maybeSingle()
 
+  const { data: equipmentData } = await supabase
+    .from('equipment_library_entries')
+    .select('name')
+    .eq('is_active', true)
+    .eq('source', EXERCISE_LIBRARY_SOURCE)
+    .order('name', { ascending: true })
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  const availableEquipment = [...new Set((equipmentData ?? [])
+    .map(item => String(item.name ?? '').trim())
+    .filter(Boolean)
+    .filter(item => !isExcludedEquipmentName(item)))]
+
   if (!data) {
-    return NextResponse.json({ profile: null })
+    return NextResponse.json({ profile: null, availableEquipment })
   }
 
   const beforePhotoPath = normalizePhotoPath(
@@ -39,7 +59,7 @@ export async function GET() {
     before_photo_url: signedBeforePhotoUrl ?? null,
   }
 
-  return NextResponse.json({ profile })
+  return NextResponse.json({ profile, availableEquipment })
 }
 
 export async function POST(req: NextRequest) {

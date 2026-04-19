@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Units = 'metric' | 'imperial'
@@ -16,18 +16,7 @@ const PARQ_QUESTIONS = [
   { key: 'parqQ7', label: 'Do you know of any other reason you should not participate in exercise?' },
 ] as const
 
-const EQUIPMENT_OPTIONS = [
-  { key: 'bodyweight', label: 'Bodyweight / floor space' },
-  { key: 'dumbbells', label: 'Dumbbells' },
-  { key: 'barbell', label: 'Barbell + plates' },
-  { key: 'bench', label: 'Bench' },
-  { key: 'cable-machine', label: 'Cable machine' },
-  { key: 'machines', label: 'Selectorized machines' },
-  { key: 'kettlebells', label: 'Kettlebells' },
-  { key: 'bands', label: 'Resistance bands' },
-  { key: 'trx', label: 'TRX / suspension trainer' },
-  { key: 'medicine-ball', label: 'Medicine ball' },
-] as const
+const DEFAULT_EQUIPMENT_OPTIONS = ['Bodyweight']
 
 export default function OnboardingForm() {
   const router = useRouter()
@@ -36,6 +25,7 @@ export default function OnboardingForm() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
+  const [equipmentOptions, setEquipmentOptions] = useState<string[]>(DEFAULT_EQUIPMENT_OPTIONS)
   const [form, setForm] = useState({
     preferredUnits: 'metric' as Units,
     age: '30',
@@ -57,7 +47,7 @@ export default function OnboardingForm() {
     injuriesLimitations: '',
     experienceLevel: 'beginner',
     workoutLocation: 'gym' as WorkoutLocation,
-    equipmentAccess: ['bodyweight', 'dumbbells'],
+    equipmentAccess: ['Bodyweight'],
     parqQ1: '',
     parqQ2: '',
     parqQ3: '',
@@ -88,6 +78,46 @@ export default function OnboardingForm() {
   function updateBooleanField(key: string, value: boolean) {
     setForm(prev => ({ ...prev, [key]: value }))
   }
+
+  useEffect(() => {
+    let active = true
+
+    async function loadEquipmentOptions() {
+      const res = await fetch('/api/fitness/profile', { method: 'GET' })
+      const payload = await res.json().catch(() => ({}))
+
+      if (!res.ok) return
+
+      const names: string[] = Array.isArray(payload?.availableEquipment)
+        ? payload.availableEquipment.map((item: unknown) => String(item ?? '').trim()).filter(Boolean)
+        : []
+
+      const bodyweightOption = names.find(item => item.trim().toLowerCase() === 'bodyweight') ?? 'Bodyweight'
+      const available = [...new Set([bodyweightOption, ...names])]
+      const normalizedAvailable = new Set(available.map(item => item.toLowerCase()))
+
+      if (!active || available.length === 0) return
+
+      setEquipmentOptions(available)
+      setForm(prev => ({
+        ...prev,
+        equipmentAccess: prev.equipmentAccess.filter(item => normalizedAvailable.has(item.toLowerCase())),
+      }))
+    }
+
+    void loadEquipmentOptions()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const equipmentChoices = useMemo(() => {
+    return equipmentOptions.map(option => ({
+      key: option,
+      label: option,
+    }))
+  }, [equipmentOptions])
 
   function toggleEquipment(key: string) {
     setForm(prev => {
@@ -556,7 +586,7 @@ export default function OnboardingForm() {
       <div>
         <label className="sgf-form-label">Equipment Access</label>
         <div className="sgf-form-grid" style={{ gap: 8 }}>
-          {EQUIPMENT_OPTIONS.map(option => (
+          {equipmentChoices.map(option => (
             <label
               key={option.key}
               style={{

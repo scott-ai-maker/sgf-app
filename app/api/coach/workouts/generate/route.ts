@@ -43,31 +43,80 @@ function normalizeEquipmentAccess(items: string[]) {
   return [...new Set(items.map(item => String(item ?? '').trim().toLowerCase()).filter(Boolean))]
 }
 
+function normalizeEquipmentAlias(item: string) {
+  const normalized = String(item ?? '').trim().toLowerCase()
+
+  if (!normalized) return null
+  if (normalized === 'cable-machine') return 'cable machine'
+  if (normalized === 'medicine-ball') return 'medicine ball'
+  if (normalized === 'dumbbells') return 'dumbbell'
+  if (normalized === 'kettlebells') return 'kettlebell'
+  if (normalized === 'bands') return 'band'
+  if (normalized === 'machines') return 'machine'
+  if (normalized === 'trx') return 'suspension'
+
+  return normalized
+}
+
 function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAccess: string[]) {
   if (equipmentAccess.length === 0) return true
+
+  const normalizedAvailable = equipmentAccess
+    .map(item => normalizeEquipmentAlias(item))
+    .filter((item): item is string => Boolean(item))
 
   const normalizedEquipment = (Array.isArray(exercise.primary_equipment) ? exercise.primary_equipment : [])
     .map(item => String(item ?? '').trim().toLowerCase())
     .filter(Boolean)
 
   if (normalizedEquipment.length === 0) {
-    return equipmentAccess.includes('bodyweight')
+    return normalizedAvailable.includes('bodyweight')
   }
 
   return normalizedEquipment.some(item => {
-    if (item.includes('bodyweight') || item === 'none') return equipmentAccess.includes('bodyweight')
-    if (item.includes('dumbbell')) return equipmentAccess.includes('dumbbells')
-    if (item.includes('barbell')) return equipmentAccess.includes('barbell')
-    if (item.includes('bench')) return equipmentAccess.includes('bench')
-    if (item.includes('cable')) return equipmentAccess.includes('cable-machine')
-    if (item.includes('machine') || item.includes('smith') || item.includes('lever') || item.includes('press')) return equipmentAccess.includes('machines')
-    if (item.includes('kettlebell')) return equipmentAccess.includes('kettlebells')
-    if (item.includes('band') || item.includes('tube') || item.includes('strap')) return equipmentAccess.includes('bands')
-    if (item.includes('trx') || item.includes('suspension')) return equipmentAccess.includes('trx')
-    if (item.includes('medicine ball') || item.includes('stability ball')) return equipmentAccess.includes('medicine-ball')
+    if (item.includes('bodyweight') || item === 'none') return normalizedAvailable.includes('bodyweight')
 
-    // Unknown equipment labels should not be treated as available by default.
-    return false
+    const canonicalItem = normalizeEquipmentAlias(item)
+    if (!canonicalItem) return false
+
+    return normalizedAvailable.some(available => {
+      if (available === canonicalItem) return true
+      if (available.includes(canonicalItem) || canonicalItem.includes(available)) return true
+
+      if (canonicalItem.includes('trx') || canonicalItem.includes('suspension')) {
+        return available.includes('trx') || available.includes('suspension')
+      }
+
+      if (canonicalItem.includes('band')) {
+        return available.includes('band') || available.includes('resistance')
+      }
+
+      if (canonicalItem.includes('dumbbell')) {
+        return available.includes('dumbbell')
+      }
+
+      if (canonicalItem.includes('barbell')) {
+        return available.includes('barbell')
+      }
+
+      if (canonicalItem.includes('kettlebell')) {
+        return available.includes('kettlebell')
+      }
+
+      if (canonicalItem.includes('machine') || canonicalItem.includes('smith')) {
+        return available.includes('machine') || available.includes('smith')
+      }
+
+      if (canonicalItem.includes('cable')) {
+        return available.includes('cable')
+      }
+
+      if (canonicalItem.includes('medicine ball') || canonicalItem.includes('stability ball')) {
+        return available.includes('medicine ball') || available.includes('stability ball')
+      }
+
+      return false
+    })
   })
 }
 
