@@ -125,7 +125,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .limit(250),
     admin
       .from('fitness_profiles')
-      .select('equipment_access, injuries_limitations')
+      .select('equipment_access, cardio_equipment_access, injuries_limitations')
       .eq('user_id', id)
       .maybeSingle(),
     admin
@@ -348,6 +348,9 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
               ? fitnessProfileResult.data.equipment_access
               : []}
             libraryEquipmentNames={filteredEquipment.map(item => String(item.name ?? '').trim()).filter(Boolean)}
+            cardioEquipmentAccess={Array.isArray(fitnessProfileResult.data?.cardio_equipment_access)
+              ? fitnessProfileResult.data.cardio_equipment_access
+              : []}
           />
         )}
 

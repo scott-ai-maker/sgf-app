@@ -127,6 +127,11 @@ export async function POST(req: NextRequest) {
     .map((item: unknown) => String(item).trim())
     .filter(Boolean)
 
+  const rawCardioEquipment = Array.isArray(body.cardioEquipmentAccess) ? body.cardioEquipmentAccess : []
+  const cardioEquipmentAccess = rawCardioEquipment
+    .map((item: unknown) => String(item).trim())
+    .filter(Boolean)
+
   const payload = {
     user_id: userId,
     preferred_units: body.preferredUnits === 'imperial' ? 'imperial' : 'metric',
@@ -146,6 +151,7 @@ export async function POST(req: NextRequest) {
     experience_level: body.experienceLevel ?? null,
     workout_location: body.workoutLocation ?? null,
     equipment_access: equipmentAccess.length ? equipmentAccess : ['bodyweight'],
+    cardio_equipment_access: cardioEquipmentAccess,
     onboarding_completed_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

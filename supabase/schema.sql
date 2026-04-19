@@ -474,6 +474,9 @@ alter table fitness_profiles
 alter table fitness_profiles
   add column if not exists equipment_access text[] default array['bodyweight']::text[];
 
+alter table fitness_profiles
+  add column if not exists cardio_equipment_access text[] default array[]::text[];
+
 create table if not exists workout_plans (
   id                        uuid primary key default gen_random_uuid(),
   user_id                   uuid references auth.users(id) on delete cascade,

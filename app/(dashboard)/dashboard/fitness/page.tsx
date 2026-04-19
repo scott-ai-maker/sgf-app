@@ -61,7 +61,7 @@ export default async function FitnessTrackerPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 46, letterSpacing: '0.05em', margin: 0 }}>Fitness Lab</h1>
-            <p style={{ color: 'var(--gray)', margin: '6px 0 0' }}>Build your NASM OPT plan, track sessions, and visualize your goal outcome.</p>
+            <p style={{ color: 'var(--gray)', margin: '6px 0 0' }}>Follow your training plan, track sessions, and visualize your progress.</p>
           </div>
           <a href="/dashboard" className="sgf-shell-back" style={{ marginBottom: 0 }}>← Back to Dashboard</a>
         </div>

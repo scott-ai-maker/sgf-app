@@ -138,11 +138,19 @@ function todayDateOnly() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function defaultInlineSetDraft(sessionDate: string): InlineSetDraft {
+function defaultInlineSetDraft(sessionDate: string, prescribedReps?: string | null): InlineSetDraft {
+  const repsDefault = (() => {
+    const text = String(prescribedReps ?? '').trim()
+    if (!text) return '8'
+    const rangeMatch = text.match(/(\d+)\s*[-\u2013to]+\s*(\d+)/i)
+    if (rangeMatch) return rangeMatch[1]
+    const numMatch = text.match(/\d+/)
+    return numMatch ? numMatch[0] : '8'
+  })()
   return {
     sessionDate,
     setNumber: '1',
-    reps: '8',
+    reps: repsDefault,
     weight: '',
     restSeconds: '90',
     rpe: '7',
@@ -551,10 +559,13 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
                     {workout.exercises.map(ex => {
                         const exerciseKey = exerciseDraftKey(workout.day, ex.name)
-                        const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly())
+                        const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly(), ex.reps)
                         const exerciseRecentLogs = (setLogsByExercise.get(normalizeExerciseName(ex.name)) ?? [])
                           .filter(row => extractWorkoutDayTag(row.notes) === workout.day)
                           .slice(0, 3)
+                        const exLoggedSets = (setLogsByExercise.get(normalizeExerciseName(ex.name)) ?? [])
+                          .filter(row => extractWorkoutDayTag(row.notes) === workout.day && !row.is_warmup).length
+                        const exTargetSets = parseSetTarget(ex.sets)
 
                         return (
                       <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12 }}>
@@ -563,8 +574,13 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                             <span style={{ color: 'var(--white)', fontWeight: 600 }}>
                               {ex.name}
                             </span>
-                            <span style={{ color: 'var(--gray)', fontSize: 12 }}>
-                              {ex.sets} sets x {ex.reps}{ex.tempo ? ` · Tempo ${ex.tempo}` : ''}{ex.rest ? ` · Rest ${ex.rest}` : ''}
+                            <span style={{ color: exLoggedSets >= exTargetSets && exTargetSets > 0 ? 'var(--gold)' : 'var(--gray)', fontSize: 12 }}>
+                              {ex.sets} sets × {ex.reps}{ex.tempo ? ` · Tempo ${ex.tempo}` : ''}{ex.rest ? ` · Rest ${ex.rest}` : ''}
+                              {exTargetSets > 0 && (
+                                <span style={{ marginLeft: 8, padding: '1px 7px', border: `1px solid ${exLoggedSets >= exTargetSets ? 'rgba(212,160,23,0.5)' : 'rgba(255,255,255,0.15)'}`, background: exLoggedSets >= exTargetSets ? 'rgba(212,160,23,0.15)' : 'rgba(255,255,255,0.05)', color: exLoggedSets >= exTargetSets ? 'var(--gold)' : 'var(--gray)', borderRadius: 2 }}>
+                                  {exLoggedSets}/{exTargetSets} sets
+                                </span>
+                              )}
                             </span>
                           </summary>
                           <div style={{ padding: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>

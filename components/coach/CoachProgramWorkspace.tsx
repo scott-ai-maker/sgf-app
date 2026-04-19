@@ -60,6 +60,7 @@ interface CoachProgramWorkspaceProps {
   }
   initialEquipmentAccess?: string[]
   libraryEquipmentNames?: string[]
+  cardioEquipmentAccess?: string[]
 }
 
 export default function CoachProgramWorkspace({
@@ -73,6 +74,7 @@ export default function CoachProgramWorkspace({
   readinessSummary,
   initialEquipmentAccess = [],
   libraryEquipmentNames = [],
+  cardioEquipmentAccess = [],
 }: CoachProgramWorkspaceProps) {
   const [draftPlan, setDraftPlan] = useState<CoachProgramDraft | null>(null)
 
@@ -88,6 +90,27 @@ export default function CoachProgramWorkspace({
               Generate a draft from the NASM library, review it in the builder, then save only after you are satisfied.
             </p>
           </div>
+
+          {cardioEquipmentAccess.length > 0 && (
+            <div style={{ padding: '10px 12px', border: '1px solid rgba(74,144,226,0.28)', background: 'rgba(74,144,226,0.08)' }}>
+              <p style={{ margin: '0 0 6px', color: 'rgba(144,190,255,0.9)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+                Client Cardio Equipment
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {cardioEquipmentAccess.map(item => (
+                  <span key={item} style={{ border: '1px solid rgba(74,144,226,0.35)', background: 'rgba(74,144,226,0.12)', color: 'rgba(144,190,255,0.9)', padding: '2px 8px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    {item.replace(/-/g, ' ')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {cardioEquipmentAccess.length === 0 && (
+            <p style={{ margin: 0, color: 'var(--gray)', fontSize: 13 }}>
+              Client has not indicated cardio equipment access.
+            </p>
+          )}
 
           <GenerateClientPlanButton
             clientId={clientId}

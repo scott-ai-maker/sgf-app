@@ -18,6 +18,21 @@ const PARQ_QUESTIONS = [
 
 const DEFAULT_EQUIPMENT_OPTIONS = ['Bodyweight']
 
+const CARDIO_EQUIPMENT_OPTIONS = [
+  { key: 'treadmill', label: 'Treadmill' },
+  { key: 'stationary-bike', label: 'Stationary Bike' },
+  { key: 'rowing-machine', label: 'Rowing Machine' },
+  { key: 'elliptical', label: 'Elliptical' },
+  { key: 'stairmaster', label: 'Stairmaster / StepMill' },
+  { key: 'assault-bike', label: 'Assault / Air Bike' },
+  { key: 'ski-erg', label: 'Ski Erg' },
+  { key: 'jump-rope', label: 'Jump Rope' },
+  { key: 'outdoor-running', label: 'Outdoor Running' },
+  { key: 'outdoor-cycling', label: 'Outdoor Cycling' },
+  { key: 'swimming', label: 'Swimming Pool' },
+  { key: 'hiking', label: 'Trails / Hiking' },
+] as const
+
 export default function OnboardingForm() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -48,6 +63,7 @@ export default function OnboardingForm() {
     experienceLevel: 'beginner',
     workoutLocation: 'gym' as WorkoutLocation,
     equipmentAccess: ['Bodyweight'],
+    cardioEquipmentAccess: [] as string[],
     parqQ1: '',
     parqQ2: '',
     parqQ3: '',
@@ -125,6 +141,16 @@ export default function OnboardingForm() {
       return {
         ...prev,
         equipmentAccess: has ? prev.equipmentAccess.filter(item => item !== key) : [...prev.equipmentAccess, key],
+      }
+    })
+  }
+
+  function toggleCardioEquipment(key: string) {
+    setForm(prev => {
+      const has = prev.cardioEquipmentAccess.includes(key)
+      return {
+        ...prev,
+        cardioEquipmentAccess: has ? prev.cardioEquipmentAccess.filter(item => item !== key) : [...prev.cardioEquipmentAccess, key],
       }
     })
   }
@@ -216,6 +242,7 @@ export default function OnboardingForm() {
       experienceLevel: form.experienceLevel,
       workoutLocation: form.workoutLocation,
       equipmentAccess: form.equipmentAccess,
+      cardioEquipmentAccess: form.cardioEquipmentAccess,
       intake: {
         parqAnswers: {
           q1: form.parqQ1 === 'yes',
@@ -604,6 +631,35 @@ export default function OnboardingForm() {
                 type="checkbox"
                 checked={form.equipmentAccess.includes(option.key)}
                 onChange={() => toggleEquipment(option.key)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="sgf-form-label">Cardio Equipment Access (select all that apply)</label>
+        <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 13 }}>This helps your coach program cardio and conditioning sessions tailored to what you have available.</p>
+        <div className="sgf-form-grid" style={{ gap: 8 }}>
+          {CARDIO_EQUIPMENT_OPTIONS.map(option => (
+            <label
+              key={option.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                border: '1px solid var(--navy-lt)',
+                background: 'var(--navy-mid)',
+                padding: '10px 12px',
+                fontFamily: 'Raleway, sans-serif',
+                fontSize: 14,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.cardioEquipmentAccess.includes(option.key)}
+                onChange={() => toggleCardioEquipment(option.key)}
               />
               <span>{option.label}</span>
             </label>
