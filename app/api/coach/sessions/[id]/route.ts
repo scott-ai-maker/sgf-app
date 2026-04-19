@@ -21,7 +21,7 @@ export async function PATCH(
 
   const { id } = await params
   const body = await req.json()
-  const patch: { status?: string; notes?: string } = {}
+  const patch: { status?: string; notes?: string; checked_in_at?: string | null; checked_out_at?: string | null } = {}
 
   const validStatuses = ['scheduled', 'completed', 'cancelled', 'no_show']
   if (body.status !== undefined) {
@@ -35,13 +35,21 @@ export async function PATCH(
     patch.notes = body.notes
   }
 
+  if (body.checked_in_at !== undefined) {
+    patch.checked_in_at = body.checked_in_at
+  }
+
+  if (body.checked_out_at !== undefined) {
+    patch.checked_out_at = body.checked_out_at
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
 
   const { data: targetSession } = await admin
     .from('sessions')
-    .select('id, client_id')
+    .select('id, client_id, status, package_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -66,6 +74,25 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
+  }
+
+  // Deduct session credit when marking completed (only if transitioning from non-completed)
+  if (patch.status === 'completed' && targetSession.status !== 'completed') {
+    const pkgId = targetSession.package_id
+    if (pkgId) {
+      const { data: pkg } = await admin
+        .from('client_packages')
+        .select('sessions_remaining')
+        .eq('id', pkgId)
+        .maybeSingle()
+
+      if (pkg && typeof pkg.sessions_remaining === 'number' && pkg.sessions_remaining > 0) {
+        await admin
+          .from('client_packages')
+          .update({ sessions_remaining: pkg.sessions_remaining - 1 })
+          .eq('id', pkgId)
+      }
+    }
   }
 
   return NextResponse.json(data)

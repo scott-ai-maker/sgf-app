@@ -6,6 +6,8 @@ interface SessionActionsProps {
   sessionId: string
   currentStatus: string
   currentNotes: string | null
+  checkedInAt?: string | null
+  checkedOutAt?: string | null
   onUpdate: () => void
 }
 
@@ -13,13 +15,15 @@ export default function SessionActions({
   sessionId,
   currentStatus,
   currentNotes,
+  checkedInAt,
+  checkedOutAt,
   onUpdate,
 }: SessionActionsProps) {
   const [notes, setNotes] = useState(currentNotes ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function updateSession(patch: { status?: string; notes?: string }) {
+  async function updateSession(patch: { status?: string; notes?: string; checked_in_at?: string | null; checked_out_at?: string | null }) {
     setLoading(true)
     setError(null)
 
@@ -39,56 +43,85 @@ export default function SessionActions({
   }
 
   const canMark = currentStatus === 'scheduled'
+  const canCheckIn = currentStatus === 'scheduled' && !checkedInAt
+  const canCheckOut = currentStatus === 'scheduled' && Boolean(checkedInAt) && !checkedOutAt
+
+  const btnBase: React.CSSProperties = {
+    padding: '6px 12px',
+    border: 'none',
+    borderRadius: 2,
+    fontFamily: 'Raleway, sans-serif',
+    fontWeight: 600,
+    fontSize: 13,
+    minHeight: 40,
+    cursor: loading ? 'not-allowed' : 'pointer',
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {canMark && (
+      {(canCheckIn || canCheckOut || canMark) && (
         <div className="coach-session-action-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            onClick={() => updateSession({ status: 'completed' })}
-            disabled={loading}
-            style={{
-              padding: '6px 12px',
-              background: 'var(--success)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 2,
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              minHeight: 40,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Mark Complete
-          </button>
-          <button
-            onClick={() => updateSession({ status: 'no_show' })}
-            disabled={loading}
-            style={{
-              padding: '6px 12px',
-              background: 'transparent',
-              color: 'var(--error)',
-              border: '1px solid var(--error)',
-              borderRadius: 2,
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-              minHeight: 40,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            No Show
-          </button>
+          {canCheckIn && (
+            <button
+              onClick={() => updateSession({ checked_in_at: new Date().toISOString() })}
+              disabled={loading}
+              style={{ ...btnBase, background: 'rgba(74,144,226,0.85)', color: '#fff' }}
+            >
+              Check In
+            </button>
+          )}
+          {canCheckOut && (
+            <button
+              onClick={() => updateSession({ checked_out_at: new Date().toISOString() })}
+              disabled={loading}
+              style={{ ...btnBase, background: 'rgba(74,144,226,0.55)', color: '#fff' }}
+            >
+              Check Out
+            </button>
+          )}
+          {canMark && (
+            <button
+              onClick={() => updateSession({ status: 'completed' })}
+              disabled={loading}
+              style={{ ...btnBase, background: 'var(--success)', color: '#fff' }}
+            >
+              Mark Complete
+            </button>
+          )}
+          {canMark && (
+            <button
+              onClick={() => updateSession({ status: 'no_show' })}
+              disabled={loading}
+              style={{ ...btnBase, background: 'transparent', color: 'var(--error)', border: '1px solid var(--error)' }}
+            >
+              No Show
+            </button>
+          )}
+          {canMark && (
+            <button
+              onClick={() => updateSession({ status: 'cancelled' })}
+              disabled={loading}
+              style={{ ...btnBase, background: 'transparent', color: 'var(--gray)', border: '1px solid var(--navy-lt)' }}
+            >
+              Cancel
+            </button>
+          )}
         </div>
+      )}
+
+      {checkedInAt && (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--gray)', fontFamily: 'Raleway, sans-serif' }}>
+          Checked in: {new Date(checkedInAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+          {checkedOutAt && ` · Checked out: ${new Date(checkedOutAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
+        </p>
       )}
 
       <div className="coach-session-notes-row" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <textarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          placeholder="Add notes..."
-          rows={2}
+          placeholder="Session notes (what was worked, performance, cues used)..."
+          rows={3}
           style={{
             flex: 1,
             padding: '8px 10px',
@@ -101,7 +134,7 @@ export default function SessionActions({
             fontSize: 16,
             resize: 'vertical',
             outline: 'none',
-            minHeight: 44,
+            minHeight: 56,
           }}
         />
         <button
@@ -121,7 +154,7 @@ export default function SessionActions({
             minHeight: 40,
           }}
         >
-          Save
+          Save Notes
         </button>
       </div>
 

@@ -1,8 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import Image from 'next/image'
 import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
+import RestTimer from '@/components/fitness/RestTimer'
+import WeeklyCheckinForm from '@/components/fitness/WeeklyCheckinForm'
+import CardioLogForm from '@/components/fitness/CardioLogForm'
 
 interface FitnessProfile {
   preferred_units?: 'metric' | 'imperial'
@@ -98,6 +101,17 @@ interface FitnessTrackerClientProps {
   logs: WorkoutLogRecord[]
   setLogs: WorkoutSetLogRecord[]
   latestAnalysis: BodyAnalysisRecord | null
+  cardioLogs?: CardioLogEntry[]
+}
+
+interface CardioLogEntry {
+  id: string
+  session_date: string
+  activity_type: string
+  duration_mins: number
+  distance_km?: number | null
+  avg_heart_rate?: number | null
+  perceived_effort?: number | null
 }
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {
@@ -191,7 +205,7 @@ function parseSetTarget(value: string | null | undefined) {
   return Number(firstNumberMatch[0])
 }
 
-export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis }: FitnessTrackerClientProps) {
+export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [] }: FitnessTrackerClientProps) {
   const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
   const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
   const [inlineSetDrafts, setInlineSetDrafts] = useState<Record<string, InlineSetDraft>>({})
@@ -204,6 +218,9 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
   const [beforePhotoUrl, setBeforePhotoUrl] = useState(profile?.before_photo_url || '')
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [activeRestTimerKey, setActiveRestTimerKey] = useState<string | null>(null)
+  const [skipModal, setSkipModal] = useState<{ workoutDay: number; exercise: WorkoutExercise } | null>(null)
+  const [localCardioLogs, setLocalCardioLogs] = useState(cardioLogs)
 
   const planWorkouts = useMemo(() => {
     return plan?.plan_json?.workouts ?? []
@@ -355,6 +372,8 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
 
     setLocalSetLogs(prev => [payload.setLog as WorkoutSetLogRecord, ...prev])
     setStatus(`Logged set for ${exercise.name}. Metrics updated.`)
+    // Auto-start rest timer
+    setActiveRestTimerKey(key)
     setInlineSetDrafts(prev => ({
       ...prev,
       [key]: {
@@ -365,8 +384,27 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     }))
   }
 
-  async function handleLogWorkout(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSkipExercise(workout: WorkoutDay, exercise: WorkoutExercise, reason: string, notes: string) {
+    await fetch('/api/fitness/skip-exercise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_date: todayDateOnly(),
+        exercise_name: exercise.name,
+        workout_day: workout.day,
+        reason,
+        notes: notes || null,
+      }),
+    })
+    setSkipModal(null)
+    setStatus(`Skipped ${exercise.name}.`)
+  }
+
+  const handleTimerDone = useCallback(() => {
+    setActiveRestTimerKey(null)
+  }, [])
+
+  async function handleLogWorkout(e: React.FormEvent) {    e.preventDefault()
     setBusy('log')
     setStatus(null)
 
@@ -772,6 +810,21 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                             <button type="submit" disabled={busy === `set-log:${exerciseKey}`} style={{ ...buttonStyle, marginTop: 8 }}>
                               {busy === `set-log:${exerciseKey}` ? 'Saving...' : 'Save Set'}
                             </button>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                              {activeRestTimerKey === exerciseKey && (
+                                <RestTimer
+                                  defaultSeconds={draft.restSeconds ? Number(draft.restSeconds) : 90}
+                                  onDone={handleTimerDone}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setSkipModal({ workoutDay: workout.day, exercise: ex })}
+                                style={{ fontSize: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--gray)', padding: '4px 10px', cursor: 'pointer', fontFamily: 'Raleway, sans-serif' }}
+                              >
+                                Skip Exercise
+                              </button>
+                            </div>
                             {exerciseRecentLogs.length > 0 && (
                               <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
                                 {exerciseRecentLogs.map(row => (
@@ -931,6 +984,31 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           </div>
         </section>
       )}
+
+      {/* Weekly Check-In */}
+      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
+        <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Weekly Check-In</h2>
+        <WeeklyCheckinForm preferredUnits={units} />
+      </section>
+
+      {/* Cardio Log */}
+      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
+        <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
+        <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
+      </section>
+
+      {/* Skip Exercise Modal */}
+      {skipModal && (
+        <SkipExerciseModal
+          exercise={skipModal.exercise}
+          workoutDay={skipModal.workoutDay}
+          onConfirm={(reason, notes) => {
+            const fakeWorkout: WorkoutDay = { day: skipModal.workoutDay, focus: '', exercises: [] }
+            void handleSkipExercise(fakeWorkout, skipModal.exercise, reason, notes)
+          }}
+          onClose={() => setSkipModal(null)}
+        />
+      )}
     </>
   )
 }
@@ -1060,3 +1138,32 @@ function fileToDataUrl(file: File) {
     reader.readAsDataURL(file)
   })
 }
+
+  function SkipExerciseModal({ exercise, workoutDay, onConfirm, onClose }: {
+    exercise: WorkoutExercise
+    workoutDay: number
+    onConfirm: (reason: string, notes: string) => void
+    onClose: () => void
+  }) {
+    const [reason, setReason] = useState('other')
+    const [notes, setNotes] = useState('')
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: 'var(--navy-mid)', border: '1px solid var(--navy-lt)', padding: 24, maxWidth: 400, width: '100%' }}>
+          <h3 style={{ margin: '0 0 12px', fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em' }}>Skip: {exercise.name}</h3>
+          <p style={{ color: 'var(--gray)', fontSize: 13, margin: '0 0 12px' }}>Day {workoutDay} — Why are you skipping?</p>
+          <select value={reason} onChange={e => setReason(e.target.value)} style={{ width: '100%', padding: '8px 10px', background: 'var(--navy)', border: '1px solid var(--navy-lt)', color: 'var(--white)', fontFamily: 'Raleway, sans-serif', fontSize: 14, marginBottom: 10 }}>
+            <option value="no_equipment">No Equipment</option>
+            <option value="injury">Injury / Pain</option>
+            <option value="time">Running Out of Time</option>
+            <option value="other">Other</option>
+          </select>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional notes (optional)" rows={2} style={{ width: '100%', padding: '8px 10px', background: 'var(--navy)', border: '1px solid var(--navy-lt)', color: 'var(--white)', fontFamily: 'Raleway, sans-serif', fontSize: 14, marginBottom: 12, resize: 'vertical', boxSizing: 'border-box' }} />
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--navy-lt)', color: 'var(--gray)', fontFamily: 'Raleway, sans-serif', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={() => onConfirm(reason, notes)} style={{ padding: '8px 16px', background: 'var(--gold)', color: '#0D1B2A', border: 'none', fontFamily: 'Bebas Neue, sans-serif', fontSize: 15, letterSpacing: '0.05em', cursor: 'pointer' }}>Log Skip</button>
+          </div>
+        </div>
+      </div>
+    )
+  }

@@ -9,6 +9,8 @@ interface Session {
   status: string
   notes: string | null
   duration_mins: number
+  checked_in_at?: string | null
+  checked_out_at?: string | null
 }
 
 interface ClientDetailClientProps {
@@ -130,6 +132,8 @@ export default function ClientDetailClient({ sessions }: ClientDetailClientProps
             sessionId={session.id}
             currentStatus={session.status}
             currentNotes={session.notes}
+            checkedInAt={session.checked_in_at}
+            checkedOutAt={session.checked_out_at}
             onUpdate={handleUpdate}
           />
         </div>

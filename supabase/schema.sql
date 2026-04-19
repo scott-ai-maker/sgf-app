@@ -995,3 +995,102 @@ $$;
 
 revoke all on function public.increment_discount_code_redemptions(text) from public;
 grant execute on function public.increment_discount_code_redemptions(text) to service_role;
+
+-- ── SESSION CHECK-IN / CHECK-OUT ─────────────────────────
+alter table sessions add column if not exists checked_in_at timestamptz;
+alter table sessions add column if not exists checked_out_at timestamptz;
+
+-- ── WEEKLY CLIENT CHECK-INS ──────────────────────────────
+create table if not exists weekly_checkins (
+  id                    uuid primary key default gen_random_uuid(),
+  user_id               uuid references auth.users(id) on delete cascade,
+  week_start            date not null,
+  sleep_quality         int check (sleep_quality between 1 and 5),
+  stress_level          int check (stress_level between 1 and 5),
+  soreness_level        int check (soreness_level between 1 and 5),
+  energy_level          int check (energy_level between 1 and 5),
+  weight_kg             numeric(7,2),
+  notes                 text,
+  coach_feedback        text,
+  coach_rating_adjustment int check (coach_rating_adjustment between -2 and 2),
+  created_at            timestamptz default now(),
+  updated_at            timestamptz default now(),
+  unique (user_id, week_start)
+);
+
+-- ── PROGRESS PHOTOS ───────────────────────────────────────
+create table if not exists progress_photos (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references auth.users(id) on delete cascade,
+  photo_url   text not null,
+  taken_at    date not null,
+  notes       text,
+  created_at  timestamptz default now()
+);
+
+-- ── CARDIO SESSION LOGS ───────────────────────────────────
+create table if not exists cardio_logs (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid references auth.users(id) on delete cascade,
+  session_date      date not null,
+  activity_type     text not null,
+  duration_mins     int not null,
+  distance_km       numeric(7,3),
+  avg_heart_rate    int,
+  calories          int,
+  perceived_effort  int check (perceived_effort between 1 and 10),
+  notes             text,
+  created_at        timestamptz default now()
+);
+
+-- ── EXERCISE SKIPS ────────────────────────────────────────
+create table if not exists exercise_skips (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid references auth.users(id) on delete cascade,
+  session_date  date not null,
+  exercise_name text not null,
+  workout_day   int,
+  reason        text check (reason in ('no_equipment','injury','time','other')),
+  notes         text,
+  created_at    timestamptz default now()
+);
+
+-- RLS for new tables
+alter table weekly_checkins enable row level security;
+alter table progress_photos enable row level security;
+alter table cardio_logs enable row level security;
+alter table exercise_skips enable row level security;
+
+drop policy if exists "User reads own checkins" on weekly_checkins;
+create policy "User reads own checkins" on weekly_checkins
+  for select using (auth.uid() = user_id);
+drop policy if exists "User writes own checkins" on weekly_checkins;
+create policy "User writes own checkins" on weekly_checkins
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "User reads own progress photos" on progress_photos;
+create policy "User reads own progress photos" on progress_photos
+  for select using (auth.uid() = user_id);
+drop policy if exists "User writes own progress photos" on progress_photos;
+create policy "User writes own progress photos" on progress_photos
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "User reads own cardio logs" on cardio_logs;
+create policy "User reads own cardio logs" on cardio_logs
+  for select using (auth.uid() = user_id);
+drop policy if exists "User writes own cardio logs" on cardio_logs;
+create policy "User writes own cardio logs" on cardio_logs
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "User reads own exercise skips" on exercise_skips;
+create policy "User reads own exercise skips" on exercise_skips
+  for select using (auth.uid() = user_id);
+drop policy if exists "User writes own exercise skips" on exercise_skips;
+create policy "User writes own exercise skips" on exercise_skips
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Indexes for new tables
+create index if not exists weekly_checkins_user_week_idx on weekly_checkins(user_id, week_start desc);
+create index if not exists progress_photos_user_taken_idx on progress_photos(user_id, taken_at desc);
+create index if not exists cardio_logs_user_date_idx on cardio_logs(user_id, session_date desc);
+create index if not exists exercise_skips_user_date_idx on exercise_skips(user_id, session_date desc);

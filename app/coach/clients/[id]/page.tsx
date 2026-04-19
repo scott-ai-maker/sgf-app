@@ -7,6 +7,7 @@ import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmen
 import CoachCommerceTools from '@/components/coach/CoachCommerceTools'
 import CoachProgramWorkspace from '@/components/coach/CoachProgramWorkspace'
 import SiteHeader from '@/components/ui/SiteHeader'
+import CoachCheckinReview from '@/components/coach/CoachCheckinReview'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ interface PageProps {
   searchParams: Promise<{ tab?: string | string[] | undefined }>
 }
 
-type CoachClientTab = 'overview' | 'program' | 'commerce' | 'sessions'
+type CoachClientTab = 'overview' | 'program' | 'commerce' | 'sessions' | 'checkins'
 
 interface ClientReadinessSummary {
   completionRate14d: number
@@ -37,6 +38,8 @@ function normalizeClientTab(value: string | string[] | undefined): CoachClientTa
     case 'commerce':
     case 'sessions':
       return rawValue
+      case 'checkins':
+        return rawValue
     default:
       return 'overview'
   }
@@ -78,7 +81,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
   // Fetch all sessions (past + upcoming)
   const { data: sessions } = await admin
     .from('sessions')
-    .select('id, scheduled_at, status, notes, duration_mins')
+    .select('id, scheduled_at, status, notes, duration_mins, package_id, checked_in_at, checked_out_at')
     .eq('client_id', id)
     .order('scheduled_at', { ascending: false })
 
@@ -140,6 +143,13 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .order('session_date', { ascending: false })
       .limit(60),
   ])
+
+    const { data: weeklyCheckins } = await admin
+      .from('weekly_checkins')
+      .select('*')
+      .eq('user_id', id)
+      .order('week_start', { ascending: false })
+      .limit(24)
 
   const contraindicationNotes = [
     String(fitnessProfileResult.data?.injuries_limitations ?? '').trim(),
@@ -213,6 +223,12 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     { key: 'commerce', label: 'Commerce', href: `/coach/clients/${id}?tab=commerce` },
     { key: 'sessions', label: 'Sessions', href: `/coach/clients/${id}?tab=sessions` },
   ]
+      const tabsWithCheckins: Array<{ key: CoachClientTab; label: string; href: string }> = [
+      ...tabs,
+      { key: 'checkins', label: 'Check-Ins', href: `/coach/clients/${id}?tab=checkins` },
+    ]
+
+    const liveSessionHref = `/coach/clients/${id}/live`
 
   return (
     <main className="coach-client-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
@@ -246,7 +262,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-          {tabs.map(tab => {
+          {tabsWithCheckins.map(tab => {
             const active = activeTab === tab.key
 
             return (
@@ -287,6 +303,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
           >
             Messages
           </a>
+          <a href={liveSessionHref} style={{ padding: '10px 14px', border: '1px solid rgba(72,187,120,0.35)', background: 'rgba(72,187,120,0.08)', color: 'var(--success)', textDecoration: 'none', fontFamily: 'Raleway, sans-serif', fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>▶ Live Session</a>
         </div>
 
         {activeTab === 'overview' && (
@@ -412,6 +429,13 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             <ClientDetailClient sessions={sessions ?? []} />
           </>
         )}
+
+          {activeTab === 'checkins' && (
+            <>
+              <h2 style={sectionHeadingStyle}>Weekly Check-Ins</h2>
+              <CoachCheckinReview clientId={id} initialCheckins={weeklyCheckins ?? []} />
+            </>
+          )}
       </div>
     </main>
   )

@@ -19,7 +19,7 @@ export default async function FitnessTrackerPage() {
 
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: plans }, { data: logs }, { data: setLogs }, { data: analyses }] = await Promise.all([
+  const [{ data: profile }, { data: plans }, { data: logs }, { data: setLogs }, { data: analyses }, { data: cardioLogs }] = await Promise.all([
     supabase.from('fitness_profiles').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('workout_plans').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('workout_logs').select('*').eq('user_id', user.id).order('session_date', { ascending: false }).limit(8),
@@ -30,6 +30,12 @@ export default async function FitnessTrackerPage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1),
+    supabase
+      .from('cardio_logs')
+      .select('id, session_date, activity_type, duration_mins, distance_km, avg_heart_rate, perceived_effort')
+      .eq('user_id', user.id)
+      .order('session_date', { ascending: false })
+      .limit(20),
   ])
 
   if (!profile?.onboarding_completed_at) {
@@ -72,6 +78,7 @@ export default async function FitnessTrackerPage() {
           logs={logs ?? []}
           setLogs={setLogs ?? []}
           latestAnalysis={analyses?.[0] ?? null}
+          cardioLogs={cardioLogs ?? []}
         />
       </div>
     </main>
