@@ -229,6 +229,14 @@ type ContraindicationRule = {
   warning: string
 }
 
+type ProgressionSuggestion = {
+  sets: string
+  reps: string
+  tempo: string
+  rest: string
+  rationale: string
+}
+
 const CONTRAINDICATION_RULES: ContraindicationRule[] = [
   {
     profilePattern: /(knee|acl|meniscus|patellar|patella)/i,
@@ -264,6 +272,71 @@ function equipmentMatchesAccess(equipmentLabel: string, allowedEquipment: string
     const normalizedItem = normalizeEquipmentToken(item)
     return normalizedItem.includes(normalizedLabel) || normalizedLabel.includes(normalizedItem)
   })
+}
+
+function firstPositiveInt(value: string, fallback: number) {
+  const match = String(value ?? '').match(/\d+/)
+  const parsed = match ? Number(match[0]) : NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function formatRestSeconds(seconds: number) {
+  return `${Math.max(0, seconds)}s`
+}
+
+function buildProgressionSuggestion(exercise: BuilderExercise, phaseNumber: number): ProgressionSuggestion {
+  const baseSets = firstPositiveInt(exercise.sets, 3)
+  const baseReps = firstPositiveInt(exercise.reps, 10)
+  const baseRest = firstPositiveInt(exercise.rest, 60)
+  const baseTempo = String(exercise.tempo ?? '').trim()
+
+  if (phaseNumber <= 1) {
+    return {
+      sets: String(Math.min(baseSets + 1, 4)),
+      reps: String(Math.min(baseReps + 2, 20)),
+      tempo: baseTempo || '4/2/1',
+      rest: formatRestSeconds(Math.max(baseRest - 15, 45)),
+      rationale: 'Stabilization progression: slightly more volume and slower controlled tempo.',
+    }
+  }
+
+  if (phaseNumber === 2) {
+    return {
+      sets: String(Math.min(baseSets + 1, 5)),
+      reps: String(Math.min(Math.max(baseReps, 8) + 1, 12)),
+      tempo: baseTempo || '2/0/2',
+      rest: formatRestSeconds(Math.max(baseRest - 15, 45)),
+      rationale: 'Strength-endurance progression: add volume while keeping rest tighter.',
+    }
+  }
+
+  if (phaseNumber === 3) {
+    return {
+      sets: String(Math.min(baseSets + 1, 5)),
+      reps: String(Math.min(Math.max(baseReps, 6) + 1, 12)),
+      tempo: baseTempo || '2/0/2',
+      rest: formatRestSeconds(Math.max(baseRest, 60)),
+      rationale: 'Hypertrophy progression: increase total work and maintain moderate tempo/rest.',
+    }
+  }
+
+  if (phaseNumber === 4) {
+    return {
+      sets: String(Math.min(baseSets + 1, 6)),
+      reps: String(Math.max(3, Math.min(baseReps - 1, 6))),
+      tempo: baseTempo || 'X/0/X',
+      rest: formatRestSeconds(Math.max(baseRest, 120)),
+      rationale: 'Max-strength progression: lower rep targets with longer recovery.',
+    }
+  }
+
+  return {
+    sets: String(Math.min(baseSets + 1, 6)),
+    reps: String(Math.max(3, Math.min(baseReps, 8))),
+    tempo: baseTempo || 'X/0/X',
+    rest: formatRestSeconds(Math.max(baseRest, 90)),
+    rationale: 'Power progression: prioritize speed intent with adequate rest.',
+  }
 }
 
 function normalizeEquipmentKey(primaryEquipment: string[] | null | undefined) {
@@ -474,6 +547,12 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     return initialEquipmentAccess.map(item => String(item ?? '').trim()).filter(Boolean)
   }, [initialEquipmentAccess])
 
+  const currentPhaseNumber = useMemo(() => {
+    const parsed = Number(nasmOptPhase)
+    if (!Number.isFinite(parsed)) return 1
+    return Math.min(5, Math.max(1, Math.round(parsed)))
+  }, [nasmOptPhase])
+
   function getExerciseWarnings(exercise: BuilderExercise) {
     const warnings: string[] = []
 
@@ -498,6 +577,34 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     }
 
     return [...new Set(warnings)]
+  }
+
+  function applyProgressionSuggestion(dayId: string, exerciseId: string, suggestion: ProgressionSuggestion) {
+    setDays(current =>
+      current.map(day => {
+        if (day.id !== dayId) return day
+
+        return {
+          ...day,
+          exercises: day.exercises.map(exercise => {
+            if (exercise.id !== exerciseId) return exercise
+
+            const nextNotes = String(exercise.notes ?? '').includes('Progression:')
+              ? exercise.notes
+              : `${exercise.notes ? `${exercise.notes}. ` : ''}Progression: ${suggestion.rationale}`
+
+            return {
+              ...exercise,
+              sets: suggestion.sets,
+              reps: suggestion.reps,
+              tempo: suggestion.tempo,
+              rest: suggestion.rest,
+              notes: nextNotes,
+            }
+          }),
+        }
+      })
+    )
   }
 
   const calendarEntries = useMemo(() => {
@@ -1182,6 +1289,31 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
                     <input value={exercise.notes} onChange={event => updateExercise(day.id, exercise.id, 'notes', event.target.value)} style={inputStyle} placeholder="Coaching cue, modification, target RPE" />
                   </label>
 
+                  {(() => {
+                    const suggestion = buildProgressionSuggestion(exercise, currentPhaseNumber)
+
+                    return (
+                      <div style={progressionPanelStyle}>
+                        <p style={{ margin: 0, color: 'var(--gold-lt)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Suggested Progression (Phase {currentPhaseNumber})
+                        </p>
+                        <p style={{ margin: '6px 0 0', color: 'var(--white)', fontSize: 13 }}>
+                          {suggestion.sets} sets · {suggestion.reps} reps · Tempo {suggestion.tempo} · Rest {suggestion.rest}
+                        </p>
+                        <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+                          {suggestion.rationale}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => applyProgressionSuggestion(day.id, exercise.id, suggestion)}
+                          style={{ ...miniActionButtonStyle, marginTop: 8, width: 'fit-content' }}
+                        >
+                          Apply Progression
+                        </button>
+                      </div>
+                    )
+                  })()}
+
                   {(exercise.description || exercise.imageUrl || exercise.videoUrl || equipmentBadges(exercise.primaryEquipment).length > 0) && (
                     <div className="coach-program-exercise-detail" style={{ display: 'grid', gridTemplateColumns: exercise.imageUrl ? '88px 1fr' : '1fr', gap: 12, marginTop: 12, padding: 12, background: 'rgba(13,27,42,0.68)' }}>
                       {exercise.imageUrl && (
@@ -1639,6 +1771,13 @@ const warningPanelStyle: React.CSSProperties = {
   background: 'rgba(255, 167, 38, 0.12)',
   padding: '10px 12px',
   marginBottom: 10,
+}
+
+const progressionPanelStyle: React.CSSProperties = {
+  border: '1px solid rgba(212,160,23,0.35)',
+  background: 'rgba(212,160,23,0.08)',
+  padding: '10px 12px',
+  marginTop: 10,
 }
 
 const videoLinkStyle: React.CSSProperties = {
