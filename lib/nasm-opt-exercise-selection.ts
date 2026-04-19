@@ -164,33 +164,9 @@ function exerciseMatchesComplexity(exercise: ExerciseRecord, targetComplexity: s
   return exerciseLevel <= targetLevel
 }
 
-// Extract muscle groups from exercise name/description
-function extractMuscleGroupsFromExercise(exercise: ExerciseRecord): string[] {
-  const text = `${exercise.name} ${exercise.description || ''}`.toLowerCase()
-
-  const muscleKeywords: Record<string, string[]> = {
-    chest: ['chest', 'pec', 'bench press'],
-    back: ['back', 'lat', 'row', 'pull'],
-    shoulders: ['shoulder', 'press', 'raise', 'delt'],
-    biceps: ['bicep', 'curl', 'arm'],
-    triceps: ['tricep', 'press', 'dip'],
-    forearms: ['forearm', 'wrist curl'],
-    quadriceps: ['quad', 'leg press', 'leg extension', 'squat'],
-    hamstrings: ['hamstring', 'leg curl', 'deadlift', 'rdl'],
-    glutes: ['glute', 'hip thrust', 'leg press', 'squat', 'lunge'],
-    calves: ['calf', 'ankle'],
-    core: ['core', 'crunch', 'plank', 'ab', 'core'],
-    legs: ['leg', 'squat', 'lunge', 'extension', 'curl'],
-  }
-
-  const detected = new Set<string>()
-  for (const [muscle, keywords] of Object.entries(muscleKeywords)) {
-    if (keywords.some(k => text.includes(k))) {
-      detected.add(muscle)
-    }
-  }
-
-  return Array.from(detected)
+// Extract muscle groups from exercise name/description (legacy fallback)
+function extractMuscleGroupsFromExercise(_exercise: ExerciseRecord): string[] {
+  return []
 }
 
 function exerciseMatchesEquipment(exercise: ExerciseRecord, availableEquipment: string[]): boolean {
@@ -273,6 +249,65 @@ function getMovementPatternForExercise(exercise: ExerciseRecord): string {
   return 'other'
 }
 
+// ── DAY FOCUS → TARGET MUSCLE GROUPS MAPPING ─────────────────
+const DAY_FOCUS_MUSCLE_MAP: Array<{ patterns: RegExp; targets: string[]; excludes: string[] }> = [
+  {
+    patterns: /upper body push|chest|push day|push workout|bench/i,
+    targets: ['chest', 'triceps', 'shoulders'],
+    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes', 'biceps'],
+  },
+  {
+    patterns: /upper body pull|back.*bicep|pull day|pull workout/i,
+    targets: ['back', 'biceps'],
+    excludes: ['chest', 'triceps', 'hamstrings', 'quadriceps', 'calves', 'glutes'],
+  },
+  {
+    patterns: /upper body|upper body strength|upper body hypertrophy/i,
+    targets: ['chest', 'back', 'shoulders', 'biceps', 'triceps'],
+    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes'],
+  },
+  {
+    patterns: /lower body hypertrophy|lower body strength|lower body|legs|quad|hamstring/i,
+    targets: ['quadriceps', 'hamstrings', 'glutes', 'calves', 'legs'],
+    excludes: ['chest', 'back', 'biceps', 'triceps'],
+  },
+  {
+    patterns: /glute|hip/i,
+    targets: ['glutes', 'hamstrings'],
+    excludes: ['chest', 'back', 'biceps', 'triceps'],
+  },
+  {
+    patterns: /shoulder/i,
+    targets: ['shoulders', 'triceps'],
+    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes'],
+  },
+  {
+    patterns: /core|abs/i,
+    targets: ['core'],
+    excludes: [],
+  },
+  {
+    patterns: /total body|full body/i,
+    targets: ['quadriceps', 'glutes', 'back', 'chest', 'core', 'shoulders'],
+    excludes: [],
+  },
+  {
+    patterns: /strength endurance|muscular endurance/i,
+    targets: ['quadriceps', 'glutes', 'back', 'chest', 'core', 'shoulders'],
+    excludes: [],
+  },
+]
+
+function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: string[] } {
+  for (const mapping of DAY_FOCUS_MUSCLE_MAP) {
+    if (mapping.patterns.test(dayFocus)) {
+      return { targets: mapping.targets, excludes: mapping.excludes }
+    }
+  }
+  // Default: all muscles
+  return { targets: [], excludes: [] }
+}
+
 // ── PRIMARY EXERCISE SELECTION ENGINE ────────────────────────
 export function selectExercisesForWorkoutDay(
   phase: number,
@@ -281,79 +316,76 @@ export function selectExercisesForWorkoutDay(
   client: ClientProfile,
   exerciseCountTarget: number = 4
 ): ExerciseRecord[] {
-  const prescription = PHASE_PRESCRIPTIONS[phase] || PHASE_PRESCRIPTIONS[1]
   const experienceLevel = getExperienceLevelAsNumber(client.experienceLevel)
   const complexityTarget = getComplexityRequirement(phase, experienceLevel)
+  const { targets, excludes } = resolveFocusMuscles(dayFocus)
 
-  // Filter exercises based on constraints
+  // Filter exercises based on hard constraints
   const candidateExercises = exercises.filter(exercise => {
-    // Must match equipment access
-    if (!exerciseMatchesEquipment(exercise, client.equipmentAccess)) {
-      return false
-    }
-
-    // Must match complexity level
-    if (!exerciseMatchesComplexity(exercise, complexityTarget)) {
-      return false
-    }
-
-    // Must be safe for client's injuries
-    if (!isExerciseAppropriateForInjuries(exercise, client.injuries_limitations)) {
-      return false
-    }
-
+    if (!exerciseMatchesEquipment(exercise, client.equipmentAccess)) return false
+    if (!exerciseMatchesComplexity(exercise, complexityTarget)) return false
+    if (!isExerciseAppropriateForInjuries(exercise, client.injuries_limitations)) return false
     return true
   })
 
-  if (candidateExercises.length === 0) {
-    return exercises.slice(0, exerciseCountTarget)
-  }
+  const pool = candidateExercises.length > 0 ? candidateExercises : exercises.slice(0, exerciseCountTarget * 3)
 
-  // Score exercises based on day focus and NASM principles
-  const scoredExercises = candidateExercises.map(exercise => {
+  // Score by muscle-group specificity to day focus
+  const scoredExercises = pool.map(exercise => {
     let score = 0
 
-    // Prioritize exercises that match NASM phase
-    const exercisePhases = exercise.metadata?.nasmPhases ?? []
-    if (exercisePhases.includes(phase)) {
-      score += 100
+    // Use database-backed muscle groups first, then fall back
+    const allMuscles = (exercise.metadata?.muscleGroups ?? []).map((m: string) => m.toLowerCase().trim())
+
+    if (targets.length > 0 && allMuscles.length > 0) {
+      const matchCount = allMuscles.filter(m => targets.includes(m)).length
+      const excludeCount = allMuscles.filter(m => excludes.includes(m)).length
+
+      // Each matching target muscle scores 40 points
+      score += matchCount * 40
+
+      // Penalize exercises that heavily include excluded muscles
+      score -= excludeCount * 30
+
+      // Bonus: exercise is "pure" — all muscles are targets
+      const purity = matchCount / allMuscles.length
+      score += purity * 20
     }
 
-    // Prioritize exercises matching the day focus
-    const dayFocusLower = dayFocus.toLowerCase()
-    
-    // Use database muscle groups, fall back to extraction
-    let allMuscles = exercise.metadata?.muscleGroups ?? []
-    if (!allMuscles || allMuscles.length === 0) {
-      // Fallback: extract from name and description
-      allMuscles = extractMuscleGroupsFromExercise(exercise)
-    }
-    
-    const normalizedMuscles = allMuscles.map(m => String(m).toLowerCase().trim())
-    
-    // Check if any muscle matches the day focus
-    if (
-      normalizedMuscles.some(muscle => dayFocusLower.includes(muscle)) ||
-      normalizedMuscles.some(muscle => dayFocusLower.includes(muscle.split(' ')[0])) ||
-      exercise.name.toLowerCase().includes(dayFocusLower.split(' ')[0])
-    ) {
-      score += 80  // Increased from 50 for better matching
-    }
-
-    // Prefer exercises with multiple muscle group benefits
-    score += normalizedMuscles.length * 15
-
-    // Add randomness to prevent repetitiveness
-    score += Math.random() * 10  // Reduced from 20 to make scoring more deterministic
+    // Small tie-breaker randomness (max ±5 points — won't override muscle scoring)
+    score += Math.random() * 5
 
     return { exercise, score }
   })
 
-  // Sort by score and take top N
-  return scoredExercises
-    .sort((a, b) => b.score - a.score)
-    .slice(0, exerciseCountTarget)
-    .map(item => item.exercise)
+  // Sort by score, then take top N
+  const sorted = scoredExercises.sort((a, b) => b.score - a.score)
+
+  // For day-focus variety: don't let the same movement pattern dominate
+  const selected: ExerciseRecord[] = []
+  const usedPatterns = new Set<string>()
+
+  for (const { exercise } of sorted) {
+    if (selected.length >= exerciseCountTarget) break
+    const pattern = getMovementPatternForExercise(exercise)
+    // Allow a movement pattern at most twice to ensure variety
+    const patternCount = Array.from(usedPatterns).filter(p => p === pattern).length
+    if (patternCount < 2) {
+      selected.push(exercise)
+      usedPatterns.add(pattern)
+    }
+  }
+
+  // If variety check was too restrictive, fill remaining slots
+  if (selected.length < exerciseCountTarget) {
+    const remaining = sorted
+      .map(s => s.exercise)
+      .filter(ex => !selected.includes(ex))
+      .slice(0, exerciseCountTarget - selected.length)
+    selected.push(...remaining)
+  }
+
+  return selected
 }
 
 // ── DETERMINE TRAINING FOCUS ──────────────────────────────────
