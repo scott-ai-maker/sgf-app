@@ -69,6 +69,14 @@ interface CoachProgramBuilderProps {
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
   contraindicationNotes?: string[]
+  readinessSummary?: {
+    completionRate14d: number
+    avgRpe14d: number | null
+    completedSessions7d: number
+    daysSinceLastCompleted: number | null
+    readiness: 'high' | 'moderate' | 'low'
+    recommendation: string
+  }
   initialEquipmentAccess?: string[]
   draftPlan?: CoachProgramDraft | null
   onPlanSaved?: () => void
@@ -526,7 +534,7 @@ function toEditorState(plan: LatestWorkoutPlan | CoachProgramDraft | null) {
   }
 }
 
-export default function CoachProgramBuilder({ clientId, latestPlan, templates, coachTemplates = [], exercises, equipment, contraindicationNotes = [], initialEquipmentAccess = [], draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
+export default function CoachProgramBuilder({ clientId, latestPlan, templates, coachTemplates = [], exercises, equipment, contraindicationNotes = [], readinessSummary, initialEquipmentAccess = [], draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
   const router = useRouter()
   const exerciseListId = `exercise-library-${clientId}`
   const initialEditorState = toEditorState(latestPlan)
@@ -1410,6 +1418,25 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
         </div>
       </div>
 
+      {readinessSummary && (
+        <div style={readinessPanelStyle}>
+          <p style={{ margin: 0, color: readinessSummary.readiness === 'high' ? '#9AE6B4' : readinessSummary.readiness === 'low' ? '#FEB2B2' : '#FBD38D', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+            Client Readiness: {readinessSummary.readiness}
+          </p>
+          <p style={{ margin: '6px 0 0', color: 'var(--white)', fontSize: 13 }}>
+            14d completion {readinessSummary.completionRate14d}% · Avg RPE {readinessSummary.avgRpe14d ?? 'N/A'} · Completed last 7d {readinessSummary.completedSessions7d}
+          </p>
+          <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+            {readinessSummary.daysSinceLastCompleted === null
+              ? 'No completed sessions logged yet.'
+              : `${readinessSummary.daysSinceLastCompleted} day(s) since last completed workout.`}
+          </p>
+          <p style={{ margin: '8px 0 0', color: 'var(--gold-lt)', fontSize: 12 }}>
+            {readinessSummary.recommendation}
+          </p>
+        </div>
+      )}
+
       {draftPlan && (
         <div style={{ marginBottom: 18, padding: '14px 16px', border: '1px solid rgba(212,160,23,0.35)', background: 'rgba(212,160,23,0.08)' }}>
           <p style={{ margin: 0, color: 'var(--gold-lt)', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -2155,6 +2182,13 @@ const densityPanelStyle: React.CSSProperties = {
   background: 'rgba(11,24,39,0.72)',
   padding: '10px 12px',
   marginBottom: 12,
+}
+
+const readinessPanelStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.16)',
+  background: 'rgba(11,24,39,0.78)',
+  padding: '12px 14px',
+  marginBottom: 16,
 }
 
 const snippetRowStyle: React.CSSProperties = {

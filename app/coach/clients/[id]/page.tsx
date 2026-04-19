@@ -19,6 +19,15 @@ interface PageProps {
 
 type CoachClientTab = 'overview' | 'program' | 'commerce' | 'sessions'
 
+interface ClientReadinessSummary {
+  completionRate14d: number
+  avgRpe14d: number | null
+  completedSessions7d: number
+  daysSinceLastCompleted: number | null
+  readiness: 'high' | 'moderate' | 'low'
+  recommendation: string
+}
+
 function normalizeClientTab(value: string | string[] | undefined): CoachClientTab {
   const rawValue = Array.isArray(value) ? value[0] : value
 
@@ -75,6 +84,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     equipmentResult,
     fitnessProfileResult,
     intakeFormResult,
+    workoutLogsResult,
   ] = await Promise.all([
     admin
       .from('workout_plans')
@@ -117,6 +127,12 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .select('medical_conditions, surgeries_or_injuries')
       .eq('user_id', id)
       .maybeSingle(),
+    admin
+      .from('workout_logs')
+      .select('session_date, completed, exertion_rpe')
+      .eq('user_id', id)
+      .order('session_date', { ascending: false })
+      .limit(60),
   ])
 
   const contraindicationNotes = [
@@ -124,6 +140,59 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     String(intakeFormResult.data?.medical_conditions ?? '').trim(),
     String(intakeFormResult.data?.surgeries_or_injuries ?? '').trim(),
   ].filter(Boolean)
+
+  const now = new Date()
+  const logs = workoutLogsResult.data ?? []
+  const logsLast14d = logs.filter(log => {
+    if (!log.session_date) return false
+    const sessionDate = new Date(`${log.session_date}T00:00:00Z`)
+    const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays <= 14
+  })
+  const logsLast7d = logs.filter(log => {
+    if (!log.session_date) return false
+    const sessionDate = new Date(`${log.session_date}T00:00:00Z`)
+    const diffDays = (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+    return diffDays <= 7
+  })
+
+  const completed14d = logsLast14d.filter(log => Boolean(log.completed))
+  const completed7d = logsLast7d.filter(log => Boolean(log.completed))
+  const completionRate14d = logsLast14d.length > 0
+    ? Math.round((completed14d.length / logsLast14d.length) * 100)
+    : 0
+
+  const rpeValues = completed14d
+    .map(log => Number(log.exertion_rpe))
+    .filter(value => Number.isFinite(value) && value > 0)
+  const avgRpe14d = rpeValues.length > 0
+    ? Number((rpeValues.reduce((sum, value) => sum + value, 0) / rpeValues.length).toFixed(1))
+    : null
+
+  const lastCompletedLog = logs.find(log => Boolean(log.completed) && Boolean(log.session_date))
+  const daysSinceLastCompleted = lastCompletedLog?.session_date
+    ? Math.max(0, Math.floor((now.getTime() - new Date(`${lastCompletedLog.session_date}T00:00:00Z`).getTime()) / (1000 * 60 * 60 * 24)))
+    : null
+
+  let readiness: ClientReadinessSummary['readiness'] = 'moderate'
+  let recommendation = 'Use normal progression with standard check-ins this week.'
+
+  if (completionRate14d >= 75 && (avgRpe14d === null || avgRpe14d <= 7.5)) {
+    readiness = 'high'
+    recommendation = 'Client appears ready for progressive overload and advanced sessions this week.'
+  } else if (completionRate14d < 50 || (avgRpe14d !== null && avgRpe14d >= 8.5) || (daysSinceLastCompleted !== null && daysSinceLastCompleted >= 7)) {
+    readiness = 'low'
+    recommendation = 'Reduce complexity/intensity, prioritize adherence and recovery, and check barriers early.'
+  }
+
+  const readinessSummary: ClientReadinessSummary = {
+    completionRate14d,
+    avgRpe14d,
+    completedSessions7d: completed7d.length,
+    daysSinceLastCompleted,
+    readiness,
+    recommendation,
+  }
 
   const totalRemaining = (packages ?? []).reduce(
     (sum, p) => sum + (p.sessions_remaining ?? 0),
@@ -266,6 +335,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             exercises={exercisesResult.data ?? []}
             equipment={equipmentResult.data ?? []}
             contraindicationNotes={contraindicationNotes}
+            readinessSummary={readinessSummary}
             initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)
               ? fitnessProfileResult.data.equipment_access
               : []}
