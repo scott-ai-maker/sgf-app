@@ -18,6 +18,12 @@ const PHASE_OPTIONS = [
   { value: '5', label: 'Phase 5 - Power' },
 ]
 
+const EXPERIENCE_OPTIONS = [
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
+]
+
 interface EquipmentOption {
   value: string
   label: string
@@ -73,6 +79,7 @@ export default function GenerateClientPlanButton({
 
   const [sessionsPerWeek, setSessionsPerWeek] = useState('4')
   const [nasmOptPhase, setNasmOptPhase] = useState('1')
+  const [experienceLevel, setExperienceLevel] = useState('beginner')
   const [equipmentAccess, setEquipmentAccess] = useState<string[]>(() => {
     const initialProfiles = new Set(
       initialEquipmentAccess
@@ -128,6 +135,7 @@ export default function GenerateClientPlanButton({
         sessionsPerWeek: Number(sessionsPerWeek),
         nasmOptPhase: Number(nasmOptPhase),
         equipmentAccess: equipmentProfiles,
+        experienceLevel,
       }),
     })
 
@@ -168,6 +176,28 @@ export default function GenerateClientPlanButton({
         }}
       >
         {PHASE_OPTIONS.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      <label style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13 }}>
+        Experience
+      </label>
+      <select
+        value={experienceLevel}
+        onChange={e => setExperienceLevel(e.target.value)}
+        style={{
+          minWidth: 140,
+          padding: '8px 10px',
+          border: '1px solid var(--navy-lt)',
+          background: 'var(--navy-mid)',
+          color: 'var(--white)',
+          fontFamily: 'Raleway, sans-serif',
+        }}
+      >
+        {EXPERIENCE_OPTIONS.map(option => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

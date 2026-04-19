@@ -208,6 +208,7 @@ export async function POST(req: NextRequest) {
   const requestedEquipmentAccess = Array.isArray(body.equipmentAccess)
     ? body.equipmentAccess.map((item: unknown) => String(item ?? '').trim().toLowerCase()).filter(Boolean)
     : []
+  const experienceLevelOverride = String(body.experienceLevel ?? '').trim().toLowerCase() || null
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -231,6 +232,11 @@ export async function POST(req: NextRequest) {
 
   if (!profile) {
     return NextResponse.json({ error: 'Client onboarding profile not found.' }, { status: 404 })
+  }
+
+  // Apply experience level override if provided
+  if (experienceLevelOverride && ['beginner', 'intermediate', 'advanced'].includes(experienceLevelOverride)) {
+    profile.experience_level = experienceLevelOverride
   }
 
   const selectedPhase = Number.isFinite(nasmOptPhase)
