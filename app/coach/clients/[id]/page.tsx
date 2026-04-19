@@ -67,7 +67,15 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     .eq('client_id', id)
     .order('scheduled_at', { ascending: false })
 
-  const [latestPlansResult, templatesResult, coachTemplatesResult, exercisesResult, equipmentResult, fitnessProfileResult] = await Promise.all([
+  const [
+    latestPlansResult,
+    templatesResult,
+    coachTemplatesResult,
+    exercisesResult,
+    equipmentResult,
+    fitnessProfileResult,
+    intakeFormResult,
+  ] = await Promise.all([
     admin
       .from('workout_plans')
       .select('*')
@@ -101,10 +109,21 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .limit(250),
     admin
       .from('fitness_profiles')
-      .select('equipment_access')
+      .select('equipment_access, injuries_limitations')
+      .eq('user_id', id)
+      .maybeSingle(),
+    admin
+      .from('client_intake_forms')
+      .select('medical_conditions, surgeries_or_injuries')
       .eq('user_id', id)
       .maybeSingle(),
   ])
+
+  const contraindicationNotes = [
+    String(fitnessProfileResult.data?.injuries_limitations ?? '').trim(),
+    String(intakeFormResult.data?.medical_conditions ?? '').trim(),
+    String(intakeFormResult.data?.surgeries_or_injuries ?? '').trim(),
+  ].filter(Boolean)
 
   const totalRemaining = (packages ?? []).reduce(
     (sum, p) => sum + (p.sessions_remaining ?? 0),
@@ -246,6 +265,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             coachTemplates={coachTemplatesResult.data ?? []}
             exercises={exercisesResult.data ?? []}
             equipment={equipmentResult.data ?? []}
+            contraindicationNotes={contraindicationNotes}
             initialEquipmentAccess={Array.isArray(fitnessProfileResult.data?.equipment_access)
               ? fitnessProfileResult.data.equipment_access
               : []}

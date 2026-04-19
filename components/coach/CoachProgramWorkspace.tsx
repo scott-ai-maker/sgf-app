@@ -49,6 +49,7 @@ interface CoachProgramWorkspaceProps {
   coachTemplates: CoachProgramTemplateRecord[]
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
+  contraindicationNotes?: string[]
   initialEquipmentAccess?: string[]
   libraryEquipmentNames?: string[]
 }
@@ -60,6 +61,7 @@ export default function CoachProgramWorkspace({
   coachTemplates,
   exercises,
   equipment,
+  contraindicationNotes = [],
   initialEquipmentAccess = [],
   libraryEquipmentNames = [],
 }: CoachProgramWorkspaceProps) {
@@ -94,6 +96,8 @@ export default function CoachProgramWorkspace({
         coachTemplates={coachTemplates}
         exercises={exercises}
         equipment={equipment}
+        contraindicationNotes={contraindicationNotes}
+        initialEquipmentAccess={initialEquipmentAccess}
         draftPlan={draftPlan}
         onPlanSaved={() => setDraftPlan(null)}
       />

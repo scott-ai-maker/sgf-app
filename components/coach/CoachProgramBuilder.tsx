@@ -68,6 +68,8 @@ interface CoachProgramBuilderProps {
   coachTemplates?: CoachProgramTemplateRecord[]
   exercises: ExerciseLibraryRecord[]
   equipment: EquipmentLibraryRecord[]
+  contraindicationNotes?: string[]
+  initialEquipmentAccess?: string[]
   draftPlan?: CoachProgramDraft | null
   onPlanSaved?: () => void
 }
@@ -221,6 +223,49 @@ function favoritesStorageKey(clientId: string) {
   return `coach-program-favorites:${clientId}`
 }
 
+type ContraindicationRule = {
+  profilePattern: RegExp
+  exercisePattern: RegExp
+  warning: string
+}
+
+const CONTRAINDICATION_RULES: ContraindicationRule[] = [
+  {
+    profilePattern: /(knee|acl|meniscus|patellar|patella)/i,
+    exercisePattern: /(jump|plyo|lunge|split squat|squat|leg press|box jump|running|bound)/i,
+    warning: 'Knee-related limitation detected. Verify loading, ROM, and impact tolerance for this movement.',
+  },
+  {
+    profilePattern: /(shoulder|rotator cuff|labrum|impingement|overhead pain)/i,
+    exercisePattern: /(overhead|press|push up|push-up|dip|snatch|jerk|lat pulldown|pull-up|pull up)/i,
+    warning: 'Shoulder-related limitation detected. Consider regression, grip/angle changes, or reduced overhead demand.',
+  },
+  {
+    profilePattern: /(low back|lumbar|disc|sciatica|back pain)/i,
+    exercisePattern: /(deadlift|good morning|hinge|row|squat|clean|snatch|kettlebell swing|barbell)/i,
+    warning: 'Low-back limitation detected. Confirm bracing strategy, spinal tolerance, and exercise selection.',
+  },
+  {
+    profilePattern: /(neck|cervical)/i,
+    exercisePattern: /(shrug|overhead|carry|press)/i,
+    warning: 'Neck/cervical limitation detected. Review head/neck position and loading approach.',
+  },
+]
+
+function normalizeEquipmentToken(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function equipmentMatchesAccess(equipmentLabel: string, allowedEquipment: string[]) {
+  const normalizedLabel = normalizeEquipmentToken(equipmentLabel)
+  if (!normalizedLabel) return true
+
+  return allowedEquipment.some(item => {
+    const normalizedItem = normalizeEquipmentToken(item)
+    return normalizedItem.includes(normalizedLabel) || normalizedLabel.includes(normalizedItem)
+  })
+}
+
 function normalizeEquipmentKey(primaryEquipment: string[] | null | undefined) {
   const first = Array.isArray(primaryEquipment) ? String(primaryEquipment[0] ?? '').trim().toLowerCase() : ''
   if (!first || first === 'none') return 'Bodyweight'
@@ -278,7 +323,7 @@ function toEditorState(plan: LatestWorkoutPlan | CoachProgramDraft | null) {
   }
 }
 
-export default function CoachProgramBuilder({ clientId, latestPlan, templates, coachTemplates = [], exercises, equipment, draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
+export default function CoachProgramBuilder({ clientId, latestPlan, templates, coachTemplates = [], exercises, equipment, contraindicationNotes = [], initialEquipmentAccess = [], draftPlan = null, onPlanSaved }: CoachProgramBuilderProps) {
   const router = useRouter()
   const exerciseListId = `exercise-library-${clientId}`
   const initialEditorState = toEditorState(latestPlan)
@@ -420,6 +465,40 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   const favoriteExercises = useMemo(() => {
     return favoriteExerciseIds.map(id => exerciseById.get(id)).filter((item): item is ExerciseLibraryRecord => Boolean(item))
   }, [exerciseById, favoriteExerciseIds])
+
+  const contraindicationText = useMemo(() => {
+    return contraindicationNotes.map(item => String(item ?? '').trim()).filter(Boolean).join(' | ').toLowerCase()
+  }, [contraindicationNotes])
+
+  const normalizedEquipmentAccess = useMemo(() => {
+    return initialEquipmentAccess.map(item => String(item ?? '').trim()).filter(Boolean)
+  }, [initialEquipmentAccess])
+
+  function getExerciseWarnings(exercise: BuilderExercise) {
+    const warnings: string[] = []
+
+    if (contraindicationText) {
+      const exerciseText = `${exercise.name} ${exercise.notes} ${exercise.description}`.toLowerCase()
+
+      CONTRAINDICATION_RULES.forEach(rule => {
+        if (rule.profilePattern.test(contraindicationText) && rule.exercisePattern.test(exerciseText)) {
+          warnings.push(rule.warning)
+        }
+      })
+    }
+
+    if (normalizedEquipmentAccess.length > 0) {
+      const unavailableEquipment = equipmentBadges(exercise.primaryEquipment)
+        .filter(item => item.toLowerCase() !== 'bodyweight')
+        .filter(item => !equipmentMatchesAccess(item, normalizedEquipmentAccess))
+
+      if (unavailableEquipment.length > 0) {
+        warnings.push(`Client profile may not have required equipment: ${unavailableEquipment.join(', ')}.`)
+      }
+    }
+
+    return [...new Set(warnings)]
+  }
 
   const calendarEntries = useMemo(() => {
     const parsedStart = parseDateOnly(startDate)
@@ -1025,6 +1104,26 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
             <div style={{ display: 'grid', gap: 12 }}>
               {day.exercises.map(exercise => (
                 <div key={exercise.id} style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(18,35,54,0.9)', padding: 14 }}>
+                  {(() => {
+                    const warnings = getExerciseWarnings(exercise)
+                    if (warnings.length === 0) return null
+
+                    return (
+                      <div style={warningPanelStyle}>
+                        <p style={{ margin: 0, color: '#FFD9A6', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+                          Contraindication Check
+                        </p>
+                        <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                          {warnings.map(warning => (
+                            <p key={`${exercise.id}-${warning}`} style={{ margin: 0, color: '#FFE7C2', fontSize: 13, lineHeight: 1.45 }}>
+                              {warning}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <div className="coach-program-exercise-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) minmax(90px, 0.9fr) repeat(4, minmax(90px, 1fr)) auto', gap: 10, alignItems: 'end' }}>
                     <label style={labelStyle}>
                       Exercise
@@ -1533,6 +1632,13 @@ const chipStyle: React.CSSProperties = {
   fontSize: 11,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
+}
+
+const warningPanelStyle: React.CSSProperties = {
+  border: '1px solid rgba(255, 167, 38, 0.45)',
+  background: 'rgba(255, 167, 38, 0.12)',
+  padding: '10px 12px',
+  marginBottom: 10,
 }
 
 const videoLinkStyle: React.CSSProperties = {
