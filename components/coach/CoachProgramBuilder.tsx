@@ -27,6 +27,7 @@ interface BuilderExercise {
   id: string
   libraryExerciseId: string
   name: string
+  block: string
   sets: string
   reps: string
   tempo: string
@@ -46,6 +47,7 @@ interface BuilderWorkoutDay {
   exercises: Array<{
     libraryExerciseId?: string | null
     name: string
+    block?: string | null
     sets: string
     reps: string
     tempo?: string | null
@@ -114,6 +116,7 @@ function toBuilderExercise(exercise?: BuilderWorkoutDay['exercises'][number]): B
     id: uid(),
     libraryExerciseId: String(exercise?.libraryExerciseId ?? '').trim(),
     name: String(exercise?.name ?? '').trim(),
+    block: String(exercise?.block ?? '').trim(),
     sets: String(exercise?.sets ?? '3').trim(),
     reps: String(exercise?.reps ?? '10').trim(),
     tempo: String(exercise?.tempo ?? '').trim(),
@@ -595,6 +598,48 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
     setDays(current => [...current, toBuilderDay(undefined, current.length + 1)])
   }
 
+  function duplicateDay(dayId: string) {
+    setDays(current => {
+      const index = current.findIndex(day => day.id === dayId)
+      if (index === -1) return current
+
+      const copy = toBuilderDay({
+        ...current[index],
+        exercises: current[index].exercises.map(exercise => ({
+          libraryExerciseId: exercise.libraryExerciseId,
+          name: exercise.name,
+          block: exercise.block,
+          sets: exercise.sets,
+          reps: exercise.reps,
+          tempo: exercise.tempo,
+          rest: exercise.rest,
+          notes: exercise.notes,
+          description: exercise.description,
+          primaryEquipment: exercise.primaryEquipment,
+          imageUrl: exercise.imageUrl,
+          videoUrl: exercise.videoUrl,
+        })),
+      }, index + 2)
+
+      const next = [...current.slice(0, index + 1), copy, ...current.slice(index + 1)]
+      return next.map((day, dayIndex) => ({ ...day, day: dayIndex + 1 }))
+    })
+  }
+
+  function moveDay(dayId: string, direction: 'up' | 'down') {
+    setDays(current => {
+      const index = current.findIndex(day => day.id === dayId)
+      if (index === -1) return current
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= current.length) return current
+
+      const next = [...current]
+      ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
+      return next.map((day, dayIndex) => ({ ...day, day: dayIndex + 1 }))
+    })
+  }
+
   function removeDay(dayId: string) {
     setDays(current => current.filter(day => day.id !== dayId).map((day, index) => ({ ...day, day: index + 1 })))
   }
@@ -602,6 +647,60 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
   function addExercise(dayId: string) {
     setDays(current =>
       current.map(day => (day.id === dayId ? { ...day, exercises: [...day.exercises, createBlankExercise()] } : day))
+    )
+  }
+
+  function duplicateExercise(dayId: string, exerciseId: string) {
+    setDays(current =>
+      current.map(day => {
+        if (day.id !== dayId) return day
+
+        const index = day.exercises.findIndex(exercise => exercise.id === exerciseId)
+        if (index === -1) return day
+
+        const source = day.exercises[index]
+        const copy = toBuilderExercise({
+          libraryExerciseId: source.libraryExerciseId,
+          name: source.name,
+          block: source.block,
+          sets: source.sets,
+          reps: source.reps,
+          tempo: source.tempo,
+          rest: source.rest,
+          notes: source.notes,
+          description: source.description,
+          primaryEquipment: source.primaryEquipment,
+          imageUrl: source.imageUrl,
+          videoUrl: source.videoUrl,
+        })
+
+        return {
+          ...day,
+          exercises: [...day.exercises.slice(0, index + 1), copy, ...day.exercises.slice(index + 1)],
+        }
+      })
+    )
+  }
+
+  function moveExercise(dayId: string, exerciseId: string, direction: 'up' | 'down') {
+    setDays(current =>
+      current.map(day => {
+        if (day.id !== dayId) return day
+
+        const index = day.exercises.findIndex(exercise => exercise.id === exerciseId)
+        if (index === -1) return day
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1
+        if (targetIndex < 0 || targetIndex >= day.exercises.length) return day
+
+        const nextExercises = [...day.exercises]
+        ;[nextExercises[index], nextExercises[targetIndex]] = [nextExercises[targetIndex], nextExercises[index]]
+
+        return {
+          ...day,
+          exercises: nextExercises,
+        }
+      })
     )
   }
 
@@ -649,6 +748,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             exercises: day.exercises.map(exercise => ({
               libraryExerciseId: exercise.libraryExerciseId || null,
               name: exercise.name,
+              block: exercise.block || null,
               sets: exercise.sets,
               reps: exercise.reps,
               tempo: exercise.tempo,
@@ -774,9 +874,20 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                   <input value={day.scheduledDate} onChange={event => updateDay(day.id, 'scheduledDate', event.target.value)} type="date" style={inputStyle} />
                 </label>
               </div>
-              <button type="button" onClick={() => removeDay(day.id)} style={secondaryButtonStyle}>
-                Remove Day
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => moveDay(day.id, 'up')} style={miniActionButtonStyle} disabled={dayIndex === 0}>
+                  ↑ Day
+                </button>
+                <button type="button" onClick={() => moveDay(day.id, 'down')} style={miniActionButtonStyle} disabled={dayIndex === days.length - 1}>
+                  ↓ Day
+                </button>
+                <button type="button" onClick={() => duplicateDay(day.id)} style={miniActionButtonStyle}>
+                  Duplicate Day
+                </button>
+                <button type="button" onClick={() => removeDay(day.id)} style={secondaryButtonStyle}>
+                  Remove Day
+                </button>
+              </div>
             </div>
 
             <label style={{ ...labelStyle, marginBottom: 12 }}>
@@ -787,7 +898,7 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
             <div style={{ display: 'grid', gap: 12 }}>
               {day.exercises.map(exercise => (
                 <div key={exercise.id} style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(18,35,54,0.9)', padding: 14 }}>
-                  <div className="coach-program-exercise-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) repeat(4, minmax(90px, 1fr)) auto', gap: 10, alignItems: 'end' }}>
+                  <div className="coach-program-exercise-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) minmax(90px, 0.9fr) repeat(4, minmax(90px, 1fr)) auto', gap: 10, alignItems: 'end' }}>
                     <label style={labelStyle}>
                       Exercise
                       <input
@@ -800,6 +911,10 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                       <button type="button" onClick={() => openPicker(day.id, exercise.id)} style={pickerButtonStyle}>
                         Browse Categories
                       </button>
+                    </label>
+                    <label style={labelStyle}>
+                      Block
+                      <input value={exercise.block} onChange={event => updateExercise(day.id, exercise.id, 'block', event.target.value)} style={inputStyle} placeholder="A1" />
                     </label>
                     <label style={labelStyle}>
                       Sets
@@ -817,9 +932,20 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                       Rest
                       <input value={exercise.rest} onChange={event => updateExercise(day.id, exercise.id, 'rest', event.target.value)} style={inputStyle} placeholder="60s" />
                     </label>
-                    <button type="button" onClick={() => removeExercise(day.id, exercise.id)} style={secondaryButtonStyle}>
-                      Remove
-                    </button>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      <button type="button" onClick={() => moveExercise(day.id, exercise.id, 'up')} style={miniActionButtonStyle} disabled={day.exercises[0]?.id === exercise.id}>
+                        ↑
+                      </button>
+                      <button type="button" onClick={() => moveExercise(day.id, exercise.id, 'down')} style={miniActionButtonStyle} disabled={day.exercises[day.exercises.length - 1]?.id === exercise.id}>
+                        ↓
+                      </button>
+                      <button type="button" onClick={() => duplicateExercise(day.id, exercise.id)} style={miniActionButtonStyle}>
+                        Duplicate
+                      </button>
+                      <button type="button" onClick={() => removeExercise(day.id, exercise.id)} style={secondaryButtonStyle}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
 
                   <label style={{ ...labelStyle, marginTop: 10 }}>
@@ -843,6 +969,11 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, e
                         />
                       )}
                       <div>
+                        {exercise.block && (
+                          <div style={{ marginBottom: 8 }}>
+                            <span style={chipStyle}>{exercise.block}</span>
+                          </div>
+                        )}
                         {exercise.description && (() => {
                           const lines = formatExerciseDescriptionLines(exercise.description)
                           if (lines.length === 0) return null
@@ -1143,6 +1274,17 @@ const pickerButtonStyle: React.CSSProperties = {
   letterSpacing: '0.04em',
   cursor: 'pointer',
   minHeight: 42,
+}
+
+const miniActionButtonStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'rgba(13,27,42,0.88)',
+  color: 'var(--white)',
+  padding: '6px 8px',
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 12,
+  cursor: 'pointer',
+  minHeight: 34,
 }
 
 const chipStyle: React.CSSProperties = {

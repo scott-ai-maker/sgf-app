@@ -35,6 +35,7 @@ export interface WorkoutProgramTemplateRecord {
 export interface CoachProgramExerciseInput {
   libraryExerciseId?: string | null
   name: string
+  block?: string | null
   sets: string
   reps: string
   tempo?: string | null
@@ -82,6 +83,7 @@ export interface CoachProgramDraft {
 export interface ProgramExerciseSnapshot {
   libraryExerciseId: string | null
   name: string
+  block: string | null
   sets: string
   reps: string
   tempo: string | null
@@ -222,6 +224,7 @@ export function buildStoredProgramPlan(
           return {
             libraryExerciseId: match?.id ?? normalizeOptionalText(exercise.libraryExerciseId),
             name,
+            block: normalizeOptionalText(exercise.block),
             sets: normalizeText(exercise.sets),
             reps: normalizeText(exercise.reps),
             tempo: normalizeOptionalText(exercise.tempo),
