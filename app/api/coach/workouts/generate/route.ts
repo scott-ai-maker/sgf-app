@@ -65,7 +65,9 @@ function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAcce
     if (item.includes('band') || item.includes('tube') || item.includes('strap')) return equipmentAccess.includes('bands')
     if (item.includes('trx') || item.includes('suspension')) return equipmentAccess.includes('trx')
     if (item.includes('medicine ball') || item.includes('stability ball')) return equipmentAccess.includes('medicine-ball')
-    return true
+
+    // Unknown equipment labels should not be treated as available by default.
+    return false
   })
 }
 

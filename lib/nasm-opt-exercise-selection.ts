@@ -492,14 +492,19 @@ export function selectExercisesForWorkoutDay(
   // For day-focus variety: don't let the same movement pattern dominate
   const selected: ExerciseRecord[] = []
   const usedPatterns = new Map<string, number>()
+  const usedExerciseNames = new Set<string>()
 
   for (const { exercise } of sorted) {
     if (selected.length >= exerciseCountTarget) break
+    const normalizedName = exercise.name.trim().toLowerCase()
+    if (usedExerciseNames.has(normalizedName)) continue
+
     const pattern = getMovementPatternForExercise(exercise)
     // Allow a movement pattern at most twice to ensure variety
     const patternCount = usedPatterns.get(pattern) ?? 0
     if (patternCount < 2) {
       selected.push(exercise)
+      usedExerciseNames.add(normalizedName)
       usedPatterns.set(pattern, patternCount + 1)
     }
   }
@@ -508,7 +513,13 @@ export function selectExercisesForWorkoutDay(
   if (selected.length < exerciseCountTarget) {
     const remaining = sorted
       .map(s => s.exercise)
-      .filter(ex => !selected.includes(ex))
+      .filter(ex => {
+        if (selected.includes(ex)) return false
+        const normalizedName = ex.name.trim().toLowerCase()
+        if (usedExerciseNames.has(normalizedName)) return false
+        usedExerciseNames.add(normalizedName)
+        return true
+      })
       .slice(0, exerciseCountTarget - selected.length)
     selected.push(...remaining)
   }
