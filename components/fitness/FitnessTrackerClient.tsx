@@ -163,7 +163,47 @@ function todayDateOnly() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function defaultInlineSetDraft(sessionDate: string, prescribedReps?: string | null): InlineSetDraft {
+/**
+ * Returns the default rest period in seconds based on NASM OPT phase and exercise section.
+ * Sourced from NASM OPT guidelines via master trainer consultation.
+ *
+ * Key principles:
+ * - Phase 1 (Stabilization Endurance): 0–90 s — short rest maintains elevated HR for endurance adaptation
+ * - Phase 2 (Strength Endurance): 0–60 s — superset structure, minimal rest
+ * - Phase 3 (Hypertrophy): 30–90 s resistance — moderate rest for metabolic stress & growth
+ * - Phase 4 (Maximal Strength): 180–300 s resistance — full CNS recovery for maximal effort
+ * - Phase 5 (Power): 180–300 s resistance — full recovery between explosive sets
+ * Warm-up and cool-down are continuous (0 s); activation, skill dev & client choice scale with phase.
+ */
+function defaultRestSeconds(phase: number, section?: string | null): number {
+  const s = section ?? ''
+  // Non-working sections: continuous movement, no prescribed rest
+  if (s === 'warm-up' || s === 'cool-down') return 0
+  // Activation (core & balance): light, always short
+  if (s === 'activation') return 45
+  // Skill development (plyometric & SAQ): technique focus, short but scales up slightly for power phases
+  if (s === 'skill-development') return phase >= 4 ? 60 : 45
+  // Resistance training: the big differentiator by phase
+  if (s === 'resistance') {
+    if (phase === 1) return 60   // Stabilization Endurance: 0–90 s, use 60
+    if (phase === 2) return 45   // Strength Endurance: 0–60 s, minimal
+    if (phase === 3) return 60   // Hypertrophy: 30–90 s, use 60
+    if (phase === 4) return 240  // Maximal Strength: 3–5 min, use 4 min
+    if (phase === 5) return 240  // Power: 3–5 min, use 4 min
+  }
+  // Client's choice: mirrors resistance for the phase
+  if (s === 'clients-choice') {
+    if (phase <= 2) return 45
+    if (phase === 3) return 60
+    return 240
+  }
+  // Fallback: use phase-based resistance default
+  if (phase <= 2) return 60
+  if (phase === 3) return 60
+  return 240
+}
+
+function defaultInlineSetDraft(sessionDate: string, prescribedReps?: string | null, phase?: number, section?: string | null): InlineSetDraft {
   const repsDefault = (() => {
     const text = String(prescribedReps ?? '').trim()
     if (!text) return '8'
@@ -172,12 +212,13 @@ function defaultInlineSetDraft(sessionDate: string, prescribedReps?: string | nu
     const numMatch = text.match(/\d+/)
     return numMatch ? numMatch[0] : '8'
   })()
+  const restDefault = defaultRestSeconds(phase ?? 1, section)
   return {
     sessionDate,
     setNumber: '1',
     reps: repsDefault,
     weight: '',
-    restSeconds: '90',
+    restSeconds: String(restDefault),
     rpe: '7',
     rir: '2',
     isWarmup: false,
@@ -345,7 +386,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     e.preventDefault()
     const key = exerciseDraftKey(workout.day, exercise.name)
     const initialDate = workout.scheduledDate || todayDateOnly()
-    const draft = inlineSetDrafts[key] ?? defaultInlineSetDraft(initialDate)
+    const draft = inlineSetDrafts[key] ?? defaultInlineSetDraft(initialDate, exercise.reps, plan?.nasm_opt_phase, exercise.block)
 
     setBusy(`set-log:${key}`)
     setStatus(null)
@@ -620,7 +661,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                       const seenSections = new Set<string>()
                       return workout.exercises.map((ex, exIdx) => {
                         const exerciseKey = exerciseDraftKey(workout.day, ex.name)
-                        const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly(), ex.reps)
+                        const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly(), ex.reps, plan?.nasm_opt_phase, ex.block)
                         const exerciseRecentLogs = (setLogsByExercise.get(normalizeExerciseName(ex.name)) ?? [])
                           .filter(row => extractWorkoutDayTag(row.notes) === workout.day)
                           .slice(0, 3)
