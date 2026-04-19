@@ -75,6 +75,25 @@ function buildCoachTabHref(tab: CoachDashboardTab, focus: FocusFilter) {
   return query ? `/coach?${query}` : '/coach'
 }
 
+function formatRelativeDaysLabel(value: string | null | undefined, now: Date) {
+  if (!value) return 'No check-in'
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return 'No check-in'
+
+  const diffMs = now.getTime() - parsed.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays <= 0) return 'Today'
+  if (diffDays === 1) return '1 day ago'
+  return `${diffDays} days ago`
+}
+
+function formatBodyfat(value: number | null | undefined) {
+  if (value === null || value === undefined) return 'N/A'
+  return `${Math.round(value * 10) / 10}%`
+}
+
 export default async function CoachPage({ searchParams }: { searchParams: CoachPageSearchParams }) {
   const resolvedSearchParams = await searchParams
   const selectedFocus = normalizeFocusFilter(resolvedSearchParams.focus)
@@ -144,6 +163,8 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     { data: fitnessProfiles },
     { data: recentWorkoutLogs },
     { data: unreadMessages },
+    { data: recentSetLogs },
+    { data: bodyAnalyses },
   ] = assignedClientIds.length
     ? await Promise.all([
         admin
@@ -173,8 +194,18 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
           .eq('coach_id', user.id)
           .in('client_id', assignedClientIds)
           .is('read_at', null),
+        admin
+          .from('workout_set_logs')
+          .select('id, user_id, session_date, reps, weight_kg, rpe')
+          .in('user_id', assignedClientIds)
+          .gte('session_date', checkInWindowStart.toISOString().slice(0, 10)),
+        admin
+          .from('body_composition_analyses')
+          .select('id, user_id, estimated_bodyfat_percent, created_at')
+          .in('user_id', assignedClientIds)
+          .order('created_at', { ascending: false }),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
 
   // Build per-client remaining count
   const remainingByClient: Record<string, number> = {}
@@ -224,6 +255,59 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
   const noUpcomingClientIds = new Set(assignedClientIds.filter(clientId => !upcomingSessionsByClient.has(clientId)))
 
   const unreadClientMessages = (unreadMessages ?? []).filter(message => message.sender_id === message.client_id).length
+
+  const lastWorkoutLogAtByClient: Record<string, string | null> = {}
+  for (const row of recentWorkoutLogs ?? []) {
+    const current = lastWorkoutLogAtByClient[row.user_id]
+    if (!current || row.created_at > current) {
+      lastWorkoutLogAtByClient[row.user_id] = row.created_at
+    }
+  }
+
+  const recentSetStatsByClient: Record<string, { sets: number; reps: number; volumeKg: number; rpeSum: number; rpeCount: number }> = {}
+  for (const row of recentSetLogs ?? []) {
+    const current = recentSetStatsByClient[row.user_id] ?? { sets: 0, reps: 0, volumeKg: 0, rpeSum: 0, rpeCount: 0 }
+    current.sets += 1
+    current.reps += Number(row.reps ?? 0)
+    current.volumeKg += Number(row.reps ?? 0) * Number(row.weight_kg ?? 0)
+
+    const rpe = Number(row.rpe ?? 0)
+    if (Number.isFinite(rpe) && rpe > 0) {
+      current.rpeSum += rpe
+      current.rpeCount += 1
+    }
+
+    recentSetStatsByClient[row.user_id] = current
+  }
+
+  const latestBodyfatByClient: Record<string, number | null> = {}
+  for (const row of bodyAnalyses ?? []) {
+    if (latestBodyfatByClient[row.user_id] === undefined) {
+      latestBodyfatByClient[row.user_id] = row.estimated_bodyfat_percent
+    }
+  }
+
+  const clientMetricsRows = (assignedClients ?? []).map(client => {
+    const statsForClient = recentSetStatsByClient[client.id] ?? { sets: 0, reps: 0, volumeKg: 0, rpeSum: 0, rpeCount: 0 }
+    const avgRpe = statsForClient.rpeCount > 0 ? Math.round((statsForClient.rpeSum / statsForClient.rpeCount) * 10) / 10 : null
+
+    return {
+      id: client.id,
+      name: client.full_name ?? 'Unnamed client',
+      lastWorkoutLogAt: lastWorkoutLogAtByClient[client.id] ?? null,
+      sets14d: statsForClient.sets,
+      reps14d: statsForClient.reps,
+      volume14dLb: Math.round(statsForClient.volumeKg * 2.20462),
+      avgRpe14d: avgRpe,
+      bodyfat: latestBodyfatByClient[client.id] ?? null,
+      active14d: recentCheckInsByClient.has(client.id),
+    }
+  })
+    .sort((a, b) => {
+      const aTs = a.lastWorkoutLogAt ? new Date(a.lastWorkoutLogAt).getTime() : 0
+      const bTs = b.lastWorkoutLogAt ? new Date(b.lastWorkoutLogAt).getTime() : 0
+      return bTs - aTs
+    })
 
   const stats = [
     { key: 'all', label: 'Active Clients', value: totalClients, hint: 'Current assigned roster', cta: 'View roster' },
@@ -456,6 +540,51 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
                 </a>
               ))}
             </div>
+
+            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
+              CLIENT METRICS SNAPSHOT
+            </h2>
+            <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13, marginTop: 0, marginBottom: 14 }}>
+              Last 14 days of workout activity for fast coaching triage.
+            </p>
+
+            {clientMetricsRows.length === 0 ? (
+              <div style={{ background: 'var(--navy-mid)', border: '1px solid var(--navy-lt)', padding: '20px 24px' }}>
+                <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', margin: 0 }}>No assigned clients yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 16 }}>
+                  <div className="coach-table-header" style={{ background: 'var(--navy)', padding: '12px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14 }}>
+                    {['Client', 'Last log', 'Sets 14d', 'Reps 14d', 'Volume 14d (lb)', 'Avg RPE', 'Body fat', ''].map(h => (
+                    <span key={h} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                {clientMetricsRows.map(row => (
+                    <div key={row.id} className="coach-table-row" style={{ background: 'var(--navy-mid)', padding: '14px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--white)' }}>{row.name}</span>
+                      <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 11, color: row.active14d ? 'var(--success)' : 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {row.active14d ? 'Active in 14d' : 'Needs follow-up'}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)' }}>
+                      {formatRelativeDaysLabel(row.lastWorkoutLogAt, now)}
+                    </span>
+                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.sets14d}</span>
+                      <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.reps14d}</span>
+                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.volume14dLb}</span>
+                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{row.avgRpe14d ? row.avgRpe14d : '-'}</span>
+                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{formatBodyfat(row.bodyfat)}</span>
+                    <a href={`/coach/clients/${row.id}`} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--gold)', textDecoration: 'none' }}>
+                      Open →
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
