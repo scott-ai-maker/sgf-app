@@ -512,6 +512,7 @@ create table if not exists exercise_library_entries (
   description               text,
   coaching_cues             text[] default array[]::text[],
   primary_equipment         text[] default array[]::text[],
+  muscle_groups             text[] default array[]::text[],
   media_image_url           text,
   media_video_url           text,
   metadata_json             jsonb not null default '{}'::jsonb,
@@ -519,6 +520,10 @@ create table if not exists exercise_library_entries (
   created_at                timestamptz default now(),
   updated_at                timestamptz default now()
 );
+
+-- Add muscle_groups column if it doesn't exist (for existing schemas)
+alter table exercise_library_entries
+  add column if not exists muscle_groups text[] default array[]::text[];
 
 create unique index if not exists exercise_library_entries_source_id_idx
   on exercise_library_entries(source, source_id)

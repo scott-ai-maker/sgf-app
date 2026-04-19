@@ -5,6 +5,7 @@ export interface ExerciseLibraryRecord {
   description?: string | null
   coaching_cues?: string[] | null
   primary_equipment?: string[] | null
+  muscle_groups?: string[] | null
   media_image_url?: string | null
   media_video_url?: string | null
 }

@@ -15,6 +15,7 @@
     "exercises:seed": "node --env-file=.env.local scripts/seed-exercise-library.mjs",
     "exercises:enrich-youtube": "node --env-file=.env.local scripts/enrich-youtube-videos-headless.mjs",
     "exercises:enrich-ai": "node --env-file=.env.local scripts/enrich-exercises-openai.mjs",
+    "exercises:backfill-muscles": "node --env-file=.env.local scripts/backfill-muscle-groups.mjs",
     "templates:seed:nasm": "node --env-file=.env.local scripts/seed-nasm-opt-templates.mjs",
     "smoke:auth": "node --env-file=.env.local scripts/authenticated-smoke-harness.mjs",
     "emails:dispatch": "node --env-file=.env.local scripts/dispatch-marketing-emails.mjs",

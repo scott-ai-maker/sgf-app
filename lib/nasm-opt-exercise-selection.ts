@@ -322,22 +322,26 @@ export function selectExercisesForWorkoutDay(
     // Prioritize exercises matching the day focus
     const dayFocusLower = dayFocus.toLowerCase()
     
-    // Extract muscle groups from exercise name/description
-    const extractedMuscles = extractMuscleGroupsFromExercise(exercise)
-    const metadataMuscles = exercise.metadata?.muscleGroups ?? []
-    const allMuscles = [...new Set([...extractedMuscles, ...metadataMuscles.map(m => m.toLowerCase())])]
+    // Use database muscle groups, fall back to extraction
+    let allMuscles = exercise.metadata?.muscleGroups ?? []
+    if (!allMuscles || allMuscles.length === 0) {
+      // Fallback: extract from name and description
+      allMuscles = extractMuscleGroupsFromExercise(exercise)
+    }
     
-    // Check if any extracted muscle matches the day focus
+    const normalizedMuscles = allMuscles.map(m => String(m).toLowerCase().trim())
+    
+    // Check if any muscle matches the day focus
     if (
-      allMuscles.some(muscle => dayFocusLower.includes(muscle)) ||
-      allMuscles.some(muscle => dayFocusLower.includes(muscle.split(' ')[0])) ||
+      normalizedMuscles.some(muscle => dayFocusLower.includes(muscle)) ||
+      normalizedMuscles.some(muscle => dayFocusLower.includes(muscle.split(' ')[0])) ||
       exercise.name.toLowerCase().includes(dayFocusLower.split(' ')[0])
     ) {
       score += 80  // Increased from 50 for better matching
     }
 
     // Prefer exercises with multiple muscle group benefits
-    score += allMuscles.length * 15
+    score += normalizedMuscles.length * 15
 
     // Add randomness to prevent repetitiveness
     score += Math.random() * 10  // Reduced from 20 to make scoring more deterministic
