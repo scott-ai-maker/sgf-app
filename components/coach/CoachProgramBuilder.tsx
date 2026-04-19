@@ -85,6 +85,98 @@ interface CategorizedExercise {
   equipmentKey: string
 }
 
+type SearchMatchResult = {
+  matched: boolean
+  score: number
+}
+
+const EXERCISE_SEARCH_ALIASES: Record<string, string[]> = {
+  squat: ['back squat', 'front squat', 'goblet squat', 'air squat'],
+  deadlift: ['rdl', 'romanian deadlift', 'hinge', 'trap bar'],
+  bench: ['bench press', 'flat press', 'chest press'],
+  row: ['cable row', 'seated row', 'db row', 'dumbbell row'],
+  press: ['ohp', 'overhead press', 'shoulder press'],
+  pullup: ['pull-up', 'chin-up', 'chin up', 'lat pull'],
+  lunge: ['split squat', 'reverse lunge', 'walking lunge'],
+  plank: ['core brace', 'hollow hold', 'anti-extension'],
+  hamstring: ['ham curl', 'leg curl', 'rdl'],
+  glute: ['hip thrust', 'bridge', 'glute bridge'],
+  calf: ['calf raise', 'standing calf', 'seated calf'],
+}
+
+function normalizeSearchText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function tokenizeSearch(value: string) {
+  return normalizeSearchText(value).split(' ').filter(Boolean)
+}
+
+function boundedEditDistance(a: string, b: string, maxDistance: number) {
+  if (Math.abs(a.length - b.length) > maxDistance) return maxDistance + 1
+  if (a === b) return 0
+
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, i) => i)
+
+  for (let i = 1; i <= a.length; i += 1) {
+    let prev = dp[0]
+    dp[0] = i
+    let rowMin = dp[0]
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const temp = dp[j]
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[j] = Math.min(
+        dp[j] + 1,
+        dp[j - 1] + 1,
+        prev + cost,
+      )
+      prev = temp
+      rowMin = Math.min(rowMin, dp[j])
+    }
+
+    if (rowMin > maxDistance) return maxDistance + 1
+  }
+
+  return dp[b.length]
+}
+
+function getSearchMatchScore(query: string, item: CategorizedExercise) {
+  if (!query) return { matched: true, score: 0 }
+
+  const normalizedQuery = normalizeSearchText(query)
+  const name = normalizeSearchText(item.record.name)
+  const equipment = normalizeSearchText(equipmentBadges(item.record.primary_equipment).join(' '))
+  const aliases = Object.entries(EXERCISE_SEARCH_ALIASES)
+    .filter(([key]) => name.includes(key))
+    .flatMap(([, values]) => values)
+  const aliasText = normalizeSearchText(aliases.join(' '))
+
+  if (name === normalizedQuery) return { matched: true, score: 120 }
+  if (name.startsWith(normalizedQuery)) return { matched: true, score: 100 }
+  if (name.includes(normalizedQuery)) return { matched: true, score: 88 }
+  if (aliasText.includes(normalizedQuery)) return { matched: true, score: 78 }
+  if (equipment.includes(normalizedQuery)) return { matched: true, score: 68 }
+
+  const queryTokens = tokenizeSearch(normalizedQuery)
+  const nameTokens = tokenizeSearch(name)
+  const aliasTokens = tokenizeSearch(aliasText)
+
+  const tokenPrefixHit = queryTokens.some(queryToken => (
+    nameTokens.some(token => token.startsWith(queryToken))
+    || aliasTokens.some(token => token.startsWith(queryToken))
+  ))
+  if (tokenPrefixHit) return { matched: true, score: 62 }
+
+  if (normalizedQuery.length >= 4) {
+    const distanceTargetTokens = [...nameTokens, ...aliasTokens].filter(token => token.length >= 4)
+    const fuzzyHit = distanceTargetTokens.some(token => boundedEditDistance(token, normalizedQuery, 2) <= 2)
+    if (fuzzyHit) return { matched: true, score: 52 }
+  }
+
+  return { matched: false, score: 0 }
+}
+
 function uid() {
   return Math.random().toString(36).slice(2, 10)
 }
@@ -526,31 +618,38 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
 
   const filteredPickerExercises = useMemo(() => {
     const query = pickerQuery.trim().toLowerCase()
-
-    return exerciseCatalog
+    const ranked = exerciseCatalog
       .filter(item => (pickerCategory === 'All Categories' ? true : item.category === pickerCategory))
       .filter(item => (pickerEquipment === 'All Equipment' ? true : item.equipmentKey === pickerEquipment))
-      .filter(item => {
-        if (!query) return true
-        const name = item.record.name.toLowerCase()
-        const equipmentText = equipmentBadges(item.record.primary_equipment).join(' ').toLowerCase()
-        return name.includes(query) || equipmentText.includes(query)
+      .map(item => {
+        const match = getSearchMatchScore(query, item)
+        return {
+          item,
+          score: match.score,
+          matched: match.matched,
+        }
       })
+      .filter(entry => entry.matched)
       .sort((a, b) => {
-        const aFavorite = favoriteExerciseIds.includes(a.record.id) ? 1 : 0
-        const bFavorite = favoriteExerciseIds.includes(b.record.id) ? 1 : 0
+        const aFavorite = favoriteExerciseIds.includes(a.item.record.id) ? 1 : 0
+        const bFavorite = favoriteExerciseIds.includes(b.item.record.id) ? 1 : 0
         if (aFavorite !== bFavorite) return bFavorite - aFavorite
 
-        const aRecent = recentExerciseIds.indexOf(a.record.id)
-        const bRecent = recentExerciseIds.indexOf(b.record.id)
+        if (a.score !== b.score) return b.score - a.score
+
+        const aRecent = recentExerciseIds.indexOf(a.item.record.id)
+        const bRecent = recentExerciseIds.indexOf(b.item.record.id)
         if (aRecent !== -1 || bRecent !== -1) {
           if (aRecent === -1) return 1
           if (bRecent === -1) return -1
           return aRecent - bRecent
         }
 
-        return a.record.name.localeCompare(b.record.name)
+        return a.item.record.name.localeCompare(b.item.record.name)
       })
+      .map(entry => entry.item)
+
+    return ranked
       .slice(0, 80)
   }, [exerciseCatalog, favoriteExerciseIds, pickerCategory, pickerEquipment, pickerQuery, recentExerciseIds])
 
