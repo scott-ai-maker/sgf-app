@@ -77,6 +77,19 @@ interface WorkoutSetLogRecord {
   rpe?: number
   rir?: number
   is_warmup?: boolean
+  notes?: string | null
+}
+
+interface InlineSetDraft {
+  sessionDate: string
+  setNumber: string
+  reps: string
+  weight: string
+  restSeconds: string
+  rpe: string
+  rir: string
+  isWarmup: boolean
+  notes: string
 }
 
 interface FitnessTrackerClientProps {
@@ -117,12 +130,17 @@ function equipmentBadges(primaryEquipment: string[] | null | undefined) {
   return items.length > 0 ? items : ['Bodyweight']
 }
 
-export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis }: FitnessTrackerClientProps) {
-  const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
-  const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
-  const [setLogState, setSetLogState] = useState({
-    sessionDate: new Date().toISOString().slice(0, 10),
-    exerciseName: '',
+function normalizeExerciseName(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function todayDateOnly() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function defaultInlineSetDraft(sessionDate: string): InlineSetDraft {
+  return {
+    sessionDate,
     setNumber: '1',
     reps: '8',
     weight: '',
@@ -131,7 +149,44 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     rir: '2',
     isWarmup: false,
     notes: '',
-  })
+  }
+}
+
+function exerciseDraftKey(workoutDay: number, exerciseName: string) {
+  return `${String(workoutDay)}::${normalizeExerciseName(exerciseName)}`
+}
+
+function workoutDayTag(workoutDay: number) {
+  return `[workout-day:${String(workoutDay)}]`
+}
+
+function extractWorkoutDayTag(notes: string | null | undefined) {
+  const match = String(notes ?? '').match(/\[workout-day:(\d+)\]/i)
+  if (!match) return null
+
+  const day = Number(match[1])
+  return Number.isFinite(day) ? day : null
+}
+
+function parseSetTarget(value: string | null | undefined) {
+  const text = String(value ?? '').trim()
+  if (!text) return 0
+
+  const rangeMatch = text.match(/(\d+)\s*[-to]{1,3}\s*(\d+)/i)
+  if (rangeMatch) {
+    return Number(rangeMatch[2])
+  }
+
+  const firstNumberMatch = text.match(/\d+/)
+  if (!firstNumberMatch) return 0
+
+  return Number(firstNumberMatch[0])
+}
+
+export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis }: FitnessTrackerClientProps) {
+  const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
+  const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
+  const [inlineSetDrafts, setInlineSetDrafts] = useState<Record<string, InlineSetDraft>>({})
   const [localSetLogs, setLocalSetLogs] = useState<WorkoutSetLogRecord[]>(setLogs)
   const [bodyfatState, setBodyfatState] = useState({
     photoDataUrl: '',
@@ -170,6 +225,41 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
 
   const units = profile?.preferred_units === 'imperial' ? 'imperial' : 'metric'
 
+  const setLogsByExercise = useMemo(() => {
+    const map = new Map<string, WorkoutSetLogRecord[]>()
+
+    for (const row of localSetLogs) {
+      const key = normalizeExerciseName(row.exercise_name)
+      const current = map.get(key) ?? []
+      current.push(row)
+      map.set(key, current)
+    }
+
+    return map
+  }, [localSetLogs])
+
+  const workoutProgressByDay = useMemo(() => {
+    const map = new Map<number, { targetSets: number; loggedSets: number; totalReps: number; totalVolumeKg: number }>()
+
+    for (const workout of planWorkouts) {
+      const metric = { targetSets: 0, loggedSets: 0, totalReps: 0, totalVolumeKg: 0 }
+
+      for (const exercise of workout.exercises) {
+        metric.targetSets += parseSetTarget(exercise.sets)
+
+          const logsForExercise = (setLogsByExercise.get(normalizeExerciseName(exercise.name)) ?? [])
+            .filter(row => extractWorkoutDayTag(row.notes) === workout.day)
+        metric.loggedSets += logsForExercise.length
+        metric.totalReps += logsForExercise.reduce((sum, row) => sum + Number(row.reps ?? 0), 0)
+        metric.totalVolumeKg += logsForExercise.reduce((sum, row) => sum + Number(row.reps ?? 0) * Number(row.weight_kg ?? 0), 0)
+      }
+
+      map.set(workout.day, metric)
+    }
+
+    return map
+  }, [planWorkouts, setLogsByExercise])
+
   const progression = useMemo(() => {
     const byDate = new Map<string, { volume: number; sets: number; avgRpe: number; rpeCount: number }>()
 
@@ -201,8 +291,9 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     const totalSets = localSetLogs.length
     const totalReps = localSetLogs.reduce((sum, row) => sum + Number(row.reps ?? 0), 0)
     const totalVolumeKg = localSetLogs.reduce((sum, row) => sum + Number(row.reps ?? 0) * Number(row.weight_kg ?? 0), 0)
-    const avgRpe = localSetLogs.length
-      ? localSetLogs.reduce((sum, row) => sum + Number(row.rpe ?? 0), 0) / localSetLogs.filter(row => Number(row.rpe ?? 0) > 0).length
+    const rpeRows = localSetLogs.filter(row => Number(row.rpe ?? 0) > 0)
+    const avgRpe = rpeRows.length > 0
+      ? rpeRows.reduce((sum, row) => sum + Number(row.rpe ?? 0), 0) / rpeRows.length
       : 0
 
     return {
@@ -214,12 +305,16 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     }
   }, [localSetLogs])
 
-  async function handleLogSet(e: React.FormEvent) {
+  async function handleInlineSetLog(e: React.FormEvent, workout: WorkoutDay, exercise: WorkoutExercise) {
     e.preventDefault()
-    setBusy('set-log')
+    const key = exerciseDraftKey(workout.day, exercise.name)
+    const initialDate = workout.scheduledDate || todayDateOnly()
+    const draft = inlineSetDrafts[key] ?? defaultInlineSetDraft(initialDate)
+
+    setBusy(`set-log:${key}`)
     setStatus(null)
 
-    const weightValue = Number(setLogState.weight)
+    const weightValue = Number(draft.weight)
     const weightKg = Number.isFinite(weightValue) && weightValue > 0
       ? (units === 'imperial' ? weightValue * 0.45359237 : weightValue)
       : undefined
@@ -229,16 +324,16 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workoutPlanId: plan?.id,
-        sessionDate: setLogState.sessionDate,
-        exerciseName: setLogState.exerciseName,
-        setNumber: Number(setLogState.setNumber),
-        reps: Number(setLogState.reps),
+        sessionDate: draft.sessionDate,
+        exerciseName: exercise.name,
+        setNumber: Number(draft.setNumber),
+        reps: Number(draft.reps),
         weightKg,
-        restSeconds: Number(setLogState.restSeconds),
-        rpe: Number(setLogState.rpe),
-        rir: Number(setLogState.rir),
-        isWarmup: setLogState.isWarmup,
-        notes: setLogState.notes,
+        restSeconds: Number(draft.restSeconds),
+        rpe: Number(draft.rpe),
+        rir: Number(draft.rir),
+        isWarmup: draft.isWarmup,
+        notes: `${workoutDayTag(workout.day)} ${draft.notes}`.trim(),
       }),
     })
 
@@ -251,8 +346,15 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     }
 
     setLocalSetLogs(prev => [payload.setLog as WorkoutSetLogRecord, ...prev])
-    setStatus('Set logged successfully.')
-    setSetLogState(prev => ({ ...prev, exerciseName: '', notes: '' }))
+    setStatus(`Logged set for ${exercise.name}. Metrics updated.`)
+    setInlineSetDrafts(prev => ({
+      ...prev,
+      [key]: {
+        ...draft,
+        setNumber: String(Math.max(1, Number(draft.setNumber || '1') + 1)),
+        notes: '',
+      },
+    }))
   }
 
   async function handleLogWorkout(e: React.FormEvent) {
@@ -385,15 +487,53 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
             <h2 style={{ margin: 0, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Current Workout Plan</h2>
           </div>
 
+          {planWorkouts.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {planWorkouts.map(workout => (
+                <a
+                  key={`jump-${workout.day}`}
+                  href={`#workout-day-${workout.day}`}
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    background: 'var(--navy)',
+                    color: 'var(--white)',
+                    textDecoration: 'none',
+                    padding: '6px 10px',
+                    fontSize: 12,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Day {workout.day}
+                </a>
+              ))}
+            </div>
+          )}
+
           {planWorkouts.length === 0 ? (
             <p style={{ color: 'var(--gray)', margin: 0 }}>No plan generated yet.</p>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
-              {planWorkouts.map(workout => (
-                <div key={workout.day} style={{ border: '1px solid var(--navy-lt)', padding: 12, background: 'var(--navy)' }}>
+              {planWorkouts.map(workout => {
+                const workoutProgress = workoutProgressByDay.get(workout.day) ?? { targetSets: 0, loggedSets: 0, totalReps: 0, totalVolumeKg: 0 }
+                const completionRatio = workoutProgress.targetSets > 0
+                  ? Math.min(1, workoutProgress.loggedSets / workoutProgress.targetSets)
+                  : 0
+
+                return (
+                <div id={`workout-day-${workout.day}`} key={workout.day} style={{ border: '1px solid var(--navy-lt)', padding: 12, background: 'var(--navy)' }}>
                   <h3 style={{ margin: '0 0 8px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em', fontSize: 21 }}>
                     Day {workout.day}: {workout.focus}
                   </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    <span style={workoutStatBadgeStyle}>Sets: {workoutProgress.loggedSets}/{workoutProgress.targetSets || '-'}</span>
+                    <span style={workoutStatBadgeStyle}>Reps: {workoutProgress.totalReps}</span>
+                    <span style={workoutStatBadgeStyle}>Volume: {formatWeight(workoutProgress.totalVolumeKg, units)}</span>
+                    <span style={workoutStatBadgeStyle}>Completion: {Math.round(completionRatio * 100)}%</span>
+                  </div>
+                  <div style={{ height: 6, width: '100%', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', marginBottom: 10 }}>
+                    <div style={{ height: '100%', width: `${Math.round(completionRatio * 100)}%`, background: 'var(--gold)' }} />
+                  </div>
                   {workout.scheduledDate && (
                     <p style={{ margin: '0 0 10px', color: 'var(--gold)', fontSize: 13 }}>
                       Scheduled for {new Date(`${workout.scheduledDate}T12:00:00Z`).toLocaleDateString()}
@@ -403,8 +543,15 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                     <p style={{ margin: '0 0 12px', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{workout.notes}</p>
                   )}
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {workout.exercises.map(ex => (
-                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12 }}>
+                    {workout.exercises.map(ex => {
+                        const exerciseKey = exerciseDraftKey(workout.day, ex.name)
+                        const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly())
+                        const exerciseRecentLogs = (setLogsByExercise.get(normalizeExerciseName(ex.name)) ?? [])
+                          .filter(row => extractWorkoutDayTag(row.notes) === workout.day)
+                          .slice(0, 3)
+
+                        return (
+                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 14 }}>
                         <div style={{ color: 'var(--white)', fontWeight: 600 }}>
                           {ex.name} - {ex.sets} sets x {ex.reps}
                           {ex.tempo ? ` · Tempo ${ex.tempo}` : ''}
@@ -482,11 +629,139 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                             </div>
                           </div>
                         )}
+
+                          <form onSubmit={event => handleInlineSetLog(event, workout, ex)} style={{ marginTop: 10, border: '1px solid rgba(255,255,255,0.08)', padding: 10, background: 'rgba(13,27,42,0.55)' }}>
+                            <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                              Log set here (no separate scrolling needed)
+                            </p>
+                            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <input
+                                type="date"
+                                value={draft.sessionDate}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, sessionDate: value } }))
+                                }}
+                                style={inputStyle}
+                                required
+                              />
+                              <input
+                                type="number"
+                                min={1}
+                                value={draft.setNumber}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, setNumber: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder="Set #"
+                              />
+                            </div>
+                            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                              <input
+                                type="number"
+                                min={1}
+                                value={draft.reps}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, reps: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder="Reps"
+                                required
+                              />
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={0}
+                                value={draft.weight}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, weight: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder={`Weight (${units === 'imperial' ? 'lb' : 'kg'})`}
+                              />
+                            </div>
+                            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
+                              <input
+                                type="number"
+                                min={0}
+                                value={draft.restSeconds}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, restSeconds: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder="Rest"
+                              />
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={1}
+                                max={10}
+                                value={draft.rpe}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rpe: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder="RPE"
+                              />
+                              <input
+                                type="number"
+                                step="0.1"
+                                min={0}
+                                max={6}
+                                value={draft.rir}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rir: value } }))
+                                }}
+                                style={inputStyle}
+                                placeholder="RIR"
+                              />
+                              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--gray)', fontSize: 12, border: '1px solid var(--navy-lt)', minHeight: 44 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={draft.isWarmup}
+                                  onChange={event => {
+                                    const checked = event.target.checked
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, isWarmup: checked } }))
+                                  }}
+                                />
+                                Warmup
+                              </label>
+                            </div>
+                            <textarea
+                              value={draft.notes}
+                              onChange={event => {
+                                const value = event.target.value
+                                setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, notes: value } }))
+                              }}
+                              style={{ ...inputStyle, minHeight: 62, marginTop: 8 }}
+                              placeholder="Notes"
+                            />
+                            <button type="submit" disabled={busy === `set-log:${exerciseKey}`} style={{ ...buttonStyle, marginTop: 8 }}>
+                              {busy === `set-log:${exerciseKey}` ? 'Saving...' : 'Save Set'}
+                            </button>
+                            {exerciseRecentLogs.length > 0 && (
+                              <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                                {exerciseRecentLogs.map(row => (
+                                  <div key={row.id} style={{ fontSize: 12, color: 'var(--gray)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6 }}>
+                                    {row.session_date} | Set {row.set_number ?? '-'} | {row.reps} reps | {formatWeight(row.weight_kg, units)} | RPE {row.rpe ?? '-'}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </form>
                       </li>
-                    ))}
+                          )
+                        })}
                   </ul>
                 </div>
-              ))}
+                  )
+                })}
             </div>
           )}
         </section>
@@ -539,32 +814,6 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
             <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Avg RPE Trend</p>
             <TrendChart points={progression.points.map(p => ({ label: shortDate(p.date), value: p.avgRpe }))} stroke="#89A7C6" min={1} max={10} />
           </div>
-        </section>
-
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <h2 style={{ margin: '0 0 14px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Log Sets</h2>
-          <form onSubmit={handleLogSet} style={{ display: 'grid', gap: 10 }}>
-            <input type="date" value={setLogState.sessionDate} onChange={e => setSetLogState(prev => ({ ...prev, sessionDate: e.target.value }))} style={inputStyle} required />
-            <input type="text" value={setLogState.exerciseName} onChange={e => setSetLogState(prev => ({ ...prev, exerciseName: e.target.value }))} style={inputStyle} placeholder="Exercise name" required />
-            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input type="number" min={1} value={setLogState.setNumber} onChange={e => setSetLogState(prev => ({ ...prev, setNumber: e.target.value }))} style={inputStyle} placeholder="Set #" />
-              <input type="number" min={1} value={setLogState.reps} onChange={e => setSetLogState(prev => ({ ...prev, reps: e.target.value }))} style={inputStyle} placeholder="Reps" required />
-            </div>
-            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input type="number" step="0.1" min={0} value={setLogState.weight} onChange={e => setSetLogState(prev => ({ ...prev, weight: e.target.value }))} style={inputStyle} placeholder={`Weight (${units === 'imperial' ? 'lb' : 'kg'})`} />
-              <input type="number" min={0} value={setLogState.restSeconds} onChange={e => setSetLogState(prev => ({ ...prev, restSeconds: e.target.value }))} style={inputStyle} placeholder="Rest (sec)" />
-            </div>
-            <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input type="number" step="0.1" min={1} max={10} value={setLogState.rpe} onChange={e => setSetLogState(prev => ({ ...prev, rpe: e.target.value }))} style={inputStyle} placeholder="RPE (1-10)" />
-              <input type="number" step="0.1" min={0} max={6} value={setLogState.rir} onChange={e => setSetLogState(prev => ({ ...prev, rir: e.target.value }))} style={inputStyle} placeholder="RIR" />
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--gray)', fontSize: 13 }}>
-              <input type="checkbox" checked={setLogState.isWarmup} onChange={e => setSetLogState(prev => ({ ...prev, isWarmup: e.target.checked }))} />
-              Warm-up set
-            </label>
-            <textarea value={setLogState.notes} onChange={e => setSetLogState(prev => ({ ...prev, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 70 }} placeholder="Tempo, setup cues, pain notes" />
-            <button type="submit" disabled={busy === 'set-log'} style={buttonStyle}>{busy === 'set-log' ? 'Saving...' : 'Save Set'}</button>
-          </form>
         </section>
 
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
@@ -733,6 +982,16 @@ const buttonStyle: React.CSSProperties = {
   letterSpacing: '0.06em',
   cursor: 'pointer',
   minHeight: 44,
+}
+
+const workoutStatBadgeStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.18)',
+  background: 'rgba(255,255,255,0.04)',
+  color: 'var(--white)',
+  padding: '2px 8px',
+  fontSize: 11,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
 }
 
 function fileToDataUrl(file: File) {
