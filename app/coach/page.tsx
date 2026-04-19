@@ -424,6 +424,55 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     })
   ) as Record<string, Array<{ label: string; tone: keyof typeof chipStyles }>>
 
+  const clientMetricsSnapshotSection = (
+    <>
+      <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
+        CLIENT METRICS SNAPSHOT
+      </h2>
+      <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13, marginTop: 0, marginBottom: 14 }}>
+        Last 14 days of workout activity for fast coaching triage.
+      </p>
+
+      {clientMetricsRows.length === 0 ? (
+        <div style={{ background: 'var(--navy-mid)', border: '1px solid var(--navy-lt)', padding: '20px 24px' }}>
+          <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', margin: 0 }}>No assigned clients yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 16 }}>
+          <div className="coach-table-header" style={{ background: 'var(--navy)', padding: '12px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14 }}>
+            {['Client', 'Last log', 'Sets 14d', 'Reps 14d', 'Volume 14d (lb)', 'Avg RPE', 'Body fat', ''].map(h => (
+              <span key={h} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {clientMetricsRows.map(row => (
+            <div key={row.id} className="coach-table-row" style={{ background: 'var(--navy-mid)', padding: '14px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14, alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--white)' }}>{row.name}</span>
+                <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 11, color: row.active14d ? 'var(--success)' : 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {row.active14d ? 'Active in 14d' : 'Needs follow-up'}
+                </span>
+              </div>
+              <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)' }}>
+                {formatRelativeDaysLabel(row.lastWorkoutLogAt, now)}
+              </span>
+              <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.sets14d}</span>
+              <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.reps14d}</span>
+              <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.volume14dLb}</span>
+              <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{row.avgRpe14d ? row.avgRpe14d : '-'}</span>
+              <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{formatBodyfat(row.bodyfat)}</span>
+              <a href={`/coach/clients/${row.id}`} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--gold)', textDecoration: 'none' }}>
+                Open →
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+
   return (
     <main className="coach-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
       <SiteHeader
@@ -541,50 +590,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
               ))}
             </div>
 
-            <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--white)', letterSpacing: '0.06em', marginBottom: 12 }}>
-              CLIENT METRICS SNAPSHOT
-            </h2>
-            <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13, marginTop: 0, marginBottom: 14 }}>
-              Last 14 days of workout activity for fast coaching triage.
-            </p>
-
-            {clientMetricsRows.length === 0 ? (
-              <div style={{ background: 'var(--navy-mid)', border: '1px solid var(--navy-lt)', padding: '20px 24px' }}>
-                <p style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', margin: 0 }}>No assigned clients yet.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 16 }}>
-                  <div className="coach-table-header" style={{ background: 'var(--navy)', padding: '12px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14 }}>
-                    {['Client', 'Last log', 'Sets 14d', 'Reps 14d', 'Volume 14d (lb)', 'Avg RPE', 'Body fat', ''].map(h => (
-                    <span key={h} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      {h}
-                    </span>
-                  ))}
-                </div>
-
-                {clientMetricsRows.map(row => (
-                    <div key={row.id} className="coach-table-row" style={{ background: 'var(--navy-mid)', padding: '14px 24px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto', gap: 14, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 14, color: 'var(--white)' }}>{row.name}</span>
-                      <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 11, color: row.active14d ? 'var(--success)' : 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        {row.active14d ? 'Active in 14d' : 'Needs follow-up'}
-                      </span>
-                    </div>
-                    <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)' }}>
-                      {formatRelativeDaysLabel(row.lastWorkoutLogAt, now)}
-                    </span>
-                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.sets14d}</span>
-                      <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.reps14d}</span>
-                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--gold)' }}>{row.volume14dLb}</span>
-                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{row.avgRpe14d ? row.avgRpe14d : '-'}</span>
-                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 26, color: 'var(--white)' }}>{formatBodyfat(row.bodyfat)}</span>
-                    <a href={`/coach/clients/${row.id}`} style={{ fontFamily: 'Raleway, sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--gold)', textDecoration: 'none' }}>
-                      Open →
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
+            {clientMetricsSnapshotSection}
           </>
         )}
 
@@ -602,6 +608,8 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
             >
               ASSIGNED CLIENTS
             </h2>
+
+            {clientMetricsSnapshotSection}
 
             <div
               style={{
