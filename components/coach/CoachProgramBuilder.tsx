@@ -1639,7 +1639,16 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
 
       <div style={{ display: 'grid', gap: 14 }}>
         {days.map((day, dayIndex) => (
-          <div key={day.id} style={{ border: '1px solid var(--navy-lt)', background: 'rgba(13,27,42,0.7)', padding: 16 }}>
+          <details key={day.id} open={dayIndex === 0} style={builderDayAccordionStyle}>
+            <summary style={builderDayAccordionSummaryStyle}>
+              <span style={{ color: 'var(--white)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 20, letterSpacing: '0.06em' }}>
+                Day {dayIndex + 1}: {day.focus || 'Untitled Focus'}
+              </span>
+              <span style={{ color: 'var(--gray)', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {day.exercises.length} exercises{day.scheduledDate ? ` | ${day.scheduledDate}` : ''}
+              </span>
+            </summary>
+            <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
               <div className="coach-program-day-header-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(160px, 1fr)', gap: 10, flex: 1 }}>
                 <label style={labelStyle}>
@@ -1892,7 +1901,8 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
                 Add Exercise
               </button>
             </div>
-          </div>
+            </div>
+          </details>
         ))}
       </div>
 
@@ -2413,6 +2423,20 @@ const mobileActionPrimaryButtonStyle: React.CSSProperties = {
   letterSpacing: '0.07em',
   cursor: 'pointer',
   minHeight: 42,
+}
+
+const builderDayAccordionStyle: React.CSSProperties = {
+  border: '1px solid var(--navy-lt)',
+  background: 'rgba(13,27,42,0.7)',
+}
+
+const builderDayAccordionSummaryStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  padding: '12px 14px',
+  cursor: 'pointer',
 }
 
 const videoLinkStyle: React.CSSProperties = {

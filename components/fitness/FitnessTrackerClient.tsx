@@ -521,10 +521,16 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   : 0
 
                 return (
-                <div id={`workout-day-${workout.day}`} key={workout.day} style={{ border: '1px solid var(--navy-lt)', padding: 12, background: 'var(--navy)' }}>
-                  <h3 style={{ margin: '0 0 8px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em', fontSize: 21 }}>
-                    Day {workout.day}: {workout.focus}
-                  </h3>
+                <details id={`workout-day-${workout.day}`} key={workout.day} open={workout.day === 1} style={accordionWorkoutStyle}>
+                  <summary style={accordionWorkoutSummaryStyle}>
+                    <span style={{ fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em', fontSize: 21 }}>
+                      Day {workout.day}: {workout.focus}
+                    </span>
+                    <span style={{ color: 'var(--gray)', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      {workout.exercises.length} exercises | {Math.round(completionRatio * 100)}% complete
+                    </span>
+                  </summary>
+                  <div style={{ padding: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                     <span style={workoutStatBadgeStyle}>Sets: {workoutProgress.loggedSets}/{workoutProgress.targetSets || '-'}</span>
                     <span style={workoutStatBadgeStyle}>Reps: {workoutProgress.totalReps}</span>
@@ -542,7 +548,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   {workout.notes && (
                     <p style={{ margin: '0 0 12px', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{workout.notes}</p>
                   )}
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
                     {workout.exercises.map(ex => {
                         const exerciseKey = exerciseDraftKey(workout.day, ex.name)
                         const draft = inlineSetDrafts[exerciseKey] ?? defaultInlineSetDraft(workout.scheduledDate || todayDateOnly())
@@ -551,12 +557,17 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                           .slice(0, 3)
 
                         return (
-                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 14 }}>
-                        <div style={{ color: 'var(--white)', fontWeight: 600 }}>
-                          {ex.name} - {ex.sets} sets x {ex.reps}
-                          {ex.tempo ? ` · Tempo ${ex.tempo}` : ''}
-                          {ex.rest ? ` · Rest ${ex.rest}` : ''}
-                        </div>
+                      <li key={`${workout.day}-${ex.name}`} style={{ marginBottom: 12 }}>
+                        <details style={accordionExerciseStyle}>
+                          <summary style={accordionExerciseSummaryStyle}>
+                            <span style={{ color: 'var(--white)', fontWeight: 600 }}>
+                              {ex.name}
+                            </span>
+                            <span style={{ color: 'var(--gray)', fontSize: 12 }}>
+                              {ex.sets} sets x {ex.reps}{ex.tempo ? ` · Tempo ${ex.tempo}` : ''}{ex.rest ? ` · Rest ${ex.rest}` : ''}
+                            </span>
+                          </summary>
+                          <div style={{ padding: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                         {ex.description && (() => {
                           const lines = formatExerciseDescriptionLines(ex.description)
                           if (lines.length === 0) return null
@@ -755,11 +766,14 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                               </div>
                             )}
                           </form>
+                          </div>
+                        </details>
                       </li>
                           )
                         })}
                   </ul>
-                </div>
+                  </div>
+                </details>
                   )
                 })}
             </div>
@@ -992,6 +1006,34 @@ const workoutStatBadgeStyle: React.CSSProperties = {
   fontSize: 11,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
+}
+
+const accordionWorkoutStyle: React.CSSProperties = {
+  border: '1px solid var(--navy-lt)',
+  background: 'var(--navy)',
+}
+
+const accordionWorkoutSummaryStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  padding: '10px 12px',
+  cursor: 'pointer',
+}
+
+const accordionExerciseStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(13,27,42,0.62)',
+}
+
+const accordionExerciseSummaryStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 10,
+  padding: '8px 10px',
+  cursor: 'pointer',
 }
 
 function fileToDataUrl(file: File) {
