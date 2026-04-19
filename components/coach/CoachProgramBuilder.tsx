@@ -284,6 +284,13 @@ function formatRestSeconds(seconds: number) {
   return `${Math.max(0, seconds)}s`
 }
 
+function formatClock(totalSeconds: number) {
+  const safe = Math.max(0, totalSeconds)
+  const minutes = Math.floor(safe / 60)
+  const seconds = safe % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 function buildProgressionSuggestion(exercise: BuilderExercise, phaseNumber: number): ProgressionSuggestion {
   const baseSets = firstPositiveInt(exercise.sets, 3)
   const baseReps = firstPositiveInt(exercise.reps, 10)
@@ -422,6 +429,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   const [saveTemplateModal, setSaveTemplateModal] = useState(false)
   const [templateSaveBusy, setTemplateSaveBusy] = useState(false)
   const [templateSaveStatus, setTemplateSaveStatus] = useState<string | null>(null)
+  const [restTimerTotal, setRestTimerTotal] = useState(60)
+  const [restTimerRemaining, setRestTimerRemaining] = useState(60)
+  const [restTimerRunning, setRestTimerRunning] = useState(false)
 
   useEffect(() => {
     if (!draftPlan) return
@@ -476,6 +486,23 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   useEffect(() => {
     window.localStorage.setItem(favoritesStorageKey(clientId), JSON.stringify(favoriteExerciseIds.slice(0, 32)))
   }, [clientId, favoriteExerciseIds])
+
+  useEffect(() => {
+    if (!restTimerRunning) return
+
+    const timer = window.setInterval(() => {
+      setRestTimerRemaining(current => {
+        if (current <= 1) {
+          window.clearInterval(timer)
+          setRestTimerRunning(false)
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [restTimerRunning])
 
   const exerciseMap = useMemo(() => {
     return new Map(exercises.map(exercise => [exercise.name.trim().toLowerCase(), exercise]))
@@ -655,6 +682,38 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
     return messages
   }, [days])
 
+  const dayDensity = useMemo(() => {
+    return days.map(day => {
+      const totals = day.exercises.reduce((acc, exercise) => {
+        const sets = firstPositiveInt(exercise.sets, 3)
+        const reps = firstPositiveInt(exercise.reps, 10)
+        const rest = firstPositiveInt(exercise.rest, 60)
+
+        const workSeconds = sets * 40
+        const restSeconds = Math.max(0, sets - 1) * rest
+
+        acc.totalSets += sets
+        acc.totalReps += sets * reps
+        acc.workSeconds += workSeconds
+        acc.restSeconds += restSeconds
+        return acc
+      }, { totalSets: 0, totalReps: 0, workSeconds: 0, restSeconds: 0 })
+
+      const totalSeconds = totals.workSeconds + totals.restSeconds
+      const density = totalSeconds > 0 ? Math.round((totals.workSeconds / totalSeconds) * 100) : 0
+
+      return {
+        dayId: day.id,
+        totalSets: totals.totalSets,
+        totalReps: totals.totalReps,
+        workMins: Math.round(totals.workSeconds / 60),
+        restMins: Math.round(totals.restSeconds / 60),
+        totalMins: Math.round(totalSeconds / 60),
+        density,
+      }
+    })
+  }, [days])
+
   function applyTemplate(nextTemplateId: string) {
     setTemplateId(nextTemplateId)
 
@@ -684,6 +743,27 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
         ? workouts.map((day, index) => toBuilderDay(day as BuilderWorkoutDay, index + 1))
         : [toBuilderDay(undefined, 1)]
     )
+  }
+
+  function startRestTimer(restValue: string) {
+    const seconds = Math.max(15, firstPositiveInt(restValue, 60))
+    setRestTimerTotal(seconds)
+    setRestTimerRemaining(seconds)
+    setRestTimerRunning(true)
+  }
+
+  function toggleRestTimer() {
+    if (restTimerRemaining <= 0) {
+      setRestTimerRemaining(restTimerTotal)
+      setRestTimerRunning(true)
+      return
+    }
+    setRestTimerRunning(current => !current)
+  }
+
+  function resetRestTimer() {
+    setRestTimerRunning(false)
+    setRestTimerRemaining(restTimerTotal)
   }
 
   function updateDay(dayId: string, field: 'focus' | 'scheduledDate' | 'notes', value: string) {
@@ -1173,6 +1253,26 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
         ))}
       </datalist>
 
+      <div style={restTimerPanelStyle}>
+        <p style={{ margin: 0, color: 'var(--gold-lt)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+          Rest Timer
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+          <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, color: 'var(--white)', minWidth: 88 }}>
+            {formatClock(restTimerRemaining)}
+          </span>
+          <button type="button" onClick={toggleRestTimer} style={miniActionButtonStyle}>
+            {restTimerRunning ? 'Pause' : 'Start'}
+          </button>
+          <button type="button" onClick={resetRestTimer} style={miniActionButtonStyle}>
+            Reset
+          </button>
+          <span style={{ color: 'var(--gray)', fontSize: 12 }}>
+            Default target: {restTimerTotal}s
+          </span>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gap: 14 }}>
         {days.map((day, dayIndex) => (
           <div key={day.id} style={{ border: '1px solid var(--navy-lt)', background: 'rgba(13,27,42,0.7)', padding: 16 }}>
@@ -1207,6 +1307,25 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
               Coach Notes
               <textarea value={day.notes} onChange={event => updateDay(day.id, 'notes', event.target.value)} style={{ ...inputStyle, minHeight: 72 }} placeholder="Session emphasis, regressions, intent" />
             </label>
+
+            {(() => {
+              const density = dayDensity.find(item => item.dayId === day.id)
+              if (!density) return null
+
+              return (
+                <div style={densityPanelStyle}>
+                  <p style={{ margin: 0, color: 'var(--gold-lt)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Session Density Preview
+                  </p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--white)', fontSize: 13 }}>
+                    {density.totalSets} sets · {density.totalReps} estimated reps · {density.totalMins} min total
+                  </p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+                    Work: {density.workMins} min | Rest: {density.restMins} min | Density: {density.density}%
+                  </p>
+                </div>
+              )
+            })()}
 
             <div style={{ display: 'grid', gap: 12 }}>
               {day.exercises.map(exercise => (
@@ -1277,6 +1396,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
                       </button>
                       <button type="button" onClick={() => setCopyExerciseModal({ dayId: day.id, exerciseId: exercise.id })} style={miniActionButtonStyle}>
                         Copy To...
+                      </button>
+                      <button type="button" onClick={() => startRestTimer(exercise.rest)} style={miniActionButtonStyle}>
+                        Start Rest
                       </button>
                       <button type="button" onClick={() => removeExercise(day.id, exercise.id)} style={secondaryButtonStyle}>
                         Remove
@@ -1778,6 +1900,20 @@ const progressionPanelStyle: React.CSSProperties = {
   background: 'rgba(212,160,23,0.08)',
   padding: '10px 12px',
   marginTop: 10,
+}
+
+const restTimerPanelStyle: React.CSSProperties = {
+  border: '1px solid rgba(212,160,23,0.28)',
+  background: 'rgba(212,160,23,0.07)',
+  padding: '12px 14px',
+  marginBottom: 14,
+}
+
+const densityPanelStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.14)',
+  background: 'rgba(11,24,39,0.72)',
+  padding: '10px 12px',
+  marginBottom: 12,
 }
 
 const videoLinkStyle: React.CSSProperties = {
