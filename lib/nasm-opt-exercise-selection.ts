@@ -249,63 +249,72 @@ function getMovementPatternForExercise(exercise: ExerciseRecord): string {
   return 'other'
 }
 
-// ── DAY FOCUS → TARGET MUSCLE GROUPS MAPPING ─────────────────
-const DAY_FOCUS_MUSCLE_MAP: Array<{ patterns: RegExp; targets: string[]; excludes: string[] }> = [
-  {
-    patterns: /upper body push|chest|push day|push workout|bench/i,
-    targets: ['chest', 'triceps', 'shoulders'],
-    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes', 'biceps'],
-  },
-  {
-    patterns: /upper body pull|back.*bicep|pull day|pull workout/i,
-    targets: ['back', 'biceps'],
-    excludes: ['chest', 'triceps', 'hamstrings', 'quadriceps', 'calves', 'glutes'],
-  },
-  {
-    patterns: /upper body|upper body strength|upper body hypertrophy/i,
-    targets: ['chest', 'back', 'shoulders', 'biceps', 'triceps'],
-    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes'],
-  },
-  {
-    patterns: /lower body hypertrophy|lower body strength|lower body|legs|quad|hamstring/i,
-    targets: ['quadriceps', 'hamstrings', 'glutes', 'calves', 'legs'],
-    excludes: ['chest', 'back', 'biceps', 'triceps'],
-  },
-  {
-    patterns: /glute|hip/i,
-    targets: ['glutes', 'hamstrings'],
-    excludes: ['chest', 'back', 'biceps', 'triceps'],
-  },
-  {
-    patterns: /shoulder/i,
-    targets: ['shoulders', 'triceps'],
-    excludes: ['hamstrings', 'quadriceps', 'calves', 'glutes'],
-  },
-  {
-    patterns: /core|abs/i,
-    targets: ['core'],
-    excludes: [],
-  },
-  {
-    patterns: /total body|full body/i,
-    targets: ['quadriceps', 'glutes', 'back', 'chest', 'core', 'shoulders'],
-    excludes: [],
-  },
-  {
-    patterns: /strength endurance|muscular endurance/i,
-    targets: ['quadriceps', 'glutes', 'back', 'chest', 'core', 'shoulders'],
-    excludes: [],
-  },
-]
+function dedupeStrings(items: string[]): string[] {
+  return [...new Set(items.map(item => String(item).toLowerCase().trim()).filter(Boolean))]
+}
 
 function resolveFocusMuscles(dayFocus: string): { targets: string[]; excludes: string[] } {
-  for (const mapping of DAY_FOCUS_MUSCLE_MAP) {
-    if (mapping.patterns.test(dayFocus)) {
-      return { targets: mapping.targets, excludes: mapping.excludes }
+  const normalized = dayFocus.toLowerCase().replace(/[+/_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const includesAny = (terms: string[]) => terms.some(term => normalized.includes(term))
+
+  const hasTotal = includesAny(['total body', 'full body'])
+  const hasCore = includesAny(['core', 'abs', 'abdom', 'balance', 'stability'])
+  const hasLower = includesAny(['lower body', ' lower', 'legs', 'leg ', 'quad', 'hamstring', 'glute', 'calf', 'hip'])
+  const hasUpper = includesAny(['upper body', ' upper', 'chest', 'back', 'shoulder', 'arm'])
+  const hasPush = includesAny(['push', 'chest', 'bench', 'press', 'tricep'])
+  const hasPull = includesAny(['pull', 'back', 'row', 'lat', 'bicep'])
+
+  let targets: string[] = []
+  let excludes: string[] = []
+
+  if (hasTotal) {
+    targets = ['quadriceps', 'glutes', 'back', 'chest', 'core', 'shoulders']
+  } else if (hasUpper && hasPush) {
+    targets = ['chest', 'triceps', 'shoulders']
+    excludes = ['hamstrings', 'quadriceps', 'calves', 'glutes', 'biceps']
+  } else if (hasUpper && hasPull) {
+    targets = ['back', 'biceps']
+    excludes = ['chest', 'triceps', 'hamstrings', 'quadriceps', 'calves', 'glutes']
+  } else if (hasLower) {
+    targets = ['quadriceps', 'hamstrings', 'glutes', 'calves', 'legs']
+    excludes = ['chest', 'back', 'biceps', 'triceps']
+  } else if (hasPush) {
+    targets = ['chest', 'triceps', 'shoulders']
+    excludes = ['hamstrings', 'quadriceps', 'calves', 'glutes', 'biceps']
+  } else if (hasPull) {
+    targets = ['back', 'biceps']
+    excludes = ['chest', 'triceps', 'hamstrings', 'quadriceps', 'calves', 'glutes']
+  } else if (hasUpper) {
+    targets = ['chest', 'back', 'shoulders', 'biceps', 'triceps']
+    excludes = ['hamstrings', 'quadriceps', 'calves', 'glutes']
+  }
+
+  if (hasCore) {
+    targets = [...targets, 'core']
+    if (!hasUpper && !hasLower && !hasTotal) {
+      targets = [...targets, 'glutes']
     }
   }
-  // Default: all muscles
-  return { targets: [], excludes: [] }
+
+  if (includesAny(['shoulder', 'delts'])) {
+    targets = [...targets, 'shoulders', 'triceps']
+  }
+
+  if (includesAny(['glute', 'hip'])) {
+    targets = [...targets, 'glutes', 'hamstrings']
+  }
+
+  if (includesAny(['power'])) {
+    if (hasLower || hasTotal) {
+      targets = [...targets, 'calves']
+    }
+    targets = [...targets, 'core']
+  }
+
+  return {
+    targets: dedupeStrings(targets),
+    excludes: dedupeStrings(excludes.filter(item => !targets.includes(item))),
+  }
 }
 
 // ── PRIMARY EXERCISE SELECTION ENGINE ────────────────────────
@@ -314,7 +323,8 @@ export function selectExercisesForWorkoutDay(
   dayFocus: string,
   exercises: ExerciseRecord[],
   client: ClientProfile,
-  exerciseCountTarget: number = 4
+  exerciseCountTarget: number = 4,
+  excludedExerciseIds?: Set<string>
 ): ExerciseRecord[] {
   const experienceLevel = getExperienceLevelAsNumber(client.experienceLevel)
   const complexityTarget = getComplexityRequirement(phase, experienceLevel)
@@ -328,14 +338,25 @@ export function selectExercisesForWorkoutDay(
     return true
   })
 
-  const pool = candidateExercises.length > 0 ? candidateExercises : exercises.slice(0, exerciseCountTarget * 3)
+  const uniqueCandidateExercises = excludedExerciseIds && excludedExerciseIds.size > 0
+    ? candidateExercises.filter(exercise => !excludedExerciseIds.has(exercise.id))
+    : candidateExercises
+
+  const pool = uniqueCandidateExercises.length >= exerciseCountTarget
+    ? uniqueCandidateExercises
+    : candidateExercises.length > 0
+      ? candidateExercises
+      : exercises.slice(0, exerciseCountTarget * 3)
 
   // Score by muscle-group specificity to day focus
   const scoredExercises = pool.map(exercise => {
     let score = 0
 
     // Use database-backed muscle groups first, then fall back
-    const allMuscles = (exercise.metadata?.muscleGroups ?? []).map((m: string) => m.toLowerCase().trim())
+    const allMuscles = dedupeStrings([
+      ...((exercise.metadata?.muscleGroups ?? []) as string[]),
+      ...extractMuscleGroupsFromExercise(exercise),
+    ])
 
     if (targets.length > 0 && allMuscles.length > 0) {
       const matchCount = allMuscles.filter(m => targets.includes(m)).length
@@ -352,6 +373,10 @@ export function selectExercisesForWorkoutDay(
       score += purity * 20
     }
 
+    if (excludedExerciseIds?.has(exercise.id)) {
+      score -= 250
+    }
+
     // Small tie-breaker randomness (max ±5 points — won't override muscle scoring)
     score += Math.random() * 5
 
@@ -363,16 +388,16 @@ export function selectExercisesForWorkoutDay(
 
   // For day-focus variety: don't let the same movement pattern dominate
   const selected: ExerciseRecord[] = []
-  const usedPatterns = new Set<string>()
+  const usedPatterns = new Map<string, number>()
 
   for (const { exercise } of sorted) {
     if (selected.length >= exerciseCountTarget) break
     const pattern = getMovementPatternForExercise(exercise)
     // Allow a movement pattern at most twice to ensure variety
-    const patternCount = Array.from(usedPatterns).filter(p => p === pattern).length
+    const patternCount = usedPatterns.get(pattern) ?? 0
     if (patternCount < 2) {
       selected.push(exercise)
-      usedPatterns.add(pattern)
+      usedPatterns.set(pattern, patternCount + 1)
     }
   }
 

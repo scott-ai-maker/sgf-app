@@ -111,6 +111,7 @@ async function buildIntelligentTemplateWorkouts({
   }
 
   // Build workouts with intelligent exercise selection
+  const usedExerciseIds = new Set<string>()
   const workouts: CoachProgramWorkoutInput[] = templateWorkouts.map((workout, workoutIndex) => {
     const dayFocus = String(workout.focus ?? `Training Day ${workoutIndex + 1}`).trim() || `Training Day ${workoutIndex + 1}`
 
@@ -121,8 +122,13 @@ async function buildIntelligentTemplateWorkouts({
       dayFocus,
       exercisesForSelection,
       clientProfile,
-      dayExerciseCount
+      dayExerciseCount,
+      usedExerciseIds
     )
+
+    for (const exercise of selectedExercises) {
+      usedExerciseIds.add(exercise.id)
+    }
 
     // Map back to CoachProgramExerciseInput format
     const dayExercises = selectedExercises.map(ex => {
