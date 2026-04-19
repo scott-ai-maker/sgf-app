@@ -223,7 +223,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
       }))
   }, [plan, planWorkouts])
 
-  const units = profile?.preferred_units === 'imperial' ? 'imperial' : 'metric'
+  const units = profile?.preferred_units === 'metric' ? 'metric' : 'imperial'
 
   const setLogsByExercise = useMemo(() => {
     const map = new Map<string, WorkoutSetLogRecord[]>()
