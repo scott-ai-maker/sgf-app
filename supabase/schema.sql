@@ -57,6 +57,8 @@ create table if not exists clients (
 alter table clients add column if not exists role text default 'client'
   check (role in ('client', 'coach'));
 
+alter table clients add column if not exists must_reset_password boolean not null default false;
+
 alter table clients add column if not exists designated_coach_id uuid references clients(id) on delete set null;
 
 -- ── PACKAGES ──────────────────────────────────────────────

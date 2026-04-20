@@ -45,6 +45,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Force password reset for accounts flagged by admin provisioning.
+  if (user && (pathname.startsWith('/dashboard') || pathname.startsWith('/coach'))) {
+    if (user.user_metadata?.must_reset_password === true) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/reset-password'
+      url.searchParams.set('required', '1')
+      url.searchParams.set('next', pathname)
+      return NextResponse.redirect(url)
+    }
+  }
+
   return supabaseResponse
 }
 
