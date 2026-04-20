@@ -10,6 +10,12 @@ type LeadInput = {
   recommendedTier?: string | null
 }
 
+type WelcomeInput = {
+  email: string
+  firstName?: string | null
+  coachReplyToEmail?: string | null
+}
+
 type QueueRow = {
   id: string
   email: string
@@ -175,6 +181,7 @@ async function sendEmail(params: {
   subject: string
   html: string
   text: string
+  replyTo?: string
 }) {
   if (!hasEmailConfig()) return { skipped: true as const }
 
@@ -185,11 +192,52 @@ async function sendEmail(params: {
     subject: params.subject,
     html: params.html,
     text: params.text,
-    replyTo: process.env.MARKETING_REPLY_TO_EMAIL || undefined,
+    replyTo: params.replyTo || process.env.MARKETING_REPLY_TO_EMAIL || undefined,
   })
 
   if (error) throw error
   return { skipped: false as const, id: data?.id ?? null }
+}
+
+export async function sendWelcomeEmail(input: WelcomeInput) {
+  const email = normalizeEmail(input.email)
+  if (!EMAIL_REGEX.test(email)) {
+    throw new Error('Invalid welcome email address')
+  }
+
+  const name = safeName(input.firstName)
+  const baseUrl = getBaseUrl()
+  const replyTo = input.coachReplyToEmail?.trim() || process.env.MARKETING_REPLY_TO_EMAIL || undefined
+
+  return sendEmail({
+    to: email,
+    subject: 'Welcome to Scott Gordon Fitness! Start here',
+    html: `<h2>Welcome to Scott Gordon Fitness, ${name}!</h2>
+<p>I&apos;m excited to work with you.</p>
+<p>Here&apos;s the fastest way to get moving:</p>
+<ol>
+  <li><strong>Complete onboarding:</strong> tell me about your goals, schedule, and equipment.</li>
+  <li><strong>Get your custom plan:</strong> I&apos;ll build training around your real situation.</li>
+  <li><strong>Start logging:</strong> use your dashboard to message, train, and track progress.</li>
+</ol>
+<p><a href="${baseUrl}/dashboard/onboarding">Complete your onboarding</a></p>
+<p>If you have questions, reply to this email or message me in the dashboard.</p>`,
+    text: [
+      `Welcome to Scott Gordon Fitness, ${name}!`,
+      '',
+      'I am excited to work with you.',
+      '',
+      'Here is the fastest way to get moving:',
+      '1. Complete onboarding: tell me about your goals, schedule, and equipment.',
+      '2. Get your custom plan: I will build training around your real situation.',
+      '3. Start logging: use your dashboard to message, train, and track progress.',
+      '',
+      `Complete your onboarding: ${baseUrl}/dashboard/onboarding`,
+      '',
+      'If you have questions, reply to this email or message me in the dashboard.',
+    ].join('\n'),
+    replyTo,
+  })
 }
 
 export async function triggerLeadEmailAutomation(

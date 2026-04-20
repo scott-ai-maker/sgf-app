@@ -12,7 +12,7 @@
  * Commands:
  *   clean              Remove all smoketest clients
  *   add-clients        Add Scott Gordon (coach) and Lisa Gordon (client)
- *   send-welcomes      Send welcome emails to Lisa Gordon
+ *   send-welcomes      Send welcome emails to one client email or default client accounts
  *   all                Execute: clean → add-clients → send-welcomes
  */
 
@@ -151,79 +151,81 @@ async function sendWelcomeEmails(admin) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const baseUrl = process.env.MARKETING_BASE_URL || 'http://127.0.0.1:3000'
 
-  const lisaAccount = NEW_ACCOUNTS.find((a) => a.email === 'da_mona_lisa@msn.com')
+  const requestedEmail = process.argv[3]?.trim().toLowerCase() || null
+  const defaultClientEmails = NEW_ACCOUNTS.filter(account => account.role === 'client').map(account => account.email)
 
-  if (!lisaAccount) {
-    console.log('ℹ️ Lisa Gordon not found in accounts')
+  let query = admin
+    .from('clients')
+    .select('email, full_name, role')
+    .eq('role', 'client')
+
+  if (requestedEmail) {
+    query = query.eq('email', requestedEmail)
+  } else {
+    query = query.in('email', defaultClientEmails)
+  }
+
+  const { data: recipients, error: recipientsError } = await query
+
+  if (recipientsError) {
+    console.error(`❌ Failed to load welcome email recipients: ${recipientsError.message}`)
     return
   }
 
-  const welcomeEmail = {
-    subject: 'Welcome to Scott Gordon Fitness! 🎯',
-    html: `
-      <h2>Welcome to Scott Gordon Fitness, ${lisaAccount.name}!</h2>
-      <p>I'm excited to work with you on your fitness journey.</p>
-      
-      <h3>Here's what happens next:</h3>
-      <ol>
-        <li><strong>Complete Onboarding:</strong> Tell me about your goals, equipment, and schedule</li>
-        <li><strong>Get Your Custom Plan:</strong> I'll create a training program tailored to you</li>
-        <li><strong>Start Training:</strong> Log workouts and get direct feedback from me</li>
-      </ol>
-      
-      <p>Let's get started:</p>
-      <p>
-        <a href="${baseUrl}/dashboard/onboarding" style="
-          display: inline-block;
-          padding: 12px 24px;
-          background-color: #D4A017;
-          color: #0D1B2A;
-          text-decoration: none;
-          border-radius: 4px;
-          font-weight: bold;
-        ">Complete Onboarding</a>
-      </p>
-      
-      <p>Questions? Reply directly to this email or use the messaging feature in your dashboard.</p>
-      
-      <p style="margin-top: 2em; color: #999; font-size: 12px;">
-        Questions about the program? <a href="mailto:scott.gordon72@outlook.com">scott.gordon72@outlook.com</a>
-      </p>
-    `,
-    text: `Welcome to Scott Gordon Fitness, ${lisaAccount.name}!
-
-I'm excited to work with you on your fitness journey.
-
-Here's what happens next:
-1. Complete Onboarding: Tell me about your goals, equipment, and schedule
-2. Get Your Custom Plan: I'll create a training program tailored to you
-3. Start Training: Log workouts and get direct feedback from me
-
-Let's get started: ${baseUrl}/dashboard/onboarding
-
-Questions? Reply to this email or use the messaging feature in your dashboard.
-
-Questions about the program? scott.gordon72@outlook.com`,
+  if (!recipients || recipients.length === 0) {
+    console.log(requestedEmail ? `ℹ️ No client found for ${requestedEmail}` : 'ℹ️ No client recipients found')
+    return
   }
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.MARKETING_FROM_EMAIL,
-      to: lisaAccount.email,
-      subject: welcomeEmail.subject,
-      html: welcomeEmail.html,
-      text: welcomeEmail.text,
-      replyTo: 'scott.gordon72@outlook.com',
-    })
-
-    if (error) {
-      console.error(`❌ Failed to send welcome email to ${lisaAccount.email}: ${error.message}`)
-      return
+  for (const recipient of recipients) {
+    const firstName = String(recipient.full_name ?? '').trim() || 'there'
+    const welcomeEmail = {
+      subject: 'Welcome to Scott Gordon Fitness! Start here',
+      html: `<h2>Welcome to Scott Gordon Fitness, ${firstName}!</h2>
+<p>I&apos;m excited to work with you.</p>
+<p>Here&apos;s the fastest way to get moving:</p>
+<ol>
+  <li><strong>Complete onboarding:</strong> tell me about your goals, equipment, and schedule.</li>
+  <li><strong>Get your custom plan:</strong> I&apos;ll build training around your real situation.</li>
+  <li><strong>Start logging:</strong> use your dashboard to message, train, and track progress.</li>
+</ol>
+<p><a href="${baseUrl}/dashboard/onboarding">Complete your onboarding</a></p>
+<p>If you have questions, reply to this email or message me in the dashboard.</p>`,
+      text: [
+        `Welcome to Scott Gordon Fitness, ${firstName}!`,
+        '',
+        'I am excited to work with you.',
+        '',
+        'Here is the fastest way to get moving:',
+        '1. Complete onboarding: tell me about your goals, equipment, and schedule.',
+        '2. Get your custom plan: I will build training around your real situation.',
+        '3. Start logging: use your dashboard to message, train, and track progress.',
+        '',
+        `Complete your onboarding: ${baseUrl}/dashboard/onboarding`,
+        '',
+        'If you have questions, reply to this email or message me in the dashboard.',
+      ].join('\n'),
     }
 
-    console.log(`✅ Welcome email sent to ${lisaAccount.email} (ID: ${data.id})`)
-  } catch (err) {
-    console.error(`❌ Error sending welcome email:`, err.message)
+    try {
+      const { data, error } = await resend.emails.send({
+        from: process.env.MARKETING_FROM_EMAIL,
+        to: recipient.email,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+        text: welcomeEmail.text,
+        replyTo: process.env.MARKETING_REPLY_TO_EMAIL || 'scott.gordon72@outlook.com',
+      })
+
+      if (error) {
+        console.error(`❌ Failed to send welcome email to ${recipient.email}: ${error.message}`)
+        continue
+      }
+
+      console.log(`✅ Welcome email sent to ${recipient.email} (ID: ${data.id})`)
+    } catch (err) {
+      console.error(`❌ Error sending welcome email to ${recipient.email}:`, err.message)
+    }
   }
 }
 
