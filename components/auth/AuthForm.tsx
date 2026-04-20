@@ -194,11 +194,16 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
             value={email}
             onChange={e => {
               setEmail(e.target.value)
-              if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }))
+              if (fieldErrors.email) {
+                const { email: _, ...rest } = fieldErrors
+                setFieldErrors(rest)
+              }
             }}
             onBlur={() => {
               const error = validateEmail(email)
-              if (error) setFieldErrors(prev => ({ ...prev, email: error }))
+              if (error) {
+                setFieldErrors(prev => ({ ...prev, email: error }))
+              }
             }}
             aria-invalid={!!fieldErrors.email}
             aria-describedby={fieldErrors.email ? 'email-error' : undefined}
@@ -225,11 +230,16 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
             value={password}
             onChange={e => {
               setPassword(e.target.value)
-              if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }))
+              if (fieldErrors.password) {
+                const { password: _, ...rest } = fieldErrors
+                setFieldErrors(rest)
+              }
             }}
             onBlur={() => {
               const error = validatePassword(password, mode)
-              if (error) setFieldErrors(prev => ({ ...prev, password: error }))
+              if (error) {
+                setFieldErrors(prev => ({ ...prev, password: error }))
+              }
             }}
             aria-invalid={!!fieldErrors.password}
             aria-describedby={fieldErrors.password ? 'password-error' : undefined}
