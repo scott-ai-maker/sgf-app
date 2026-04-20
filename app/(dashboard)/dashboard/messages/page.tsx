@@ -1,26 +1,17 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase-server'
 import LogoutButton from '@/components/auth/LogoutButton'
 import MessageThreadClient from '@/components/messages/MessageThreadClient'
 import SiteHeader from '@/components/ui/SiteHeader'
+import { getRequestAuthz } from '@/lib/authz'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ClientMessagesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user, client } = await getRequestAuthz()
 
-  if (!user) redirect('/auth/login')
-
-  const { data: client } = await supabase
-    .from('clients')
-    .select('designated_coach_id')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!client) redirect('/auth/login')
+  if (client.role !== 'client') {
+    redirect('/coach')
+  }
 
   return (
     <main className="dashboard-messages-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
