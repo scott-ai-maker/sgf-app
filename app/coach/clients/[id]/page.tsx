@@ -137,7 +137,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .limit(250),
     admin
       .from('fitness_profiles')
-      .select('equipment_access, cardio_equipment_access, injuries_limitations')
+      .select('equipment_access, cardio_equipment_access, injuries_limitations, preferred_units')
       .eq('user_id', id)
       .maybeSingle(),
     admin
@@ -239,6 +239,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
 
   const setLogs = workoutSetLogsResult.data ?? []
   const cardioLogs = cardioLogsResult.data ?? []
+  const clientUnits = fitnessProfileResult.data?.preferred_units === 'metric' ? 'metric' : 'imperial'
 
   const setLogsLast7d = setLogs.filter(log => {
     if (!log.session_date) return false
@@ -266,6 +267,10 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
     cardioMinutes: cardioLogsLast7d.reduce((sum, row) => sum + Number(row.duration_mins ?? 0), 0),
     cardioSessions: cardioLogsLast7d.length,
   }
+  const weeklyVolumeDisplay = clientUnits === 'imperial'
+    ? Math.round(weeklySummary.totalVolumeKg * 2.20462)
+    : weeklySummary.totalVolumeKg
+  const weeklyVolumeUnitLabel = clientUnits === 'imperial' ? 'lb' : 'kg'
 
   const currentPhase = Number(latestPlansResult.data?.[0]?.nasm_opt_phase ?? 0)
   const phaseSuggestion = (() => {
@@ -449,7 +454,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
                 <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Completed workouts</span><span style={{ color: 'var(--white)' }}>{weeklySummary.completedWorkouts}</span></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Logged sets</span><span style={{ color: 'var(--white)' }}>{weeklySummary.totalSets}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Volume</span><span style={{ color: 'var(--white)' }}>{weeklySummary.totalVolumeKg} kg</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Volume</span><span style={{ color: 'var(--white)' }}>{weeklyVolumeDisplay} {weeklyVolumeUnitLabel}</span></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Avg RPE</span><span style={{ color: 'var(--white)' }}>{weeklySummary.avgRpe ?? '-'}</span></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}><span style={{ color: 'var(--gray)', fontSize: 13 }}>Cardio</span><span style={{ color: 'var(--white)' }}>{weeklySummary.cardioSessions} session{weeklySummary.cardioSessions === 1 ? '' : 's'} / {weeklySummary.cardioMinutes} min</span></div>
                 </div>

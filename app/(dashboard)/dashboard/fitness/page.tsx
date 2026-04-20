@@ -11,7 +11,20 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-export default async function FitnessTrackerPage() {
+type FitnessWorkspace = 'train' | 'analyze' | 'checkin'
+
+function normalizeFitnessWorkspace(value: string | string[] | undefined): FitnessWorkspace {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (raw === 'analyze') return 'analyze'
+  if (raw === 'checkin') return 'checkin'
+  return 'train'
+}
+
+interface FitnessTrackerPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function FitnessTrackerPage({ searchParams }: FitnessTrackerPageProps) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -48,6 +61,9 @@ export default async function FitnessTrackerPage() {
     redirect('/dashboard/onboarding')
   }
 
+  const params = await searchParams
+  const workspace = normalizeFitnessWorkspace(params.workspace)
+
   const beforePhotoPath = normalizePhotoPath(
     profile.before_photo_path ?? extractPhotoPathFromLegacyUrl(profile.before_photo_url)
   )
@@ -75,6 +91,9 @@ export default async function FitnessTrackerPage() {
       <SiteHeader
         links={[
           { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/fitness?workspace=train', label: 'Train' },
+          { href: '/dashboard/fitness?workspace=analyze', label: 'Analyze' },
+          { href: '/dashboard/fitness?workspace=checkin', label: 'Check-In' },
           { href: '/dashboard/book', label: 'Book Session' },
           { href: '/dashboard/messages', label: 'Messages' },
         ]}
@@ -98,6 +117,7 @@ export default async function FitnessTrackerPage() {
           latestAnalysis={analyses?.[0] ?? null}
           cardioLogs={cardioLogs ?? []}
           progressPhotos={signedProgressPhotos}
+          initialWorkspace={workspace}
         />
       </div>
     </main>

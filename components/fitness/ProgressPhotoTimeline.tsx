@@ -16,6 +16,16 @@ interface ProgressPhotoTimelineProps {
   canUpload?: boolean
   title?: string
   subtitle?: string
+  bodyFatInputs?: {
+    sex?: 'male' | 'female' | 'other'
+    heightCm?: number
+    weightKg?: number
+    waistCm?: number
+    neckCm?: number
+    hipCm?: number
+  }
+  onEstimatedBodyfat?: (value: number) => void
+  estimatedBodyfat?: string | null
 }
 
 export default function ProgressPhotoTimeline({
@@ -23,10 +33,15 @@ export default function ProgressPhotoTimeline({
   canUpload = false,
   title = 'Progress Photos',
   subtitle = 'Keep a dated visual timeline so you and your coach can compare changes over time.',
+  bodyFatInputs,
+  onEstimatedBodyfat,
+  estimatedBodyfat,
 }: ProgressPhotoTimelineProps) {
   const [photos, setPhotos] = useState<ProgressPhoto[]>(initialPhotos)
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [estimating, setEstimating] = useState(false)
+  const [bodyFatStatus, setBodyFatStatus] = useState<string | null>(null)
   const [form, setForm] = useState({ takenAt: new Date().toISOString().slice(0, 10), notes: '', file: null as File | null })
 
   async function handleSubmit(event: React.FormEvent) {
@@ -62,6 +77,49 @@ export default function ProgressPhotoTimeline({
     setStatus('Progress photo saved.')
   }
 
+  async function handleEstimateBodyFat() {
+    if (!bodyFatInputs) return
+
+    setEstimating(true)
+    setBodyFatStatus(null)
+
+    let photoDataUrl: string | undefined
+    if (form.file) {
+      photoDataUrl = await fileToDataUrl(form.file)
+    }
+
+    const res = await fetch('/api/fitness/bodyfat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sex: bodyFatInputs.sex,
+        heightCm: bodyFatInputs.heightCm,
+        weightKg: bodyFatInputs.weightKg,
+        waistCm: bodyFatInputs.waistCm,
+        neckCm: bodyFatInputs.neckCm,
+        hipCm: bodyFatInputs.hipCm,
+        photoDataUrl,
+      }),
+    })
+
+    const payload = await res.json()
+    setEstimating(false)
+
+    if (!res.ok) {
+      setBodyFatStatus(payload.error ?? 'Could not estimate body fat')
+      return
+    }
+
+    const estimated = Number(payload.analysis?.estimated_bodyfat_percent)
+    if (Number.isFinite(estimated)) {
+      onEstimatedBodyfat?.(estimated)
+      setBodyFatStatus(`Approximate estimate: ${estimated}% body fat`)
+      return
+    }
+
+    setBodyFatStatus('Body-fat estimate returned, but value was invalid.')
+  }
+
   return (
     <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
       <h2 style={{ margin: '0 0 8px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>{title}</h2>
@@ -92,6 +150,27 @@ export default function ProgressPhotoTimeline({
           <button type="submit" disabled={uploading} style={buttonStyle}>
             {uploading ? 'Uploading...' : 'Save Progress Photo'}
           </button>
+
+          {bodyFatInputs && (
+            <>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10, marginTop: 2 }}>
+                <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 12, lineHeight: 1.5 }}>
+                  Body-fat check is an approximation, not a diagnostic measurement.
+                </p>
+                <button type="button" onClick={() => void handleEstimateBodyFat()} disabled={estimating} style={buttonStyle}>
+                  {estimating ? 'Estimating...' : 'Estimate Body Fat (Approx)'}
+                </button>
+                <p style={{ margin: '8px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+                  {estimatedBodyfat ? `Current approximate estimate: ${estimatedBodyfat}%` : 'No estimate yet.'}
+                </p>
+                {bodyFatStatus && (
+                  <p style={{ margin: '8px 0 0', color: bodyFatStatus.toLowerCase().includes('could not') || bodyFatStatus.toLowerCase().includes('invalid') ? 'var(--error)' : 'var(--success)' }}>
+                    {bodyFatStatus}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </form>
       )}
 
@@ -119,6 +198,15 @@ export default function ProgressPhotoTimeline({
       )}
     </section>
   )
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Failed to read image file'))
+    reader.readAsDataURL(file)
+  })
 }
 
 const inputStyle: React.CSSProperties = {

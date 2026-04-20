@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
-import Image from 'next/image'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import WorkoutCalendarView from '@/components/fitness/WorkoutCalendarView'
 import RestTimer from '@/components/fitness/RestTimer'
 import WeeklyCheckinForm from '@/components/fitness/WeeklyCheckinForm'
@@ -105,6 +104,7 @@ interface FitnessTrackerClientProps {
   latestAnalysis: BodyAnalysisRecord | null
   cardioLogs?: CardioLogEntry[]
   progressPhotos?: ProgressPhotoEntry[]
+  initialWorkspace?: FitnessWorkspace
 }
 
 interface CardioLogEntry {
@@ -124,6 +124,7 @@ interface ProgressPhotoEntry {
   notes?: string | null
   created_at?: string | null
 }
+type FitnessWorkspace = 'train' | 'analyze' | 'checkin'
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {
   const text = String(description ?? '')
@@ -257,22 +258,24 @@ function parseSetTarget(value: string | null | undefined) {
   return Number(firstNumberMatch[0])
 }
 
-export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [], progressPhotos = [] }: FitnessTrackerClientProps) {
+export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [], progressPhotos = [], initialWorkspace = 'train' }: FitnessTrackerClientProps) {
   const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
-  const [logState, setSessionLogState] = useState({ sessionDate: new Date().toISOString().slice(0, 10), sessionTitle: '', exertionRpe: '7', notes: '' })
+  const [localWorkoutLogs, setLocalWorkoutLogs] = useState<WorkoutLogRecord[]>(logs)
   const [inlineSetDrafts, setInlineSetDrafts] = useState<Record<string, InlineSetDraft>>({})
   const [localSetLogs, setLocalSetLogs] = useState<WorkoutSetLogRecord[]>(setLogs)
   const [bodyfatState, setBodyfatState] = useState({
-    photoDataUrl: '',
     estimated: latestAnalysis?.estimated_bodyfat_percent ? String(latestAnalysis.estimated_bodyfat_percent) : '',
   })
-  const [predictImageUrl, setPredictImageUrl] = useState('')
-  const [beforePhotoUrl, setBeforePhotoUrl] = useState(profile?.before_photo_url || '')
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [activeRestTimerKey, setActiveRestTimerKey] = useState<string | null>(null)
+  const [completeModal, setCompleteModal] = useState<WorkoutDay | null>(null)
   const [skipModal, setSkipModal] = useState<{ workoutDay: number; exercise: WorkoutExercise } | null>(null)
   const [localCardioLogs, setLocalCardioLogs] = useState(cardioLogs)
+  const [workspace, setWorkspace] = useState<FitnessWorkspace>(initialWorkspace)
+  const initialUnits: 'metric' | 'imperial' = profile?.preferred_units === 'metric' ? 'metric' : 'imperial'
+  const [units, setUnits] = useState<'metric' | 'imperial'>(initialUnits)
+  const [activeWorkoutDay, setActiveWorkoutDay] = useState<number | null>(null)
 
   const planWorkouts = useMemo(() => {
     return plan?.plan_json?.workouts ?? []
@@ -288,6 +291,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           date: String(item.scheduledDate),
           title: `Day ${item.day}: ${item.focus}`,
           subtitle: `${item.exerciseCount} exercise${item.exerciseCount === 1 ? '' : 's'} • ${item.durationMins} mins`,
+          workoutDay: item.day,
         }))
     }
 
@@ -297,10 +301,42 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         date: String(workout.scheduledDate),
         title: `Day ${workout.day}: ${workout.focus}`,
         subtitle: `${workout.exercises.length} exercise${workout.exercises.length === 1 ? '' : 's'}`,
+        workoutDay: workout.day,
       }))
   }, [plan, planWorkouts])
 
-  const units = profile?.preferred_units === 'metric' ? 'metric' : 'imperial'
+  useEffect(() => {
+    if (units === initialUnits) return
+
+    let cancelled = false
+
+    async function persistUnits() {
+      const res = await fetch('/api/fitness/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredUnits: units }),
+      })
+
+      if (!res.ok && !cancelled) {
+        setStatus('Could not save your units preference.')
+      }
+    }
+
+    void persistUnits()
+    return () => {
+      cancelled = true
+    }
+  }, [units, initialUnits])
+
+  const handleCalendarEntrySelect = useCallback((entry: { workoutDay?: number }) => {
+    if (!entry.workoutDay) return
+    setWorkspace('train')
+    setActiveWorkoutDay(entry.workoutDay)
+    setTimeout(() => {
+      const target = document.getElementById(`workout-day-${entry.workoutDay}`)
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }, [])
 
   const setLogsByExercise = useMemo(() => {
     const map = new Map<string, WorkoutSetLogRecord[]>()
@@ -456,8 +492,20 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
     setActiveRestTimerKey(null)
   }, [])
 
-  async function handleLogWorkout(e: React.FormEvent) {    e.preventDefault()
-    setBusy('log')
+  async function handleCompleteWorkoutDay(workout: WorkoutDay, exertionRpe?: number) {
+    const busyKey = `log-day:${String(workout.day)}`
+    const sessionDate = workout.scheduledDate || todayDateOnly()
+    const sessionTitle = `Day ${String(workout.day)}: ${workout.focus}`
+
+    const existing = localWorkoutLogs.find(
+      row => row.session_date === sessionDate && row.session_title === sessionTitle
+    )
+    if (existing) {
+      setStatus('This workout day is already logged.')
+      return
+    }
+
+    setBusy(busyKey)
     setStatus(null)
 
     const res = await fetch('/api/workouts/log', {
@@ -465,10 +513,10 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workoutPlanId: plan?.id,
-        sessionDate: logState.sessionDate,
-        sessionTitle: logState.sessionTitle,
-        exertionRpe: Number(logState.exertionRpe),
-        notes: logState.notes,
+        sessionDate,
+        sessionTitle,
+        exertionRpe: Number.isFinite(exertionRpe) ? exertionRpe : undefined,
+        notes: `${workoutDayTag(workout.day)} Completed from current workout plan.`,
         completed: true,
       }),
     })
@@ -481,83 +529,11 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
       return
     }
 
-    setStatus('Workout logged.')
-    setSessionLogState(prev => ({ ...prev, sessionTitle: '', notes: '' }))
-  }
-
-  async function handlePhotoUpload(file: File | null) {
-    if (!file) return
-    const base64 = await fileToDataUrl(file)
-    setBodyfatState(prev => ({ ...prev, photoDataUrl: base64 }))
-  }
-
-  async function handleEstimateBodyfat() {
-    if (!profile) {
-      setStatus('Complete onboarding first.')
-      return
+    if (payload?.log) {
+      setLocalWorkoutLogs(prev => [payload.log as WorkoutLogRecord, ...prev])
     }
-
-    setBusy('bodyfat')
-    setStatus(null)
-
-    const res = await fetch('/api/fitness/bodyfat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sex: profile.sex,
-        heightCm: profile.height_cm,
-        weightKg: profile.weight_kg,
-        waistCm: profile.waist_cm,
-        neckCm: profile.neck_cm,
-        hipCm: profile.hip_cm,
-        photoDataUrl: bodyfatState.photoDataUrl || undefined,
-      }),
-    })
-
-    const payload = await res.json()
-    setBusy(null)
-
-    if (!res.ok) {
-      setStatus(payload.error ?? 'Could not estimate body fat')
-      return
-    }
-
-    setBodyfatState(prev => ({ ...prev, estimated: String(payload.analysis.estimated_bodyfat_percent) }))
-    setStatus(`Estimated body fat: ${payload.analysis.estimated_bodyfat_percent}%`)
-  }
-
-  async function handlePredictLook() {
-    if (!profile?.target_bodyfat_percent || !profile?.fitness_goal) {
-      setStatus('Set target body fat and goal in onboarding to generate your prediction.')
-      return
-    }
-
-    setBusy('predict')
-    setStatus(null)
-
-    const res = await fetch('/api/fitness/predict-look', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        currentBodyfatPercent: bodyfatState.estimated || profile.target_bodyfat_percent,
-        targetBodyfatPercent: profile.target_bodyfat_percent,
-        fitnessGoal: profile.fitness_goal,
-      }),
-    })
-
-    const payload = await res.json()
-    setBusy(null)
-
-    if (!res.ok) {
-      setStatus(payload.error ?? 'Could not generate goal prediction image')
-      return
-    }
-
-    setPredictImageUrl(payload.imageUrl)
-    if (payload.beforePhotoUrl) {
-      setBeforePhotoUrl(payload.beforePhotoUrl)
-    }
-    setStatus('Goal prediction image generated.')
+    setCompleteModal(null)
+    setStatus(`Marked Day ${String(workout.day)} complete.`)
   }
 
   return (
@@ -575,10 +551,74 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         </div>
         <div style={{ border: '1px solid var(--navy-lt)', padding: 16, background: 'var(--navy-mid)' }}>
           <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Estimated Body Fat</p>
-          <div style={{ fontSize: 22, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em' }}>{bodyfatState.estimated ? `${bodyfatState.estimated}%` : 'Unknown'}</div>
+          <div style={{ fontSize: 22, fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em' }}>{bodyfatState.estimated ? `~${bodyfatState.estimated}%` : 'Unknown'}</div>
+          <p style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 11 }}>Approximation</p>
         </div>
       </div>
+      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 12, marginBottom: 16 }}>
+        <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Display Units
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {([
+            { key: 'imperial', label: 'Imperial (lb)' },
+            { key: 'metric', label: 'Metric (kg)' },
+          ] as const).map(option => {
+            const active = units === option.key
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setUnits(option.key)}
+                style={{
+                  border: active ? '1px solid rgba(212,160,23,0.55)' : '1px solid rgba(255,255,255,0.14)',
+                  background: active ? 'rgba(212,160,23,0.14)' : 'var(--navy)',
+                  color: active ? 'var(--gold-lt)' : 'var(--white)',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                }}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 12, marginBottom: 16 }}>
+        <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Focus Workspace
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {[
+            { key: 'train' as const, label: 'Train', hint: 'Workout plan, set logging, calendar' },
+            { key: 'analyze' as const, label: 'Analyze', hint: 'Stats, trends, recent logs' },
+            { key: 'checkin' as const, label: 'Check-In', hint: 'Body metrics, cardio, weekly review' },
+          ].map(tab => {
+            const active = workspace === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setWorkspace(tab.key)}
+                style={{
+                  border: active ? '1px solid rgba(212,160,23,0.55)' : '1px solid rgba(255,255,255,0.14)',
+                  background: active ? 'rgba(212,160,23,0.14)' : 'var(--navy)',
+                  color: active ? 'var(--gold-lt)' : 'var(--white)',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 18 }}>{tab.label}</div>
+                <div style={{ color: 'var(--gray)', fontSize: 11 }}>{tab.hint}</div>
+              </button>
+            )
+          })}
+        </div>
+      </section>
 
+      {workspace === 'train' && (
+      <>
       <div className="fitness-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
           <div className="fitness-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
@@ -619,7 +659,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   : 0
 
                 return (
-                <details id={`workout-day-${workout.day}`} key={workout.day} open={workout.day === 1} style={accordionWorkoutStyle}>
+                <details id={`workout-day-${workout.day}`} key={workout.day} open={activeWorkoutDay ? workout.day === activeWorkoutDay : workout.day === 1} style={accordionWorkoutStyle}>
                   <summary style={accordionWorkoutSummaryStyle}>
                     <span style={{ fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.05em', fontSize: 21 }}>
                       Day {workout.day}: {workout.focus}
@@ -646,6 +686,16 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                   {workout.notes && (
                     <p style={{ margin: '0 0 12px', color: 'var(--gray)', fontSize: 13, lineHeight: 1.5 }}>{workout.notes}</p>
                   )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => setCompleteModal(workout)}
+                      disabled={busy === `log-day:${String(workout.day)}`}
+                      style={buttonStyle}
+                    >
+                      {busy === `log-day:${String(workout.day)}` ? 'Saving...' : `Mark Day ${String(workout.day)} Complete`}
+                    </button>
+                  </div>
                   <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
                     {(() => {
                       const OPT_SECTION_ORDER = ['warm-up','activation','skill-development','resistance','clients-choice','cool-down']
@@ -930,16 +980,6 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           )}
         </section>
 
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <h2 style={{ margin: '0 0 14px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Log Session</h2>
-          <form onSubmit={handleLogWorkout} style={{ display: 'grid', gap: 10 }}>
-            <input type="date" value={logState.sessionDate} onChange={e => setSessionLogState(prev => ({ ...prev, sessionDate: e.target.value }))} style={inputStyle} required />
-            <input type="text" value={logState.sessionTitle} onChange={e => setSessionLogState(prev => ({ ...prev, sessionTitle: e.target.value }))} style={inputStyle} placeholder="Upper Body Strength" required />
-            <input type="number" min={1} max={10} value={logState.exertionRpe} onChange={e => setSessionLogState(prev => ({ ...prev, exertionRpe: e.target.value }))} style={inputStyle} placeholder="RPE 1-10" required />
-            <textarea value={logState.notes} onChange={e => setSessionLogState(prev => ({ ...prev, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 80 }} placeholder="Session notes" />
-            <button type="submit" disabled={busy === 'log'} style={buttonStyle}>{busy === 'log' ? 'Saving...' : 'Save Log'}</button>
-          </form>
-        </section>
       </div>
 
       <div style={{ marginTop: 16 }}>
@@ -947,100 +987,55 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           entries={planCalendarEntries}
           title="Workout Calendar"
           subtitle="Your coach can assign scheduled training dates for each session block."
+          onSelectEntry={handleCalendarEntrySelect}
         />
       </div>
 
-      <div className="fitness-sub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, marginTop: 16 }}>
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Progress Stats</h2>
-          <div className="fitness-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(140px, 1fr))', gap: 10 }}>
-            <Stat label="Total Sets" value={String(progression.totalSets)} />
-            <Stat label="Total Reps" value={String(progression.totalReps)} />
-            <Stat label={`Total Volume (${units === 'imperial' ? 'lb' : 'kg'})`} value={units === 'imperial' ? String(Math.round(progression.totalVolumeKg * 2.20462)) : String(progression.totalVolumeKg)} />
-            <Stat label="Avg RPE" value={String(progression.avgRpe || '-')}
-            />
-          </div>
+      </>
+      )}
 
-          <div style={{ marginTop: 14 }}>
-            <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Volume Trend</p>
-            <TrendChart
-              points={progression.points.map(p => ({ label: shortDate(p.date), value: units === 'imperial' ? p.volume * 2.20462 : p.volume }))}
-              stroke="var(--gold)"
-            />
-          </div>
+      {(workspace === 'analyze' || workspace === 'checkin') && (
+        <div className="fitness-sub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, marginTop: 16 }}>
+          {workspace === 'analyze' && (
+            <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
+              <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Progress Stats</h2>
+              <div className="fitness-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(140px, 1fr))', gap: 10 }}>
+                <Stat label="Total Sets" value={String(progression.totalSets)} />
+                <Stat label="Total Reps" value={String(progression.totalReps)} />
+                <Stat label={`Total Volume (${units === 'imperial' ? 'lb' : 'kg'})`} value={units === 'imperial' ? String(Math.round(progression.totalVolumeKg * 2.20462)) : String(progression.totalVolumeKg)} />
+                <Stat label="Avg RPE" value={String(progression.avgRpe || '-')} />
+              </div>
 
-          <div style={{ marginTop: 14 }}>
-            <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sets Per Session</p>
-            <TrendChart points={progression.points.map(p => ({ label: shortDate(p.date), value: p.sets }))} stroke="#48BB78" />
-          </div>
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Volume Trend</p>
+                <TrendChart
+                  points={progression.points.map(p => ({ label: shortDate(p.date), value: units === 'imperial' ? p.volume * 2.20462 : p.volume }))}
+                  stroke="var(--gold)"
+                />
+              </div>
 
-          <div style={{ marginTop: 14 }}>
-            <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Avg RPE Trend</p>
-            <TrendChart points={progression.points.map(p => ({ label: shortDate(p.date), value: p.avgRpe }))} stroke="#89A7C6" min={1} max={10} />
-          </div>
-        </section>
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sets Per Session</p>
+                <TrendChart points={progression.points.map(p => ({ label: shortDate(p.date), value: p.sets }))} stroke="#48BB78" />
+              </div>
 
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Body Fat Check</h2>
-          <p style={{ color: 'var(--gray)', marginTop: 0, fontSize: 14 }}>
-            Upload or take a progress photo, then estimate body-fat percentage from your profile + circumference data.
-          </p>
-          <input type="file" accept="image/*" capture="user" onChange={e => handlePhotoUpload(e.target.files?.[0] ?? null)} />
-          <div style={{ marginTop: 12 }}>
-            <button onClick={handleEstimateBodyfat} disabled={busy === 'bodyfat'} style={buttonStyle}>
-              {busy === 'bodyfat' ? 'Estimating...' : 'Estimate Body Fat'}
-            </button>
-          </div>
-        </section>
-
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
-          <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Goal Prediction</h2>
-          <p style={{ color: 'var(--gray)', marginTop: 0, fontSize: 14 }}>
-            Generate a projection image of your expected physique after achieving your goal. {beforePhotoUrl ? '(Upload a new photo in onboarding to regenerate)' : 'Upload a before photo to get started.'}
-          </p>
-          <button onClick={handlePredictLook} disabled={busy === 'predict'} style={buttonStyle}>
-            {busy === 'predict' ? 'Generating...' : 'Predict My Look'}
-          </button>
-          {(beforePhotoUrl || predictImageUrl) && (
-            <div style={{ display: 'grid', gridTemplateColumns: beforePhotoUrl && predictImageUrl ? '1fr 1fr' : '1fr', gap: 16, marginTop: 12 }}>
-              {beforePhotoUrl && (
-                <div>
-                  <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Before</p>
-                  <Image
-                    src={beforePhotoUrl}
-                    alt="Before photo"
-                    width={320}
-                    height={426}
-                    unoptimized
-                    style={{ width: '100%', maxWidth: 320, border: '1px solid var(--navy-lt)', height: 'auto' }}
-                  />
-                </div>
-              )}
-              {predictImageUrl && (
-                <div>
-                  <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--gold)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>After (Predicted)</p>
-                  <Image
-                    src={predictImageUrl}
-                    alt="Predicted transformation"
-                    width={320}
-                    height={426}
-                    unoptimized
-                    style={{ width: '100%', maxWidth: 320, border: '1px solid var(--navy-lt)', height: 'auto' }}
-                  />
-                </div>
-              )}
-            </div>
+              <div style={{ marginTop: 14 }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Avg RPE Trend</p>
+                <TrendChart points={progression.points.map(p => ({ label: shortDate(p.date), value: p.avgRpe }))} stroke="#89A7C6" min={1} max={10} />
+              </div>
+            </section>
           )}
-        </section>
-      </div>
+
+        </div>
+      )}
 
       {status && <p style={{ marginTop: 14, color: status.toLowerCase().includes('could') ? 'var(--error)' : 'var(--success)' }}>{status}</p>}
 
-      {logs.length > 0 && (
+      {workspace === 'analyze' && localWorkoutLogs.length > 0 && (
         <section style={{ marginTop: 18, border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
           <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Recent Logs</h2>
           <div style={{ display: 'grid', gap: 8 }}>
-            {logs.map(log => (
+            {localWorkoutLogs.map(log => (
               <div key={String(log.id)} style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy)', padding: 10 }}>
                 <div style={{ fontWeight: 600 }}>{String(log.session_title)}</div>
                 <div style={{ color: 'var(--gray)', fontSize: 13, overflowWrap: 'anywhere' }}>{String(log.session_date)} | RPE {String(log.exertion_rpe ?? '-')}</div>
@@ -1050,7 +1045,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         </section>
       )}
 
-      {localSetLogs.length > 0 && (
+      {workspace === 'analyze' && localSetLogs.length > 0 && (
         <section style={{ marginTop: 18, border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
           <h2 style={{ margin: '0 0 10px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Recent Sets</h2>
           <div style={{ display: 'grid', gap: 8 }}>
@@ -1066,21 +1061,53 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         </section>
       )}
 
-      {/* Weekly Check-In */}
-      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
-        <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Weekly Check-In</h2>
-        <WeeklyCheckinForm preferredUnits={units} />
-      </section>
+      {workspace === 'checkin' && (
+      <>
+        {/* Weekly Check-In */}
+        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
+          <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Weekly Check-In</h2>
+          <WeeklyCheckinForm preferredUnits={units} />
+        </section>
 
-      {/* Cardio Log */}
-      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
-        <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
-        <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
-      </section>
+        {/* Cardio Log */}
+        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
+          <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
+          <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
+        </section>
 
-      <div style={{ marginTop: 16 }}>
-        <ProgressPhotoTimeline initialPhotos={progressPhotos} canUpload />
-      </div>
+        <div style={{ marginTop: 16 }}>
+          <ProgressPhotoTimeline
+            initialPhotos={progressPhotos}
+            canUpload
+            subtitle="Upload progress photos and run an approximate body-fat check from the same flow. Estimates are directional only."
+            bodyFatInputs={{
+              sex: profile?.sex,
+              heightCm: profile?.height_cm,
+              weightKg: profile?.weight_kg,
+              waistCm: profile?.waist_cm,
+              neckCm: profile?.neck_cm,
+              hipCm: profile?.hip_cm,
+            }}
+            estimatedBodyfat={bodyfatState.estimated || null}
+            onEstimatedBodyfat={(value) => {
+              setBodyfatState({ estimated: String(value) })
+              setStatus(`Approximate body-fat estimate: ${value}%`)
+            }}
+          />
+        </div>
+      </>
+      )}
+
+      {completeModal && (
+        <CompleteWorkoutModal
+          workout={completeModal}
+          onClose={() => setCompleteModal(null)}
+          onConfirm={(rpe) => {
+            void handleCompleteWorkoutDay(completeModal, rpe)
+          }}
+          busy={busy === `log-day:${String(completeModal.day)}`}
+        />
+      )}
 
       {/* Skip Exercise Modal */}
       {skipModal && (
@@ -1215,13 +1242,50 @@ const accordionExerciseSummaryStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('Failed to read image file'))
-    reader.readAsDataURL(file)
-  })
+function CompleteWorkoutModal({ workout, onConfirm, onClose, busy }: {
+  workout: WorkoutDay
+  onConfirm: (rpe?: number) => void
+  onClose: () => void
+  busy: boolean
+}) {
+  const [rpe, setRpe] = useState('')
+  const parsedRpe = Number(rpe)
+  const canSubmit = rpe.trim() === '' || (Number.isFinite(parsedRpe) && parsedRpe >= 1 && parsedRpe <= 10)
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'var(--navy-mid)', border: '1px solid var(--navy-lt)', padding: 24, maxWidth: 420, width: '100%' }}>
+        <h3 style={{ margin: '0 0 12px', fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em' }}>
+          Complete Day {String(workout.day)}
+        </h3>
+        <p style={{ color: 'var(--gray)', fontSize: 13, margin: '0 0 12px' }}>
+          {workout.focus} - optionally add session RPE (1-10), then save.
+        </p>
+        <input
+          type="number"
+          min={1}
+          max={10}
+          step="0.5"
+          value={rpe}
+          onChange={e => setRpe(e.target.value)}
+          placeholder="Optional RPE"
+          style={{ width: '100%', padding: '10px 12px', background: 'var(--navy)', border: '1px solid var(--navy-lt)', color: 'var(--white)', fontFamily: 'Raleway, sans-serif', fontSize: 14, marginBottom: 12, boxSizing: 'border-box' }}
+        />
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--navy-lt)', color: 'var(--gray)', fontFamily: 'Raleway, sans-serif', cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(Number.isFinite(parsedRpe) ? parsedRpe : undefined)}
+            disabled={!canSubmit || busy}
+            style={{ padding: '8px 16px', background: 'var(--gold)', color: '#0D1B2A', border: 'none', fontFamily: 'Bebas Neue, sans-serif', fontSize: 15, letterSpacing: '0.05em', cursor: 'pointer' }}
+          >
+            {busy ? 'Saving...' : 'Save Completion'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
   function SkipExerciseModal({ exercise, workoutDay, onConfirm, onClose }: {

@@ -6,12 +6,14 @@ export interface WorkoutCalendarEntry {
   date: string
   title: string
   subtitle?: string
+  workoutDay?: number
 }
 
 interface WorkoutCalendarViewProps {
   entries: WorkoutCalendarEntry[]
   title: string
   subtitle?: string
+  onSelectEntry?: (entry: WorkoutCalendarEntry) => void
 }
 
 function parseDateOnly(value: string) {
@@ -44,7 +46,7 @@ function prettyDate(value: string) {
   return parsed.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
 }
 
-export default function WorkoutCalendarView({ entries, title, subtitle }: WorkoutCalendarViewProps) {
+export default function WorkoutCalendarView({ entries, title, subtitle, onSelectEntry }: WorkoutCalendarViewProps) {
   const normalizedEntries = useMemo(() => {
     return entries
       .map(entry => ({
@@ -184,10 +186,15 @@ export default function WorkoutCalendarView({ entries, title, subtitle }: Workou
         ) : (
           <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
             {selectedEntries.map((entry, index) => (
-              <div key={`${entry.date}-${entry.title}-${index}`} style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'var(--navy)', padding: '10px 12px' }}>
+              <button
+                key={`${entry.date}-${entry.title}-${index}`}
+                type="button"
+                onClick={() => onSelectEntry?.(entry)}
+                style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'var(--navy)', padding: '10px 12px', textAlign: 'left', cursor: onSelectEntry ? 'pointer' : 'default' }}
+              >
                 <div style={{ color: 'var(--white)', fontWeight: 600 }}>{entry.title}</div>
                 {entry.subtitle && <div style={{ color: 'var(--gray)', fontSize: 13, marginTop: 3 }}>{entry.subtitle}</div>}
-              </div>
+              </button>
             ))}
           </div>
         )}

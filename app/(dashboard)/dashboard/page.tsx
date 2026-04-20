@@ -10,6 +10,15 @@ interface DashboardPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
+type DashboardWorkspace = 'overview' | 'packages' | 'sessions'
+
+function normalizeDashboardWorkspace(value: string | string[] | undefined): DashboardWorkspace {
+  const raw = Array.isArray(value) ? value[0] : value
+  if (raw === 'packages') return 'packages'
+  if (raw === 'sessions') return 'sessions'
+  return 'overview'
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const supabase = await createClient()
   const {
@@ -50,6 +59,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const params = await searchParams
   const showSuccess = params.success === 'true'
+  const workspace = normalizeDashboardWorkspace(params.workspace)
 
   return (
     <main className="dashboard-page" style={{ minHeight: '100vh', background: 'var(--navy)' }}>
@@ -82,11 +92,42 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             fontWeight: 300,
             fontSize: 15,
             color: 'var(--gray)',
-            marginBottom: 40,
+            marginBottom: 24,
           }}
         >
           {user.email}
         </p>
+
+        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 12, marginBottom: 20 }}>
+          <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Focus Workspace
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              { key: 'overview' as const, label: 'Overview', hint: 'Quick actions and status' },
+              { key: 'packages' as const, label: 'Packages', hint: 'Purchases and remaining sessions' },
+              { key: 'sessions' as const, label: 'Sessions', hint: 'Upcoming bookings and scheduling' },
+            ].map(tab => {
+              const active = workspace === tab.key
+              return (
+                <a
+                  key={tab.key}
+                  href={`/dashboard?workspace=${tab.key}`}
+                  style={{
+                    border: active ? '1px solid rgba(212,160,23,0.55)' : '1px solid rgba(255,255,255,0.14)',
+                    background: active ? 'rgba(212,160,23,0.14)' : 'var(--navy)',
+                    color: active ? 'var(--gold-lt)' : 'var(--white)',
+                    textDecoration: 'none',
+                    padding: '8px 12px',
+                  }}
+                >
+                  <div style={{ fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 18 }}>{tab.label}</div>
+                  <div style={{ color: 'var(--gray)', fontSize: 11 }}>{tab.hint}</div>
+                </a>
+              )
+            })}
+          </div>
+        </section>
 
         {/* Stats grid */}
         <div
@@ -96,7 +137,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 1,
             background: 'rgba(255,255,255,0.06)',
-            marginBottom: 40,
+            marginBottom: 24,
           }}
         >
           {[
@@ -132,7 +173,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ))}
         </div>
 
+        {workspace === 'overview' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>
+            <a href="/dashboard/fitness" style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 16, textDecoration: 'none' }}>
+              <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em', color: 'var(--white)' }}>Fitness Lab</div>
+              <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 13 }}>Train, log sets, and track progress metrics.</p>
+            </a>
+            <a href="/dashboard/messages" style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 16, textDecoration: 'none' }}>
+              <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em', color: 'var(--white)' }}>Messages</div>
+              <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 13 }}>Stay aligned with your coach on adjustments and support.</p>
+            </a>
+            <a href="/dashboard/book" style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 16, textDecoration: 'none' }}>
+              <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.05em', color: 'var(--white)' }}>Book Session</div>
+              <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 13 }}>Schedule your next live coaching session quickly.</p>
+            </a>
+          </div>
+        )}
+
         {/* Packages */}
+        {workspace === 'packages' && (
+        <>
         <h2
           style={{
             fontFamily: 'Bebas Neue, sans-serif',
@@ -245,8 +305,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ))}
           </div>
         )}
+        </>
+        )}
 
         {/* Upcoming Sessions */}
+        {workspace === 'sessions' && (
+        <>
         <div
           style={{
             display: 'flex',
@@ -340,6 +404,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
             ))}
           </div>
+        )}
+        </>
         )}
       </div>
     </main>

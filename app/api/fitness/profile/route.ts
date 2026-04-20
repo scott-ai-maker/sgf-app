@@ -194,3 +194,34 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ profile: data })
 }
+
+export async function PATCH(req: NextRequest) {
+  let userId = ''
+  try {
+    const authz = await getRequestAuthz()
+    requireRole(authz.client.role, ['client'])
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
+  }
+
+  const body = await req.json().catch(() => ({}))
+  const preferredUnits = body?.preferredUnits === 'metric' ? 'metric' : body?.preferredUnits === 'imperial' ? 'imperial' : null
+
+  if (!preferredUnits) {
+    return NextResponse.json({ error: 'preferredUnits must be "metric" or "imperial"' }, { status: 400 })
+  }
+
+  const { data, error } = await supabaseAdmin()
+    .from('fitness_profiles')
+    .update({ preferred_units: preferredUnits, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .select('*')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ profile: data })
+}
