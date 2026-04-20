@@ -1,34 +1,22 @@
-import { redirect } from 'next/navigation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import MessageThreadClient from '@/components/messages/MessageThreadClient'
 import SiteHeader from '@/components/ui/SiteHeader'
-import { createClient } from '@/lib/supabase-server'
+import { requireSurfaceRole } from '@/lib/authz'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ClientMessagesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await requireSurfaceRole('client')
 
-  if (!user) {
-    console.warn('Messages page: no authenticated user found')
-    redirect('/auth/login')
-  }
-
-  const { data: clientRow } = await supabase
+  const { data: clientRow, error: clientError } = await supabaseAdmin()
     .from('clients')
-    .select('id, role, designated_coach_id')
+    .select('designated_coach_id')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (!clientRow) {
-    console.warn(`Messages page: no client record found for user ${user.id}`)
-    redirect('/auth/login')
-  }
-
-  if (clientRow.role !== 'client') {
-    console.warn(`Messages page: user ${user.id} has role '${clientRow.role}', not 'client'`)
-    redirect('/coach')
+  if (clientError) {
+    console.error(`Messages page: failed to load client record for user ${user.id}: ${clientError.message}`)
   }
 
   return (
@@ -57,7 +45,7 @@ export default async function ClientMessagesPage() {
           Secure in-app messaging for coaching communication.
         </p>
 
-        {!clientRow.designated_coach_id ? (
+        {!clientRow?.designated_coach_id ? (
           <p style={{ color: 'var(--gray)', fontFamily: 'Raleway, sans-serif' }}>
             You do not have a designated trainer yet. Please contact support.
           </p>
