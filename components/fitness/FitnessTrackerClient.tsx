@@ -829,124 +829,163 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                             <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                               Log set here (no separate scrolling needed)
                             </p>
+                            <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 11, lineHeight: 1.45 }}>
+                              Pre-filled values are starting suggestions from your plan. Update each field to what you actually completed.
+                            </p>
                             <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                              <input
-                                type="date"
-                                value={draft.sessionDate}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, sessionDate: value } }))
-                                }}
-                                style={inputStyle}
-                                required
-                                aria-label="Session date"
-                              />
-                              <input
-                                type="number"
-                                min={1}
-                                value={draft.setNumber}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, setNumber: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder="Set #"
-                                aria-label="Set number"
-                              />
+                              <div>
+                                <label style={setFieldLabelStyle}>Workout Date</label>
+                                <input
+                                  type="date"
+                                  value={draft.sessionDate}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, sessionDate: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  required
+                                  aria-label="Session date"
+                                />
+                                <p style={setFieldHintStyle}>Date this set was completed.</p>
+                              </div>
+                              <div>
+                                <label style={setFieldLabelStyle}>Set Number</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={draft.setNumber}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, setNumber: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  placeholder="1"
+                                  aria-label="Set number"
+                                />
+                                <p style={setFieldHintStyle}>Set order for this exercise on this date.</p>
+                              </div>
                             </div>
                             <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                              <input
-                                type="number"
-                                min={1}
-                                value={draft.reps}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, reps: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder="Reps"
-                                required
-                                aria-label="Number of reps"
-                              />
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={0}
-                                value={draft.weight}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, weight: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder={`Weight (${units === 'imperial' ? 'lb' : 'kg'})`}
-                                aria-label={`Weight in ${units === 'imperial' ? 'pounds' : 'kilograms'}`}
-                              />
+                              <div>
+                                <label style={setFieldLabelStyle}>Reps Completed</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={draft.reps}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, reps: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  placeholder="8"
+                                  required
+                                  aria-label="Number of reps"
+                                />
+                                <p style={setFieldHintStyle}>Actual reps completed in this set.</p>
+                              </div>
+                              <div>
+                                <label style={setFieldLabelStyle}>Weight Used ({units === 'imperial' ? 'lb' : 'kg'})</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min={0}
+                                  value={draft.weight}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, weight: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  placeholder={units === 'imperial' ? 'e.g. 95' : 'e.g. 42.5'}
+                                  aria-label={`Weight in ${units === 'imperial' ? 'pounds' : 'kilograms'}`}
+                                />
+                                <p style={setFieldHintStyle}>Total load used for this set. Leave blank for bodyweight/no load.</p>
+                              </div>
                             </div>
                             <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
-                              <input
-                                type="number"
-                                min={0}
-                                value={draft.restSeconds}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, restSeconds: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder="Rest"
-                                aria-label="Rest time in seconds"
-                              />
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={1}
-                                max={10}
-                                value={draft.rpe}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rpe: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder="RPE"
-                                aria-label="Rate of perceived exertion (1-10)"
-                                title="Rate of Perceived Exertion (1-10)"
-                              />
-                              <input
-                                type="number"
-                                step="0.1"
-                                min={0}
-                                max={6}
-                                value={draft.rir}
-                                onChange={event => {
-                                  const value = event.target.value
-                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rir: value } }))
-                                }}
-                                style={inputStyle}
-                                placeholder="RIR"
-                                aria-label="Reps in reserve (0-6)"
-                                title="Reps in Reserve (0-6)"
-                              />
-                              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--gray)', fontSize: 12, border: '1px solid var(--navy-lt)', minHeight: 44 }}>
+                              <div>
+                                <label style={setFieldLabelStyle}>Rest (sec)</label>
                                 <input
-                                  type="checkbox"
-                                  checked={draft.isWarmup}
+                                  type="number"
+                                  min={0}
+                                  value={draft.restSeconds}
                                   onChange={event => {
-                                    const checked = event.target.checked
-                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, isWarmup: checked } }))
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, restSeconds: value } }))
                                   }}
-                                  aria-label="Mark as warm-up set"
+                                  style={inputStyle}
+                                  placeholder="60"
+                                  aria-label="Rest time in seconds"
                                 />
-                                Warmup
-                              </label>
+                                <p style={setFieldHintStyle}>Seconds rested before the next set.</p>
+                              </div>
+                              <div>
+                                <label style={setFieldLabelStyle}>RPE (1-10)</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min={1}
+                                  max={10}
+                                  value={draft.rpe}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rpe: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  placeholder="7"
+                                  aria-label="Rate of perceived exertion (1-10)"
+                                  title="Rate of Perceived Exertion (1-10)"
+                                />
+                                <p style={setFieldHintStyle}>How hard the set felt, 10 = max effort.</p>
+                              </div>
+                              <div>
+                                <label style={setFieldLabelStyle}>RIR (0-6)</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min={0}
+                                  max={6}
+                                  value={draft.rir}
+                                  onChange={event => {
+                                    const value = event.target.value
+                                    setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, rir: value } }))
+                                  }}
+                                  style={inputStyle}
+                                  placeholder="2"
+                                  aria-label="Reps in reserve (0-6)"
+                                  title="Reps in Reserve (0-6)"
+                                />
+                                <p style={setFieldHintStyle}>Estimated reps left before failure.</p>
+                              </div>
+                              <div>
+                                <label style={setFieldLabelStyle}>Set Type</label>
+                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--gray)', fontSize: 12, border: '1px solid var(--navy-lt)', minHeight: 44 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.isWarmup}
+                                    onChange={event => {
+                                      const checked = event.target.checked
+                                      setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, isWarmup: checked } }))
+                                    }}
+                                    aria-label="Mark as warm-up set"
+                                  />
+                                  Warm-up set
+                                </label>
+                                <p style={setFieldHintStyle}>Check for non-working preparation sets.</p>
+                              </div>
                             </div>
-                            <textarea
-                              value={draft.notes}
-                              onChange={event => {
-                                const value = event.target.value
-                                setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, notes: value } }))
-                              }}
-                              style={{ ...inputStyle, minHeight: 62, marginTop: 8 }}
-                              placeholder="Notes"
-                            />
+                            <div style={{ marginTop: 8 }}>
+                              <label style={setFieldLabelStyle}>Set Notes (optional)</label>
+                              <textarea
+                                value={draft.notes}
+                                onChange={event => {
+                                  const value = event.target.value
+                                  setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, notes: value } }))
+                                }}
+                                style={{ ...inputStyle, minHeight: 62 }}
+                                placeholder="Form cues, pain, tempo changes, or equipment used"
+                              />
+                              <p style={setFieldHintStyle}>Useful context for your coach and future progression.</p>
+                            </div>
                             <button type="submit" disabled={busy === `set-log:${exerciseKey}`} style={{ ...buttonStyle, marginTop: 8 }}>
                               {busy === `set-log:${exerciseKey}` ? 'Saving...' : 'Save Set'}
                             </button>
@@ -1199,6 +1238,22 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--white)',
   minHeight: 44,
   fontSize: 16,
+}
+
+const setFieldLabelStyle: React.CSSProperties = {
+  display: 'block',
+  marginBottom: 4,
+  color: 'var(--gray)',
+  fontSize: 11,
+  letterSpacing: '0.07em',
+  textTransform: 'uppercase',
+}
+
+const setFieldHintStyle: React.CSSProperties = {
+  margin: '4px 0 0',
+  color: 'var(--gray)',
+  fontSize: 11,
+  lineHeight: 1.35,
 }
 
 const buttonStyle: React.CSSProperties = {

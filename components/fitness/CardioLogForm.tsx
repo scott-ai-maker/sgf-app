@@ -106,6 +106,22 @@ export default function CardioLogForm({ initialLogs, preferredUnits = 'imperial'
     boxSizing: 'border-box',
   }
 
+  const fieldLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 11,
+    color: 'var(--gray)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    marginBottom: 4,
+  }
+
+  const fieldHintStyle: React.CSSProperties = {
+    margin: '4px 0 0',
+    color: 'var(--gray)',
+    fontSize: 11,
+    lineHeight: 1.35,
+  }
+
   return (
     <div style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -123,52 +139,63 @@ export default function CardioLogForm({ initialLogs, preferredUnits = 'imperial'
 
       {showForm && (
         <form onSubmit={onSubmit} style={{ display: 'grid', gap: 10, marginBottom: 16, border: '1px solid rgba(255,255,255,0.08)', padding: 12, background: 'rgba(13,27,42,0.55)' }}>
+          <p style={{ margin: '0 0 2px', color: 'var(--gray)', fontSize: 11, lineHeight: 1.45 }}>
+            Use actual completed values for this session. If a field is optional, leave it blank when not tracked.
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Date</label>
+              <label style={fieldLabelStyle}>Session Date</label>
               <input type="date" value={form.session_date} onChange={e => setForm(p => ({ ...p, session_date: e.target.value }))} style={inputStyle} required />
+              <p style={fieldHintStyle}>Date this cardio session happened.</p>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Activity</label>
+              <label style={fieldLabelStyle}>Activity Type</label>
               <select value={form.activity_type} onChange={e => setForm(p => ({ ...p, activity_type: e.target.value }))} style={inputStyle}>
                 {CARDIO_ACTIVITY_OPTIONS.map(opt => (
                   <option key={opt.key} value={opt.key}>{opt.label}</option>
                 ))}
               </select>
+              <p style={fieldHintStyle}>Choose the cardio mode you performed.</p>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Duration (min)</label>
+              <label style={fieldLabelStyle}>Duration (min)</label>
               <input type="number" min={1} value={form.duration_mins} onChange={e => setForm(p => ({ ...p, duration_mins: e.target.value }))} style={inputStyle} required placeholder="30" />
+              <p style={fieldHintStyle}>Total time spent doing cardio.</p>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-                Distance ({isImperial ? 'mi' : 'km'})
+              <label style={fieldLabelStyle}>
+                Distance Completed ({isImperial ? 'mi' : 'km'})
               </label>
               <input type="number" step="0.01" min={0} value={form.distance} onChange={e => setForm(p => ({ ...p, distance: e.target.value }))} style={inputStyle} placeholder="3.1" />
+              <p style={fieldHintStyle}>Distance covered during this session.</p>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Avg HR (bpm)</label>
+              <label style={fieldLabelStyle}>Average Heart Rate (bpm)</label>
               <input type="number" min={0} value={form.avg_heart_rate} onChange={e => setForm(p => ({ ...p, avg_heart_rate: e.target.value }))} style={inputStyle} placeholder="145" />
+              <p style={fieldHintStyle}>Average beats per minute for the whole session.</p>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Calories</label>
+              <label style={fieldLabelStyle}>Calories Burned (kcal)</label>
               <input type="number" min={0} value={form.calories} onChange={e => setForm(p => ({ ...p, calories: e.target.value }))} style={inputStyle} placeholder="320" />
+              <p style={fieldHintStyle}>Estimated calories from tracker/equipment.</p>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Effort (1–10)</label>
+              <label style={fieldLabelStyle}>Session Effort (RPE 1-10)</label>
               <input type="number" min={1} max={10} value={form.perceived_effort} onChange={e => setForm(p => ({ ...p, perceived_effort: e.target.value }))} style={inputStyle} placeholder="7" />
+              <p style={fieldHintStyle}>How hard it felt overall. 10 means maximal effort.</p>
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 11, color: 'var(--gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Notes</label>
+            <label style={fieldLabelStyle}>Session Notes (optional)</label>
             <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} placeholder="How did it feel?" />
+            <p style={fieldHintStyle}>Add context like pace, incline, intervals, or how you felt.</p>
           </div>
 
           {error && <p style={{ margin: 0, color: 'var(--error)', fontSize: 13 }}>{error}</p>}

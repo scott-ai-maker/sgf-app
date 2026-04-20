@@ -30,30 +30,26 @@ function getMonday(date: Date): string {
 function RatingInput({
   label,
   hint,
+  descriptions,
   value,
   onChange,
 }: {
   label: string
   hint: string
+  descriptions: Record<string, string>
   value: string
   onChange: (v: string) => void
 }) {
   const options = ['1', '2', '3', '4', '5']
-  const labelMap: Record<string, string> = {
-    '1': 'Worst',
-    '2': 'Poor',
-    '3': 'Average',
-    '4': 'Good',
-    '5': 'Excellent',
-  }
   const inputId = `rating-${label.toLowerCase().replace(/\s+/g, '-')}`
+  const selectedDescription = value ? descriptions[value] : null
 
   return (
     <div>
       <label htmlFor={inputId} style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
-        {label}
-        <span style={{ fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>({hint})</span>
+        {label} (1-5)
       </label>
+      <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 12 }}>{hint}</p>
       <div style={{ display: 'flex', gap: 8 }} role="group" aria-labelledby={inputId}>
         {options.map(opt => (
           <button
@@ -61,7 +57,7 @@ function RatingInput({
             type="button"
             onClick={() => onChange(value === opt ? '' : opt)}
             aria-pressed={value === opt}
-            aria-label={`${labelMap[opt]} (${label})`}
+            aria-label={`${descriptions[opt]} (${label})`}
             style={{
               flex: 1,
               padding: '10px 0',
@@ -77,6 +73,9 @@ function RatingInput({
           </button>
         ))}
       </div>
+      <p style={{ margin: '6px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+        {selectedDescription ? `Selected: ${value} - ${selectedDescription}` : 'Select a number, or tap again to clear.'}
+      </p>
     </div>
   )
 }
@@ -165,6 +164,38 @@ export default function WeeklyCheckinForm({ preferredUnits = 'imperial' }: Weekl
     return <p style={{ color: 'var(--gray)', fontSize: 14 }}>Loading...</p>
   }
 
+  const sleepDescriptions: Record<string, string> = {
+    '1': 'Very poor sleep quality',
+    '2': 'Poor sleep quality',
+    '3': 'Average sleep quality',
+    '4': 'Good sleep quality',
+    '5': 'Excellent sleep quality',
+  }
+
+  const stressDescriptions: Record<string, string> = {
+    '1': 'Very high stress',
+    '2': 'High stress',
+    '3': 'Moderate stress',
+    '4': 'Low stress',
+    '5': 'Very low stress',
+  }
+
+  const sorenessDescriptions: Record<string, string> = {
+    '1': 'Very sore',
+    '2': 'Sore',
+    '3': 'Moderately sore',
+    '4': 'Light soreness',
+    '5': 'Fresh / recovered',
+  }
+
+  const energyDescriptions: Record<string, string> = {
+    '1': 'Very low energy',
+    '2': 'Low energy',
+    '3': 'Moderate energy',
+    '4': 'High energy',
+    '5': 'Very high energy',
+  }
+
   const weekLabel = new Date(`${thisWeek}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
   return (
@@ -184,10 +215,13 @@ export default function WeeklyCheckinForm({ preferredUnits = 'imperial' }: Weekl
       )}
 
       <form onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
-        <RatingInput label="Sleep Quality" hint="1=Poor, 5=Excellent" value={form.sleep_quality} onChange={v => setForm(p => ({ ...p, sleep_quality: v }))} />
-        <RatingInput label="Stress Level" hint="1=Very High, 5=Very Low" value={form.stress_level} onChange={v => setForm(p => ({ ...p, stress_level: v }))} />
-        <RatingInput label="Soreness" hint="1=Very Sore, 5=Fresh" value={form.soreness_level} onChange={v => setForm(p => ({ ...p, soreness_level: v }))} />
-        <RatingInput label="Energy Level" hint="1=Low, 5=High" value={form.energy_level} onChange={v => setForm(p => ({ ...p, energy_level: v }))} />
+        <p style={{ margin: '-4px 0 0', color: 'var(--gray)', fontSize: 12, lineHeight: 1.45 }}>
+          If you already submitted this week, your previous values are pre-filled below. Update each number to reflect how this week feels now.
+        </p>
+        <RatingInput label="Sleep Quality" hint="1 = poor sleep, 5 = excellent sleep" descriptions={sleepDescriptions} value={form.sleep_quality} onChange={v => setForm(p => ({ ...p, sleep_quality: v }))} />
+        <RatingInput label="Stress Level" hint="1 = very high stress, 5 = very low stress" descriptions={stressDescriptions} value={form.stress_level} onChange={v => setForm(p => ({ ...p, stress_level: v }))} />
+        <RatingInput label="Soreness" hint="1 = very sore, 5 = fresh" descriptions={sorenessDescriptions} value={form.soreness_level} onChange={v => setForm(p => ({ ...p, soreness_level: v }))} />
+        <RatingInput label="Energy Level" hint="1 = low energy, 5 = high energy" descriptions={energyDescriptions} value={form.energy_level} onChange={v => setForm(p => ({ ...p, energy_level: v }))} />
 
         <div>
           <label htmlFor="weight-input" style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
