@@ -935,7 +935,6 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                   }}
                                   aria-label="Mark as warm-up set"
                                 />
-                                />
                                 Warmup
                               </label>
                             </div>

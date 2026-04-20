@@ -14,7 +14,11 @@ import SiteHeader from '@/components/ui/SiteHeader'
 
 export const dynamic = 'force-dynamic'
 
-type CoachPageSearchParams = Promise<{ focus?: string | string[] | undefined; tab?: string | string[] | undefined }>
+type CoachPageSearchParams = Promise<{
+  focus?: string | string[] | undefined
+  tab?: string | string[] | undefined
+  page?: string | string[] | undefined
+}>
 
 function formatPercent(value: number | null) {
   if (value === null) return 'N/A'
@@ -73,7 +77,10 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
 
   // Pagination for assigned clients (improved: added limit to prevent N+1)
   const PAGE_SIZE = 20
-  const pageParam = typeof (await searchParams).page === 'string' ? parseInt((await searchParams).page) : 1
+  const pageParam =
+    typeof resolvedSearchParams.page === 'string'
+      ? Number.parseInt(resolvedSearchParams.page, 10)
+      : 1
   const page = Math.max(1, pageParam)
   const offset = (page - 1) * PAGE_SIZE
 
@@ -355,7 +362,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     { key: 'no-upcoming', label: 'No Upcoming Session', value: clientsWithoutUpcomingSessions },
   ]
 
-  const focusLabelByKey: Record<FocusFilter, string> = {
+  const focusLabelByKey: Record<CoachFocusFilter, string> = {
     all: 'All assigned clients',
     'sessions-this-week': 'Clients with sessions this week',
     'attendance-30d': 'Clients with completed sessions in the last 30 days',
