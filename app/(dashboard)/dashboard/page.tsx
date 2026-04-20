@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
+import { normalizeDashboardWorkspace, type DashboardWorkspace } from '@/lib/validation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SuccessBanner from '@/components/dashboard/SuccessBanner'
 import SiteHeader from '@/components/ui/SiteHeader'
@@ -8,15 +9,6 @@ export const dynamic = 'force-dynamic'
 
 interface DashboardPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
-}
-
-type DashboardWorkspace = 'overview' | 'packages' | 'sessions'
-
-function normalizeDashboardWorkspace(value: string | string[] | undefined): DashboardWorkspace {
-  const raw = Array.isArray(value) ? value[0] : value
-  if (raw === 'packages') return 'packages'
-  if (raw === 'sessions') return 'sessions'
-  return 'overview'
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {

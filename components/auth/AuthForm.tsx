@@ -11,6 +11,11 @@ interface AuthFormProps {
   redirectPath?: string
 }
 
+interface ValidationErrors {
+  email?: string
+  password?: string
+}
+
 function formatAuthErrorMessage(rawMessage: string) {
   const msg = rawMessage.toLowerCase()
 
@@ -23,6 +28,33 @@ function formatAuthErrorMessage(rawMessage: string) {
   }
 
   return rawMessage
+}
+
+function validateEmail(email: string): string | undefined {
+  if (!email.trim()) {
+    return 'Email is required'
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return 'Enter a valid email address'
+  }
+}
+
+function validatePassword(password: string, mode: Mode): string | undefined {
+  if (!password) {
+    return 'Password is required'
+  }
+  if (password.length < 8) {
+    return 'Password must be at least 8 characters'
+  }
+  if (mode === 'signup') {
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain an uppercase letter'
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'Password must contain a number'
+    }
+  }
 }
 
 const inputStyle: React.CSSProperties = {
@@ -39,6 +71,10 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+const errorStyle: React.CSSProperties = {
+  border: '1px solid var(--error, #ff6b6b)',
+}
+
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontFamily: 'Raleway, sans-serif',
@@ -50,17 +86,45 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 }
 
+const errorMessageStyle: React.CSSProperties = {
+  fontFamily: 'Raleway, sans-serif',
+  fontSize: 12,
+  color: 'var(--error, #ff6b6b)',
+  margin: '4px 0 0 0',
+}
+
 export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthFormProps) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({})
+
+  function validateForm(): boolean {
+    const newErrors: ValidationErrors = {}
+
+    const emailError = validateEmail(email)
+    if (emailError) newErrors.email = emailError
+
+    const passwordError = validatePassword(password, mode)
+    if (passwordError) newErrors.password = passwordError
+
+    setFieldErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      setError(null)
+      return
+    }
+
     setLoading(true)
     setError(null)
+    setFieldErrors({})
 
     const supabase = createClient()
 
@@ -93,6 +157,7 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
   async function handleGoogle() {
     const supabase = createClient()
     setError(null)
+    setFieldErrors({})
 
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     callbackUrl.searchParams.set('next', redirectPath)
@@ -113,33 +178,76 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
-          <label style={labelStyle}>Email</label>
+          <label htmlFor="email-input" style={labelStyle}>
+            Email Address {fieldErrors.email && '*'}
+          </label>
           <input
+            id="email-input"
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={inputStyle}
+            onChange={e => {
+              setEmail(e.target.value)
+              if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }))
+            }}
+            onBlur={() => {
+              const error = validateEmail(email)
+              if (error) setFieldErrors(prev => ({ ...prev, email: error }))
+            }}
+            aria-invalid={!!fieldErrors.email}
+            aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+            style={{
+              ...inputStyle,
+              ...(fieldErrors.email ? errorStyle : {}),
+            }}
             placeholder="you@example.com"
           />
+          {fieldErrors.email && (
+            <div id="email-error" role="alert" style={errorMessageStyle}>
+              {fieldErrors.email}
+            </div>
+          )}
         </div>
 
         <div>
-          <label style={labelStyle}>Password</label>
+          <label htmlFor="password-input" style={labelStyle}>
+            Password {fieldErrors.password && '*'}
+          </label>
           <input
+            id="password-input"
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            style={inputStyle}
+            onChange={e => {
+              setPassword(e.target.value)
+              if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }))
+            }}
+            onBlur={() => {
+              const error = validatePassword(password, mode)
+              if (error) setFieldErrors(prev => ({ ...prev, password: error }))
+            }}
+            aria-invalid={!!fieldErrors.password}
+            aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+            style={{
+              ...inputStyle,
+              ...(fieldErrors.password ? errorStyle : {}),
+            }}
             placeholder="••••••••"
           />
+          {fieldErrors.password && (
+            <div id="password-error" role="alert" style={errorMessageStyle}>
+              {fieldErrors.password}
+            </div>
+          )}
+          {mode === 'signup' && !fieldErrors.password && password && (
+            <div style={{ ...errorMessageStyle, color: 'var(--gray)', marginTop: 4 }}>
+              ✓ Password meets requirements
+            </div>
+          )}
         </div>
 
         {mode === 'login' && (
           <div style={{ textAlign: 'right' }}>
             <a
-              href="/auth/reset-password"
+              href="/auth/login?next=/auth/reset-password"
               style={{
                 fontFamily: 'Raleway, sans-serif',
                 fontSize: 13,
@@ -153,24 +261,36 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
         )}
 
         {error && (
-          <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--error)', margin: 0 }}>
+          <div
+            role="alert"
+            style={{
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: 13,
+              color: 'var(--error, #ff6b6b)',
+              margin: 0,
+              padding: '12px',
+              background: 'rgba(255, 107, 107, 0.1)',
+              borderRadius: 2,
+              border: '1px solid var(--error, #ff6b6b)',
+            }}
+          >
             {error}
-          </p>
+          </div>
         )}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || Object.keys(fieldErrors).length > 0}
           style={{
             padding: '13px',
-            background: loading ? 'var(--navy-lt)' : 'var(--gold)',
-            color: loading ? 'var(--gray)' : '#0D1B2A',
+            background: loading || Object.keys(fieldErrors).length > 0 ? 'var(--navy-lt)' : 'var(--gold)',
+            color: loading || Object.keys(fieldErrors).length > 0 ? 'var(--gray)' : '#0D1B2A',
             border: 'none',
             borderRadius: 2,
             fontFamily: 'Bebas Neue, sans-serif',
             fontSize: 18,
             letterSpacing: '0.06em',
-            cursor: loading ? 'not-allowed' : 'pointer',
+            cursor: loading || Object.keys(fieldErrors).length > 0 ? 'not-allowed' : 'pointer',
             transition: 'background 0.15s',
           }}
         >

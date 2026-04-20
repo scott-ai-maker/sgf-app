@@ -39,26 +39,29 @@ function RatingInput({
   onChange: (v: string) => void
 }) {
   const options = ['1', '2', '3', '4', '5']
-  const labels: Record<string, string[]> = {
-    '1': ['Very Poor', 'Very High', 'Very High', 'Very Low'],
-    '2': ['Poor', 'High', 'High', 'Low'],
-    '3': ['Average', 'Moderate', 'Moderate', 'Moderate'],
-    '4': ['Good', 'Low', 'Low', 'Good'],
-    '5': ['Excellent', 'Very Low', 'Very Low', 'High'],
+  const labelMap: Record<string, string> = {
+    '1': 'Worst',
+    '2': 'Poor',
+    '3': 'Average',
+    '4': 'Good',
+    '5': 'Excellent',
   }
+  const inputId = `rating-${label.toLowerCase().replace(/\s+/g, '-')}`
 
   return (
     <div>
-      <label style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
+      <label htmlFor={inputId} style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
         {label}
         <span style={{ fontWeight: 400, marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>({hint})</span>
       </label>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8 }} role="group" aria-labelledby={inputId}>
         {options.map(opt => (
           <button
             key={opt}
             type="button"
             onClick={() => onChange(value === opt ? '' : opt)}
+            aria-pressed={value === opt}
+            aria-label={`${labelMap[opt]} (${label})`}
             style={{
               flex: 1,
               padding: '10px 0',
@@ -187,10 +190,11 @@ export default function WeeklyCheckinForm({ preferredUnits = 'imperial' }: Weekl
         <RatingInput label="Energy Level" hint="1=Low, 5=High" value={form.energy_level} onChange={v => setForm(p => ({ ...p, energy_level: v }))} />
 
         <div>
-          <label style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
+          <label htmlFor="weight-input" style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
             Current Weight ({preferredUnits === 'imperial' ? 'lb' : 'kg'}) — optional
           </label>
           <input
+            id="weight-input"
             type="number"
             step="0.1"
             min={0}
@@ -198,28 +202,39 @@ export default function WeeklyCheckinForm({ preferredUnits = 'imperial' }: Weekl
             onChange={e => setForm(p => ({ ...p, weight: e.target.value }))}
             className="sgf-form-input"
             placeholder={preferredUnits === 'imperial' ? 'e.g. 185' : 'e.g. 84.0'}
+            aria-describedby="weight-hint"
           />
+          <p id="weight-hint" style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+            Track your current weight to monitor progress
+          </p>
         </div>
 
         <div>
-          <label style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
+          <label htmlFor="notes-input" style={{ display: 'block', fontFamily: 'Raleway, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gray)', marginBottom: 6 }}>
             Notes — optional
           </label>
           <textarea
+            id="notes-input"
             value={form.notes}
             onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             className="sgf-form-input"
             style={{ minHeight: 72 }}
             placeholder="How did training feel this week? Any wins, struggles, or things your coach should know?"
+            aria-describedby="notes-hint"
           />
+          <p id="notes-hint" style={{ margin: '4px 0 0', color: 'var(--gray)', fontSize: 12 }}>
+            Share relevant observations with your coach for better feedback
+          </p>
         </div>
 
-        {error && <p style={{ margin: 0, color: 'var(--error)', fontSize: 13 }}>{error}</p>}
-        {saved && <p style={{ margin: 0, color: 'var(--success)', fontSize: 13 }}>Check-in saved ✓</p>}
+        {error && <p role="alert" style={{ margin: 0, color: 'var(--error)', fontSize: 13 }}>{error}</p>}
+        {saved && <p role="status" style={{ margin: 0, color: 'var(--success)', fontSize: 13 }}>Check-in saved ✓</p>}
 
         <button
           type="submit"
           disabled={saving}
+          aria-label={existing ? 'Update check-in' : 'Submit check-in'}
+          aria-busy={saving}
           style={{
             border: 0,
             background: saving ? 'var(--navy-lt)' : 'var(--gold)',

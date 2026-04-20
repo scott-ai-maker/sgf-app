@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { normalizeCoachClientTab, type CoachClientTab } from '@/lib/validation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import ClientDetailClient from '@/components/coach/ClientDetailClient'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
@@ -25,8 +26,6 @@ interface PageProps {
   searchParams: Promise<{ tab?: string | string[] | undefined }>
 }
 
-type CoachClientTab = 'overview' | 'program' | 'commerce' | 'sessions' | 'checkins'
-
 interface ClientReadinessSummary {
   completionRate14d: number
   avgRpe14d: number | null
@@ -34,21 +33,6 @@ interface ClientReadinessSummary {
   daysSinceLastCompleted: number | null
   readiness: 'high' | 'moderate' | 'low'
   recommendation: string
-}
-
-function normalizeClientTab(value: string | string[] | undefined): CoachClientTab {
-  const rawValue = Array.isArray(value) ? value[0] : value
-
-  switch (rawValue) {
-    case 'program':
-    case 'commerce':
-    case 'sessions':
-      return rawValue
-      case 'checkins':
-        return rawValue
-    default:
-      return 'overview'
-  }
 }
 
 function isExcludedEquipmentName(name: string) {
@@ -65,7 +49,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
   if (!user) redirect('/auth/login')
 
   const { id } = await params
-  const activeTab = normalizeClientTab((await searchParams).tab)
+  const activeTab = normalizeCoachClientTab((await searchParams).tab)
   const admin = supabaseAdmin()
 
   // Fetch client info

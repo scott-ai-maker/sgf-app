@@ -590,9 +590,9 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {[
-            { key: 'train' as const, label: 'Train', hint: 'Workout plan, set logging, calendar' },
+            { key: 'train' as const, label: 'Train', hint: 'Workout plan, set logging, calendar + cardio' },
             { key: 'analyze' as const, label: 'Analyze', hint: 'Stats, trends, recent logs' },
-            { key: 'checkin' as const, label: 'Check-In', hint: 'Body metrics, cardio, weekly review' },
+            { key: 'checkin' as const, label: 'Check-In', hint: 'Recovery check-in and progress review' },
           ].map(tab => {
             const active = workspace === tab.key
             return (
@@ -839,6 +839,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 required
+                                aria-label="Session date"
                               />
                               <input
                                 type="number"
@@ -850,6 +851,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 placeholder="Set #"
+                                aria-label="Set number"
                               />
                             </div>
                             <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
@@ -864,6 +866,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 style={inputStyle}
                                 placeholder="Reps"
                                 required
+                                aria-label="Number of reps"
                               />
                               <input
                                 type="number"
@@ -876,6 +879,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 placeholder={`Weight (${units === 'imperial' ? 'lb' : 'kg'})`}
+                                aria-label={`Weight in ${units === 'imperial' ? 'pounds' : 'kilograms'}`}
                               />
                             </div>
                             <div className="fitness-set-input-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, marginTop: 8 }}>
@@ -889,6 +893,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 placeholder="Rest"
+                                aria-label="Rest time in seconds"
                               />
                               <input
                                 type="number"
@@ -902,6 +907,8 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 placeholder="RPE"
+                                aria-label="Rate of perceived exertion (1-10)"
+                                title="Rate of Perceived Exertion (1-10)"
                               />
                               <input
                                 type="number"
@@ -915,6 +922,8 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                 }}
                                 style={inputStyle}
                                 placeholder="RIR"
+                                aria-label="Reps in reserve (0-6)"
+                                title="Reps in Reserve (0-6)"
                               />
                               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--gray)', fontSize: 12, border: '1px solid var(--navy-lt)', minHeight: 44 }}>
                                 <input
@@ -924,6 +933,8 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
                                     const checked = event.target.checked
                                     setInlineSetDrafts(prev => ({ ...prev, [exerciseKey]: { ...draft, isWarmup: checked } }))
                                   }}
+                                  aria-label="Mark as warm-up set"
+                                />
                                 />
                                 Warmup
                               </label>
@@ -990,6 +1001,11 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
           onSelectEntry={handleCalendarEntrySelect}
         />
       </div>
+
+      <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
+        <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
+        <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
+      </section>
 
       </>
       )}
@@ -1067,12 +1083,6 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
           <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Weekly Check-In</h2>
           <WeeklyCheckinForm preferredUnits={units} />
-        </section>
-
-        {/* Cardio Log */}
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 18, marginTop: 16 }}>
-          <h2 style={{ margin: '0 0 16px', fontFamily: 'Bebas Neue, sans-serif', letterSpacing: '0.06em', fontSize: 28 }}>Cardio Sessions</h2>
-          <CardioLogForm preferredUnits={units} initialLogs={localCardioLogs} />
         </section>
 
         <div style={{ marginTop: 16 }}>

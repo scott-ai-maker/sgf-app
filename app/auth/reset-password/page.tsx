@@ -10,7 +10,92 @@ const SOCIAL_LINKS = [
 
 export const dynamic = 'force-dynamic'
 
-export default function ResetPasswordPage() {
+interface ResetPasswordPageProps {
+  searchParams: Promise<{ code?: string }>
+}
+
+export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
+  const { code } = await searchParams
+
+  if (!code || typeof code !== 'string' || code.length === 0) {
+    return (
+      <main
+        className="sgf-auth-bg"
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          <div
+            aria-hidden
+            style={{
+              width: 68,
+              height: 68,
+              margin: '0 auto 14px',
+              borderRadius: 2,
+              border: '1px solid var(--navy-lt)',
+              backgroundImage: "url('/images/logo-mark-source.jpg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          />
+          <h1
+            style={{
+              fontFamily: 'Bebas Neue, sans-serif',
+              fontSize: 36,
+              color: 'var(--gold)',
+              letterSpacing: '0.06em',
+              textAlign: 'center',
+              marginBottom: 8,
+            }}
+          >
+            SCOTT GORDON FITNESS
+          </h1>
+          <p
+            style={{
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: 14,
+              color: 'var(--gray)',
+              textAlign: 'center',
+              marginBottom: 32,
+            }}
+          >
+            Invalid reset link
+          </p>
+          <p
+            style={{
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: 14,
+              color: 'var(--gray)',
+              textAlign: 'center',
+              marginBottom: 24,
+              lineHeight: 1.6,
+            }}
+          >
+            This password reset link is invalid or has expired. Request a new one from the login page.
+          </p>
+          <a
+            href="/auth/login"
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              color: 'var(--gold)',
+              textDecoration: 'none',
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: 14,
+            }}
+          >
+            Back to Login →
+          </a>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main
       className="sgf-auth-bg"

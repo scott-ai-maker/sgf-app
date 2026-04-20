@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
+import {
+  normalizeCoachFocusFilter,
+  normalizeCoachDashboardTab,
+  type CoachFocusFilter,
+  type CoachDashboardTab,
+} from '@/lib/validation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
 import CoachClientPipeline from '@/components/coach/CoachClientPipeline'
@@ -9,37 +15,6 @@ import SiteHeader from '@/components/ui/SiteHeader'
 export const dynamic = 'force-dynamic'
 
 type CoachPageSearchParams = Promise<{ focus?: string | string[] | undefined; tab?: string | string[] | undefined }>
-
-type FocusFilter =
-  | 'all'
-  | 'sessions-this-week'
-  | 'attendance-30d'
-  | 'no-show-30d'
-  | 'onboarding-complete'
-  | 'unread-messages'
-  | 'low-credits'
-  | 'inactive'
-  | 'no-upcoming'
-
-type CoachDashboardTab = 'overview' | 'roster' | 'intake' | 'pipeline'
-
-function normalizeFocusFilter(value: string | string[] | undefined): FocusFilter {
-  const rawValue = Array.isArray(value) ? value[0] : value
-
-  switch (rawValue) {
-    case 'sessions-this-week':
-    case 'attendance-30d':
-    case 'no-show-30d':
-    case 'onboarding-complete':
-    case 'unread-messages':
-    case 'low-credits':
-    case 'inactive':
-    case 'no-upcoming':
-      return rawValue
-    default:
-      return 'all'
-  }
-}
 
 function formatPercent(value: number | null) {
   if (value === null) return 'N/A'
@@ -56,20 +31,7 @@ function dedupeChips(chips: Array<{ label: string; tone: 'gold' | 'green' | 'gra
   })
 }
 
-function normalizeCoachDashboardTab(value: string | string[] | undefined): CoachDashboardTab {
-  const rawValue = Array.isArray(value) ? value[0] : value
-
-  switch (rawValue) {
-    case 'roster':
-    case 'intake':
-    case 'pipeline':
-      return rawValue
-    default:
-      return 'overview'
-  }
-}
-
-function buildCoachTabHref(tab: CoachDashboardTab, focus: FocusFilter) {
+function buildCoachTabHref(tab: CoachDashboardTab, focus: CoachFocusFilter) {
   const params = new URLSearchParams()
   if (tab !== 'overview') params.set('tab', tab)
   if (focus !== 'all') params.set('focus', focus)
@@ -98,7 +60,7 @@ function formatBodyfat(value: number | null | undefined) {
 
 export default async function CoachPage({ searchParams }: { searchParams: CoachPageSearchParams }) {
   const resolvedSearchParams = await searchParams
-  const selectedFocus = normalizeFocusFilter(resolvedSearchParams.focus)
+  const selectedFocus = normalizeCoachFocusFilter(resolvedSearchParams.focus)
   const activeTab = normalizeCoachDashboardTab(resolvedSearchParams.tab)
   const supabase = await createClient()
   const {
@@ -109,12 +71,19 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
 
   const admin = supabaseAdmin()
 
-  const { data: assignedClients } = await admin
+  // Pagination for assigned clients (improved: added limit to prevent N+1)
+  const PAGE_SIZE = 20
+  const pageParam = typeof (await searchParams).page === 'string' ? parseInt((await searchParams).page) : 1
+  const page = Math.max(1, pageParam)
+  const offset = (page - 1) * PAGE_SIZE
+
+  const { data: assignedClients, count: assignedCount } = await admin
     .from('clients')
-    .select('id, email, full_name, role, designated_coach_id')
+    .select('id, email, full_name, role, designated_coach_id', { count: 'exact' })
     .eq('designated_coach_id', user.id)
     .eq('role', 'client')
     .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1)
 
   const { data: unassignedClients } = await admin
     .from('clients')
@@ -122,6 +91,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
     .is('designated_coach_id', null)
     .eq('role', 'client')
     .order('created_at', { ascending: false })
+    .limit(10) // Limit unassigned clients shown
 
   const assignedClientIds = (assignedClients ?? []).map(client => client.id)
 
@@ -157,6 +127,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
         .in('client_id', assignedClientIds)
         .gte('scheduled_at', weekStart.toISOString())
         .lt('scheduled_at', weekEnd.toISOString())
+        .limit(1000) // Prevent unbounded query
     : { data: [] }
 
   const [
@@ -175,13 +146,15 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
           .select('id, client_id, scheduled_at, status')
           .in('client_id', assignedClientIds)
           .gte('scheduled_at', rolling30Start.toISOString())
-          .lt('scheduled_at', now.toISOString()),
+          .lt('scheduled_at', now.toISOString())
+          .limit(1000),
         admin
           .from('sessions')
           .select('id, client_id, scheduled_at, status')
           .in('client_id', assignedClientIds)
           .eq('status', 'scheduled')
-          .gte('scheduled_at', now.toISOString()),
+          .gte('scheduled_at', now.toISOString())
+          .limit(1000),
         admin
           .from('fitness_profiles')
           .select('user_id, onboarding_completed_at')
@@ -190,28 +163,33 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
           .from('workout_logs')
           .select('id, user_id, created_at')
           .in('user_id', assignedClientIds)
-          .gte('created_at', checkInWindowStart.toISOString()),
+          .gte('created_at', checkInWindowStart.toISOString())
+          .limit(1000),
         admin
           .from('coach_client_messages')
           .select('id, client_id, sender_id, read_at')
           .eq('coach_id', user.id)
           .in('client_id', assignedClientIds)
-          .is('read_at', null),
+          .is('read_at', null)
+          .limit(500),
         admin
           .from('workout_set_logs')
           .select('id, user_id, session_date, reps, weight_kg, rpe')
           .in('user_id', assignedClientIds)
-          .gte('session_date', checkInWindowStart.toISOString().slice(0, 10)),
+          .gte('session_date', checkInWindowStart.toISOString().slice(0, 10))
+          .limit(1000),
         admin
           .from('body_composition_analyses')
           .select('id, user_id, estimated_bodyfat_percent, created_at')
           .in('user_id', assignedClientIds)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(500),
         admin
           .from('workout_plans')
           .select('user_id, created_at, nasm_opt_phase, phase_name')
           .in('user_id', assignedClientIds)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(500),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }]
 

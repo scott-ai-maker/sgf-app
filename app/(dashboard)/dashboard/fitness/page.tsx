@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
+import { normalizeFitnessWorkspace, type FitnessWorkspace } from '@/lib/validation'
 import FitnessTrackerClient from '@/components/fitness/FitnessTrackerClient'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SiteHeader from '@/components/ui/SiteHeader'
@@ -10,15 +11,6 @@ import {
 } from '@/lib/fitness-photos'
 
 export const dynamic = 'force-dynamic'
-
-type FitnessWorkspace = 'train' | 'analyze' | 'checkin'
-
-function normalizeFitnessWorkspace(value: string | string[] | undefined): FitnessWorkspace {
-  const raw = Array.isArray(value) ? value[0] : value
-  if (raw === 'analyze') return 'analyze'
-  if (raw === 'checkin') return 'checkin'
-  return 'train'
-}
 
 interface FitnessTrackerPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
