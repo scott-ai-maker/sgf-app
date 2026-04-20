@@ -142,14 +142,21 @@ export default function AuthForm({ mode, redirectPath = '/dashboard' }: AuthForm
         return
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
+        console.error('Login error:', error.message)
         setError(formatAuthErrorMessage(error.message))
         setLoading(false)
         return
       }
+      console.log('Login successful, user:', data.user?.id)
+      
+      // Verify session is set before routing
+      const { data: sessionData } = await supabase.auth.getSession()
+      console.log('Session exists after login:', !!sessionData.session)
     }
 
+    console.log('Redirecting to:', redirectPath)
     router.push(redirectPath)
     router.refresh()
   }
