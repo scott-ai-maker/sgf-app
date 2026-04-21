@@ -10,6 +10,31 @@ interface CoachCommerceToolsProps {
 export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps) {
   const router = useRouter()
 
+  const [welcomeLoading, setWelcomeLoading] = useState(false)
+  const [welcomeError, setWelcomeError] = useState<string | null>(null)
+  const [welcomeSuccess, setWelcomeSuccess] = useState<string | null>(null)
+
+  async function handleSendWelcomeEmail() {
+    setWelcomeLoading(true)
+    setWelcomeError(null)
+    setWelcomeSuccess(null)
+
+    const res = await fetch(`/api/coach/clients/${clientId}/welcome-email`, {
+      method: 'POST',
+    })
+
+    const data = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      setWelcomeError(data?.error ?? 'Failed to send welcome email')
+      setWelcomeLoading(false)
+      return
+    }
+
+    setWelcomeSuccess(`Welcome email sent to ${data?.email ?? 'client'}.`)
+    setWelcomeLoading(false)
+  }
+
   const [grantSessions, setGrantSessions] = useState('1')
   const [grantNote, setGrantNote] = useState('')
   const [grantLoading, setGrantLoading] = useState(false)
@@ -303,6 +328,42 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
             New code: <strong>{generatedCode}</strong>
           </p>
         )}
+      </section>
+
+      <section
+        style={{
+          background: 'var(--navy-mid)',
+          border: '1px solid var(--navy-lt)',
+          padding: '18px 20px',
+        }}
+      >
+        <h3 style={sectionTitleStyle}>Welcome Email</h3>
+        <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--gray)', margin: '0 0 14px' }}>
+          Send or resend the welcome email with onboarding instructions to this client.
+        </p>
+
+        <button
+          onClick={handleSendWelcomeEmail}
+          disabled={welcomeLoading}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            border: '1px solid var(--gold)',
+            borderRadius: 2,
+            background: welcomeLoading ? 'var(--navy-lt)' : 'transparent',
+            color: 'var(--gold)',
+            fontFamily: 'Bebas Neue, sans-serif',
+            letterSpacing: '0.06em',
+            fontSize: 16,
+            minHeight: 44,
+            cursor: welcomeLoading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {welcomeLoading ? '...' : 'Send Welcome Email'}
+        </button>
+
+        {welcomeError && <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--error)', margin: '10px 0 0' }}>{welcomeError}</p>}
+        {welcomeSuccess && <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--success)', margin: '10px 0 0' }}>{welcomeSuccess}</p>}
       </section>
     </div>
   )
