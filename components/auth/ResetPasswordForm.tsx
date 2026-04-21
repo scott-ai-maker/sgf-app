@@ -116,12 +116,23 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
       return
     }
 
+    // Determine redirect path based on user's role
+    let redirectPath = nextPath
+    try {
+      const { data } = await supabase.auth.getUser()
+      if (data.user?.user_metadata?.surface_role === 'coach') {
+        redirectPath = nextPath.startsWith('/') ? nextPath : '/coach'
+      }
+    } catch {
+      // If role detection fails, use default path
+    }
+
     setSuccessMessage('✓ Password updated successfully. Redirecting...')
     setLoading(false)
     
     // Brief delay to show success message
     setTimeout(() => {
-      router.push(nextPath)
+      router.push(redirectPath)
       router.refresh()
     }, 1000)
   }
