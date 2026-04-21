@@ -176,6 +176,13 @@ function hasEmailConfig() {
   return Boolean(process.env.RESEND_API_KEY && process.env.MARKETING_FROM_EMAIL)
 }
 
+export function getMissingEmailConfigKeys() {
+  const missing: string[] = []
+  if (!process.env.RESEND_API_KEY) missing.push('RESEND_API_KEY')
+  if (!process.env.MARKETING_FROM_EMAIL) missing.push('MARKETING_FROM_EMAIL')
+  return missing
+}
+
 async function sendEmail(params: {
   to: string
   subject: string
