@@ -66,7 +66,10 @@ describe('coach assignment route', () => {
     expect(requireRoleMock).toHaveBeenCalledWith('coach', ['coach'])
     expect(assignClientToCoachMock).toHaveBeenCalledWith(expect.any(Object), 'client-1', 'coach-1')
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual({ client: { id: 'client-1', designated_coach_id: 'coach-1' } })
+    await expect(res.json()).resolves.toEqual({
+      client: { id: 'client-1', designated_coach_id: 'coach-1' },
+      welcomeEmail: null,
+    })
   })
 
   it('maps assignment conflicts to their status code', async () => {

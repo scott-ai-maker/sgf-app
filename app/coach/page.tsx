@@ -9,6 +9,7 @@ import {
 } from '@/lib/validation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import CoachClientAssignmentButton from '@/components/coach/CoachClientAssignmentButton'
+import CoachInviteLinkCard from '@/components/coach/CoachInviteLinkCard'
 import CoachClientPipeline from '@/components/coach/CoachClientPipeline'
 import SiteHeader from '@/components/ui/SiteHeader'
 
@@ -73,6 +74,8 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
 
   if (!user) redirect('/auth/login')
 
+  const coachInvitePath = `/auth/signup?coach=${encodeURIComponent(user.id)}`
+
   const admin = supabaseAdmin()
 
   // Pagination for assigned clients (improved: added limit to prevent N+1)
@@ -84,7 +87,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
   const page = Math.max(1, pageParam)
   const offset = (page - 1) * PAGE_SIZE
 
-  const { data: assignedClients, count: assignedCount } = await admin
+  const { data: assignedClients } = await admin
     .from('clients')
     .select('id, email, full_name, role, designated_coach_id', { count: 'exact' })
     .eq('designated_coach_id', user.id)
@@ -584,6 +587,8 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
         >
           COACH DASHBOARD
         </h1>
+
+        <CoachInviteLinkCard invitePath={coachInvitePath} />
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
           {[

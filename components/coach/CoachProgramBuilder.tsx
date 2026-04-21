@@ -103,11 +103,6 @@ interface PlanDiffSummary {
   totalChanges: number
 }
 
-type SearchMatchResult = {
-  matched: boolean
-  score: number
-}
-
 const EXERCISE_SEARCH_ALIASES: Record<string, string[]> = {
   squat: ['back squat', 'front squat', 'goblet squat', 'air squat'],
   deadlift: ['rdl', 'romanian deadlift', 'hinge', 'trap bar'],
@@ -346,15 +341,6 @@ function summarizePlanDiff(baselineDays: ReturnType<typeof toBuilderDay>[], curr
     changedExerciseDetails,
     totalChanges,
   }
-}
-
-function initialDaysFromPlan(plan: LatestWorkoutPlan | null) {
-  const workouts = plan?.plan_json?.workouts
-  if (!Array.isArray(workouts) || workouts.length === 0) {
-    return [toBuilderDay(undefined, 1)]
-  }
-
-  return workouts.map((workout, index) => toBuilderDay(workout, index + 1))
 }
 
 function formatExerciseDescriptionLines(description: string | null | undefined) {

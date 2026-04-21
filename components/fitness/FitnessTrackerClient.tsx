@@ -259,7 +259,7 @@ function parseSetTarget(value: string | null | undefined) {
 }
 
 export default function FitnessTrackerClient({ profile, latestPlan, logs, setLogs, latestAnalysis, cardioLogs = [], progressPhotos = [], initialWorkspace = 'train' }: FitnessTrackerClientProps) {
-  const [plan, setPlan] = useState<WorkoutPlanRecord | null>(latestPlan)
+  const [plan] = useState<WorkoutPlanRecord | null>(latestPlan)
   const [localWorkoutLogs, setLocalWorkoutLogs] = useState<WorkoutLogRecord[]>(logs)
   const [inlineSetDrafts, setInlineSetDrafts] = useState<Record<string, InlineSetDraft>>({})
   const [localSetLogs, setLocalSetLogs] = useState<WorkoutSetLogRecord[]>(setLogs)
@@ -271,7 +271,7 @@ export default function FitnessTrackerClient({ profile, latestPlan, logs, setLog
   const [activeRestTimerKey, setActiveRestTimerKey] = useState<string | null>(null)
   const [completeModal, setCompleteModal] = useState<WorkoutDay | null>(null)
   const [skipModal, setSkipModal] = useState<{ workoutDay: number; exercise: WorkoutExercise } | null>(null)
-  const [localCardioLogs, setLocalCardioLogs] = useState(cardioLogs)
+  const [localCardioLogs] = useState(cardioLogs)
   const [workspace, setWorkspace] = useState<FitnessWorkspace>(initialWorkspace)
   const initialUnits: 'metric' | 'imperial' = profile?.preferred_units === 'metric' ? 'metric' : 'imperial'
   const [units, setUnits] = useState<'metric' | 'imperial'>(initialUnits)

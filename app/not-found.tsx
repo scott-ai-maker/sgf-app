@@ -45,7 +45,7 @@ export default function NotFound() {
             lineHeight: '1.6',
           }}
         >
-          The page you're looking for doesn't exist or has been moved. Check the URL and try again.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved. Check the URL and try again.
         </p>
         <Link
           href="/"

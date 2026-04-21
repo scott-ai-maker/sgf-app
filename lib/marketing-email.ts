@@ -158,8 +158,6 @@ const sequenceTemplates = [
   },
 ] as const
 
-type TemplateKey = (typeof sequenceTemplates)[number]['key']
-
 function getBaseUrl() {
   return (
     process.env.MARKETING_BASE_URL ||

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { normalizeDashboardWorkspace, type DashboardWorkspace } from '@/lib/validation'
+import { normalizeDashboardWorkspace } from '@/lib/validation'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SuccessBanner from '@/components/dashboard/SuccessBanner'
 import SiteHeader from '@/components/ui/SiteHeader'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 
 interface ErrorProps {
   error: Error & { digest?: string }
@@ -45,10 +46,10 @@ export default function RootError({ error, reset }: ErrorProps) {
             lineHeight: '1.6',
           }}
         >
-          An unexpected error occurred. We're working to fix it. Try refreshing the page, or go back to{' '}
-          <a href="/" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+          An unexpected error occurred. We&apos;re working to fix it. Try refreshing the page, or go back to{' '}
+          <Link href="/" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
             home
-          </a>
+          </Link>
           .
         </p>
         <button

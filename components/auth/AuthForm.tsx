@@ -9,6 +9,8 @@ type Mode = 'login' | 'signup' | 'reset'
 interface AuthFormProps {
   mode: Mode
   redirectPath?: string
+  coachId?: string
+  coachName?: string
 }
 
 interface ValidationErrors {
@@ -93,7 +95,7 @@ const errorMessageStyle: React.CSSProperties = {
   margin: '4px 0 0 0',
 }
 
-export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard' }: AuthFormProps) {
+export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard', coachId, coachName }: AuthFormProps) {
   const router = useRouter()
   const resetCooldownMs = 30_000
   const [mode, setMode] = useState<Mode>(initialMode)
@@ -201,16 +203,28 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
     const supabase = createClient()
 
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
+      const callbackUrl = new URL('/auth/callback', window.location.origin)
+      callbackUrl.searchParams.set('next', redirectPath)
+      if (coachId) {
+        callbackUrl.searchParams.set('coach', coachId)
+      }
+
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl.toString(),
         },
       })
       if (error) {
         setError(formatAuthErrorMessage(error.message))
         setLoading(false)
+        return
+      }
+
+      if (data.session) {
+        router.push(callbackUrl.pathname + callbackUrl.search)
+        router.refresh()
         return
       }
     } else {
@@ -240,6 +254,9 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
 
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     callbackUrl.searchParams.set('next', redirectPath)
+    if (coachId) {
+      callbackUrl.searchParams.set('coach', coachId)
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -318,7 +335,8 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
             onChange={e => {
               setEmail(e.target.value)
               if (fieldErrors.email) {
-                const { email: _, ...rest } = fieldErrors
+                const rest = { ...fieldErrors }
+                delete rest.email
                 setFieldErrors(rest)
               }
             }}
@@ -355,7 +373,8 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
               onChange={e => {
                 setPassword(e.target.value)
                 if (fieldErrors.password) {
-                  const { password: _, ...rest } = fieldErrors
+                  const rest = { ...fieldErrors }
+                  delete rest.password
                   setFieldErrors(rest)
                 }
               }}
@@ -492,6 +511,20 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
 
       {mode !== 'reset' && (
         <>
+          {mode === 'signup' && coachId ? (
+            <p
+              style={{
+                fontFamily: 'Raleway, sans-serif',
+                fontSize: 12,
+                color: 'var(--gray)',
+                lineHeight: 1.5,
+                margin: '0 0 4px',
+              }}
+            >
+              This signup will be attached to {coachName ?? 'your coach'}.
+            </p>
+          ) : null}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1, height: 1, background: 'var(--navy-lt)' }} />
             <span style={{ fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--gray)' }}>or</span>

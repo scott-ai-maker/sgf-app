@@ -126,15 +126,6 @@ const PHASE_PRESCRIPTIONS: Record<number, PhasePrescription> = {
 }
 
 // ── MOVEMENT PATTERNS (NASM-based) ────────────────────────────
-const FUNDAMENTAL_MOVEMENT_PATTERNS = [
-  'squat',
-  'lunge',
-  'push',
-  'pull',
-  'rotation',
-  'gait', // includes carry, walk, etc.
-]
-
 // ── EXERCISE COMPLEXITY LEVELS ────────────────────────────────
 function getExperienceLevelAsNumber(level?: string): number {
   const normalized = String(level ?? '').toLowerCase()
@@ -533,6 +524,7 @@ export function determineWorkoutFocus(
   totalDaysPerWeek: number,
   phase: number
 ): string[] {
+  void phase
   const dayOfWeek = ((dayNumber - 1) % totalDaysPerWeek) + 1
 
   // Typical split recommendations from NASM OPT
@@ -597,7 +589,7 @@ export interface OptSectionPrescription {
 
 export const OPT_SECTION_PRESCRIPTIONS: Record<OptSection, (phase: number) => OptSectionPrescription> = {
   'warm-up': () => ({ sets: '1', reps: '5-10 min', tempo: 'slow', rest: '—' }),
-  'activation': (_phase) => ({ sets: '1-2', reps: '10-15', tempo: '2/2/2', rest: '30s' }),
+  'activation': () => ({ sets: '1-2', reps: '10-15', tempo: '2/2/2', rest: '30s' }),
   'skill-development': (phase) => ({
     sets: phase >= 4 ? '3-5' : '2-3',
     reps: phase >= 4 ? '3-5' : '8-10',
@@ -608,7 +600,7 @@ export const OPT_SECTION_PRESCRIPTIONS: Record<OptSection, (phase: number) => Op
     const p = PHASE_PRESCRIPTIONS[phase] || PHASE_PRESCRIPTIONS[1]
     return { sets: p.sets, reps: p.reps, tempo: p.tempo, rest: p.rest }
   },
-  'clients-choice': (_phase) => ({ sets: '2-3', reps: '10-15', tempo: '2/0/2', rest: '60s' }),
+  'clients-choice': () => ({ sets: '2-3', reps: '10-15', tempo: '2/0/2', rest: '60s' }),
   'cool-down': () => ({ sets: '1', reps: '30-60s hold', tempo: 'slow', rest: '—' }),
 }
 

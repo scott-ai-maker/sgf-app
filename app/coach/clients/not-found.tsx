@@ -30,7 +30,7 @@ export default function CoachNotFound() {
             lineHeight: 1.6,
           }}
         >
-          This client doesn't exist or you don't have access to their profile.
+          This client doesn&apos;t exist or you don&apos;t have access to their profile.
         </p>
         <Link
           href="/coach"

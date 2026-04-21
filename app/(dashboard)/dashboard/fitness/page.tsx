@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { normalizeFitnessWorkspace, type FitnessWorkspace } from '@/lib/validation'
+import { normalizeFitnessWorkspace } from '@/lib/validation'
 import FitnessTrackerClient from '@/components/fitness/FitnessTrackerClient'
 import LogoutButton from '@/components/auth/LogoutButton'
 import SiteHeader from '@/components/ui/SiteHeader'

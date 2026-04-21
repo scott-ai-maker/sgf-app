@@ -121,13 +121,13 @@ async function extractYoutubeDescription(page, videoUrl) {
         if (!containsInvalidYoutubeWarning(normalized)) {
           return normalized
         }
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
     
     return null
-  } catch (err) {
+  } catch {
     return null
   }
 }
@@ -211,7 +211,7 @@ async function enrichYouTubeVideos() {
       }
 
       enriched++
-    } catch (err) {
+    } catch {
       const fallback = formatExerciseDescription(buildFallbackSteps(exercise.name))
       if (!fallback) {
         failed++

@@ -5,11 +5,10 @@ import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRe
 import {
   selectOptWorkoutBlueprint,
   OPT_SECTION_PRESCRIPTIONS,
-  getPhasePrescription,
   type ClientProfile,
   type ExerciseRecord,
 } from '@/lib/nasm-opt-exercise-selection'
-import { generateIntelligentProgramming, generateIntelligentNotes } from '@/lib/openai-program-generation'
+import { generateIntelligentProgramming } from '@/lib/openai-program-generation'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
 
@@ -160,7 +159,10 @@ async function buildIntelligentTemplateWorkouts({
   exercises: ExerciseLibraryRecord[]
   sessionsPerWeek: number
   equipmentAccess: string[]
-  profile: any
+  profile: Partial<ClientProfile> & {
+    training_days_per_week?: number | null
+    equipment_access?: string[] | null
+  }
   nasmOptPhase: number
 }) {
   const normalizedEquipmentAccess = normalizeEquipmentAccess(equipmentAccess)
@@ -170,7 +172,6 @@ async function buildIntelligentTemplateWorkouts({
   // Convert to internal format for intelligent selection
   const exercisesForSelection = availableExercises.map(convertExerciseLibraryToInternalFormat)
 
-  const prescription = getPhasePrescription(nasmOptPhase)
   const templateWorkouts: CoachProgramWorkoutInput[] = Array.isArray(template.template_json?.workouts)
     && template.template_json.workouts.length > 0
     ? template.template_json.workouts.slice(0, Math.max(1, sessionsPerWeek))

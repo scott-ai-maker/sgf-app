@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
-import { CoachProgramPayload, CoachProgramTemplateRecord, CoachProgramWorkoutInput } from '@/lib/coach-programs'
+import { type CoachProgramWorkoutInput } from '@/lib/coach-programs'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface SaveTemplateRequest {
@@ -12,7 +12,7 @@ interface SaveTemplateRequest {
   workouts: CoachProgramWorkoutInput[]
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
 

@@ -21,7 +21,6 @@ function slugify(value) {
 
 const nasmExerciseUrlTemplate = String(process.env.NASM_EXERCISE_URL_TEMPLATE ?? '').trim()
 const NASM_EDGE_PLAYLIST_ID = 'PLeVb1RGNTvdfb_UAXU22VNxHQmE0jHvbE'
-const NASM_EDGE_PLAYLIST_FEED_URL = `https://www.youtube.com/feeds/videos.xml?playlist_id=${NASM_EDGE_PLAYLIST_ID}`
 
 function normalizeText(value) {
   return String(value ?? '').trim()
@@ -32,15 +31,6 @@ function parseList(value) {
     .split(',')
     .map(item => normalizeText(item))
     .filter(Boolean)
-}
-
-function decodeXml(value) {
-  return String(value ?? '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
 }
 
 function uniqueByLower(values) {
@@ -125,12 +115,6 @@ function parseCoachingCues(description) {
     .map(line => normalizeText(line))
     .filter(Boolean)
     .slice(0, 4)
-}
-
-function extractTag(entry, tagName) {
-  const pattern = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, 'i')
-  const match = entry.match(pattern)
-  return decodeXml(normalizeText(match?.[1]))
 }
 
 function normalizePlaylistTitle(title) {
@@ -335,7 +319,6 @@ async function fetchNasmEdgePlaylistEntries() {
   const playlistEntries = parsePlaylistEntriesFromItems(initialItems)
 
   const candidateTokens = [...collectContinuationTokens(initialData)]
-  let continuationToken = null
   let bootstrapEntries = []
   let nextTokenAfterBootstrap = null
 
@@ -343,7 +326,6 @@ async function fetchNasmEdgePlaylistEntries() {
     const probe = await fetchContinuationPage(token)
     if (probe.entries.length === 0) continue
 
-    continuationToken = token
     bootstrapEntries = probe.entries
     nextTokenAfterBootstrap = probe.nextToken
     break

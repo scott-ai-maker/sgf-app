@@ -31,7 +31,7 @@ function makeAdmin(
   pkg: unknown = null,
 ) {
   const updateObj = {
-    eq: (_: string, __: unknown) => ({
+    eq: () => ({
       select: () => ({
         single: async () => ({
           data: updateReturn,
@@ -189,7 +189,7 @@ describe('PATCH /api/coach/sessions/[id]', () => {
     const updated = { ...session }
     const adminMock = makeAdmin(session, updated, { sessions_remaining: 3 })
     const updateSpy = vi.fn()
-    // @ts-expect-error
+    // @ts-expect-error - mock chain override for client_packages update behavior
     adminMock.from = (table: string) => {
       const real = makeAdmin(session, updated, { sessions_remaining: 3 }).from(table)
       if (table === 'client_packages') {

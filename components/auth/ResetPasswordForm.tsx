@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 function formatAuthErrorMessage(rawMessage: string) {
   const msg = rawMessage.toLowerCase()
@@ -68,7 +69,23 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient()
-      const maxAttempts = 6
+
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      const tokenHash = params.get('token_hash')
+      const type = params.get('type')
+
+      // Recovery fallback: if callback cookie hydration lags, retry session establishment client-side.
+      if (tokenHash && type) {
+        await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as EmailOtpType,
+        })
+      } else if (code) {
+        await supabase.auth.exchangeCodeForSession(code)
+      }
+
+      const maxAttempts = 12
 
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const { data } = await supabase.auth.getUser()

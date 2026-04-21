@@ -121,7 +121,13 @@ export default function WeeklyCheckinForm({ preferredUnits = 'imperial' }: Weekl
     setLoaded(true)
   }, [thisWeek, preferredUnits])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void load()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [load])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()

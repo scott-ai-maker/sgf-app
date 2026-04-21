@@ -59,7 +59,7 @@ export default function RestTimer({ defaultSeconds = 90, onDone }: RestTimerProp
   }
 
   useEffect(() => {
-    if (running && remaining !== null) {
+    if (running) {
       intervalRef.current = setInterval(() => {
         setRemaining(prev => {
           if (prev === null || prev <= 1) {

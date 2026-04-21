@@ -10,7 +10,6 @@
 
 import type {
   ClientProfile,
-  ExerciseSelection,
   PhasePrescription,
 } from '@/lib/nasm-opt-exercise-selection'
 
@@ -254,7 +253,7 @@ function parseNASMProgrammingResponse(
   let progressionStrategy = ''
 
   // Try to extract summary (usually after "SUMMARY" or first paragraph)
-  let summaryMatch = cleanContent.match(/(?:summary|overview|strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|progression|exercise))[^\n]*)*)/i)
+  const summaryMatch = cleanContent.match(/(?:summary|overview|strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|progression|exercise))[^\n]*)*)/i)
   if (summaryMatch) {
     workoutSummary = summaryMatch[1].trim().substring(0, 400)
   } else {
@@ -263,13 +262,13 @@ function parseNASMProgrammingResponse(
   }
 
   // Extract safety
-  let safetyMatch = cleanContent.match(/(?:safety|safety considerations)[:\s]*([^\n]*(?:\n(?!(?:modification|progression|exercise))[^\n]*)*)/i)
+  const safetyMatch = cleanContent.match(/(?:safety|safety considerations)[:\s]*([^\n]*(?:\n(?!(?:modification|progression|exercise))[^\n]*)*)/i)
   if (safetyMatch) {
     safetyConsiderations = safetyMatch[1].trim().substring(0, 300)
   }
 
   // Extract progression
-  let progressionMatch = cleanContent.match(/(?:progression|progression strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|exercise))[^\n]*)*)/i)
+  const progressionMatch = cleanContent.match(/(?:progression|progression strategy)[:\s]*([^\n]*(?:\n(?!(?:modification|safety|exercise))[^\n]*)*)/i)
   if (progressionMatch) {
     progressionStrategy = progressionMatch[1].trim().substring(0, 200)
   }
