@@ -30,23 +30,28 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = supabaseAdmin()
-  const redirectTo = `${getBaseUrl(req)}/auth/callback?next=/auth/reset-password`
+  const baseUrl = getBaseUrl(req)
 
   try {
-    const { data, error } = await admin.auth.admin.generateLink({
+    const { data: linkData, error } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email,
-      options: { redirectTo },
+      options: {
+        redirectTo: `${baseUrl}/auth/reset-password`,
+      },
     })
 
     // Keep response generic regardless of existence or auth provider state.
-    if (error || !data?.properties?.action_link) {
+    if (error || !linkData?.properties?.action_link) {
       return NextResponse.json({ success: true })
     }
 
+    // Use Supabase's action_link directly—it properly encodes and exchanges the recovery token
+    const resetLink = linkData.properties.action_link
+
     const result = await sendPasswordResetEmail({
       email,
-      resetLink: data.properties.action_link,
+      resetLink,
     })
 
     if (result.skipped) {
