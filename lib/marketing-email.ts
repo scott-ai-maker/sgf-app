@@ -194,6 +194,7 @@ async function sendEmail(params: {
   html: string
   text: string
   replyTo?: string
+  disableTracking?: boolean
 }) {
   if (!hasEmailConfig()) return { skipped: true as const }
 
@@ -205,6 +206,7 @@ async function sendEmail(params: {
     html: params.html,
     text: params.text,
     replyTo: params.replyTo || process.env.MARKETING_REPLY_TO_EMAIL || undefined,
+    ...(params.disableTracking && { track: { links: false } }),
   })
 
   if (error) throw error
@@ -282,6 +284,7 @@ export async function sendPasswordResetEmail(input: PasswordResetInput) {
       'This link expires in 24 hours.',
       'If you did not request this, you can ignore this email.',
     ].join('\n'),
+    disableTracking: true,
   })
 }
 
