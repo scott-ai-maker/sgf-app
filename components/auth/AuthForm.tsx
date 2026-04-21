@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
@@ -95,6 +95,7 @@ const errorMessageStyle: React.CSSProperties = {
 
 export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard' }: AuthFormProps) {
   const router = useRouter()
+  const resetCooldownMs = 30_000
   const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -102,6 +103,23 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({})
   const [resetEmailSent, setResetEmailSent] = useState(false)
+  const [resetCooldownEndsAt, setResetCooldownEndsAt] = useState<number | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!resetCooldownEndsAt) return
+
+    const interval = setInterval(() => {
+      setNowMs(Date.now())
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [resetCooldownEndsAt])
+
+  const resetCooldownSeconds = resetCooldownEndsAt
+    ? Math.max(0, Math.ceil((resetCooldownEndsAt - nowMs) / 1000))
+    : 0
+  const isResetCooldownActive = mode === 'reset' && resetCooldownSeconds > 0
 
   function validateForm(): boolean {
     const newErrors: ValidationErrors = {}
@@ -120,6 +138,10 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
 
   async function handleResetRequest(e: React.FormEvent) {
     e.preventDefault()
+
+    if (isResetCooldownActive) {
+      return
+    }
     
     const emailError = validateEmail(email)
     if (emailError) {
@@ -155,6 +177,8 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
     }
 
     setResetEmailSent(true)
+    setResetCooldownEndsAt(Date.now() + resetCooldownMs)
+    setNowMs(Date.now())
     setLoading(false)
   }
 
@@ -408,22 +432,36 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
 
         <button
           type="submit"
-          disabled={loading || Object.keys(fieldErrors).length > 0}
+          disabled={loading || Object.keys(fieldErrors).length > 0 || isResetCooldownActive}
           style={{
             padding: '13px',
-            background: loading || Object.keys(fieldErrors).length > 0 ? 'var(--navy-lt)' : 'var(--gold)',
-            color: loading || Object.keys(fieldErrors).length > 0 ? 'var(--gray)' : '#0D1B2A',
+            background: loading || Object.keys(fieldErrors).length > 0 || isResetCooldownActive ? 'var(--navy-lt)' : 'var(--gold)',
+            color: loading || Object.keys(fieldErrors).length > 0 || isResetCooldownActive ? 'var(--gray)' : '#0D1B2A',
             border: 'none',
             borderRadius: 2,
             fontFamily: 'Bebas Neue, sans-serif',
             fontSize: 18,
             letterSpacing: '0.06em',
-            cursor: loading || Object.keys(fieldErrors).length > 0 ? 'not-allowed' : 'pointer',
+            cursor: loading || Object.keys(fieldErrors).length > 0 || isResetCooldownActive ? 'not-allowed' : 'pointer',
             transition: 'background 0.15s',
           }}
         >
-          {loading ? '...' : mode === 'login' ? 'Sign In' : mode === 'reset' ? 'Send Reset Link' : 'Create Account'}
+          {loading
+            ? '...'
+            : mode === 'login'
+              ? 'Sign In'
+              : mode === 'reset'
+                ? isResetCooldownActive
+                  ? `Resend in ${resetCooldownSeconds}s`
+                  : 'Send Reset Link'
+                : 'Create Account'}
         </button>
+
+        {mode === 'reset' && isResetCooldownActive && (
+          <p style={{ ...errorMessageStyle, color: 'var(--gray)', marginTop: 2 }}>
+            Please wait before requesting another reset email.
+          </p>
+        )}
       </form>
 
       {mode === 'reset' && (
