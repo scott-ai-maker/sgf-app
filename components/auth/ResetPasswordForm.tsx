@@ -68,16 +68,8 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient()
-
-      // Admin-generated recovery links redirect with ?code=... but no PKCE verifier in
-      // storage, so detectSessionInUrl skips them (it checks for a stored verifier first).
-      // Exchange the code manually here; the implicit-flow client skips the verifier check.
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (code) {
-        await supabase.auth.exchangeCodeForSession(code)
-      }
-
       const maxAttempts = 6
+
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const { data } = await supabase.auth.getUser()
 

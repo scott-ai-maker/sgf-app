@@ -42,12 +42,15 @@ export async function POST(req: NextRequest) {
     })
 
     // Keep response generic regardless of existence or auth provider state.
-    if (error || !linkData?.properties?.action_link) {
+    if (error || !linkData?.properties?.hashed_token) {
       return NextResponse.json({ success: true })
     }
 
-    // Use Supabase's action_link directly—it properly encodes and exchanges the recovery token
-    const resetLink = linkData.properties.action_link
+    // Build a server-side callback URL using the hashed_token instead of Supabase's action_link.
+    // action_link redirects through Supabase's servers and produces a PKCE code that requires a
+    // code verifier in browser storage — verifier that never exists for admin-generated links.
+    // token_hash goes directly to our callback which uses server-side verifyOtp (no PKCE needed).
+    const resetLink = `${baseUrl}/auth/callback?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery&next=/auth/reset-password`
 
     const result = await sendPasswordResetEmail({
       email,
