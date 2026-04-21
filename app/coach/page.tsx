@@ -74,6 +74,17 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
 
   if (!user) redirect('/auth/login')
 
+  const roleCheck = await supabaseAdmin()
+    .from('clients')
+    .select('role')
+    .eq('id', user.id)
+    .eq('role', 'coach')
+    .maybeSingle()
+
+  if (!roleCheck.data) {
+    redirect('/dashboard')
+  }
+
   const coachInvitePath = `/auth/signup?coach=${encodeURIComponent(user.id)}`
 
   const admin = supabaseAdmin()
