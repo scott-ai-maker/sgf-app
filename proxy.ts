@@ -54,6 +54,26 @@ export async function proxy(request: NextRequest) {
       url.searchParams.set('next', pathname)
       return NextResponse.redirect(url)
     }
+
+    const { data: profile } = await supabase
+      .from('clients')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const role = profile?.role === 'coach' ? 'coach' : 'client'
+
+    if (pathname.startsWith('/dashboard') && role === 'coach') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/coach'
+      return NextResponse.redirect(url)
+    }
+
+    if (pathname.startsWith('/coach') && role !== 'coach') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
