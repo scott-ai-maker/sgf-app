@@ -20,11 +20,8 @@ export async function GET(request: NextRequest) {
   const next = nextParam.startsWith('/') ? nextParam : '/dashboard'
 
   const redirectUrl = new URL(next, origin)
-  if (tokenHash && type === 'recovery' && redirectUrl.pathname === '/auth/reset-password') {
-    // Keep token params on the reset page URL as a fallback if callback session hydration lags/fails.
-    redirectUrl.searchParams.set('token_hash', tokenHash)
-    redirectUrl.searchParams.set('type', type)
-  }
+  const isRecoveryResetRedirect = Boolean(tokenHash && type === 'recovery' && redirectUrl.pathname === '/auth/reset-password')
+  let keepRecoveryTokenOnRedirect = false
 
   // Create the redirect response first so we can write session cookies directly onto it.
   // cookies() from next/headers does NOT merge into NextResponse objects returned from
@@ -51,10 +48,20 @@ export async function GET(request: NextRequest) {
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
   } else if (tokenHash && type) {
-    await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as EmailOtpType,
     })
+
+    // Only preserve token params for client-side retry when server-side verification fails.
+    if (error && isRecoveryResetRedirect) {
+      keepRecoveryTokenOnRedirect = true
+    }
+  }
+
+  if (keepRecoveryTokenOnRedirect && tokenHash && type) {
+    redirectUrl.searchParams.set('token_hash', tokenHash)
+    redirectUrl.searchParams.set('type', type)
   }
 
   const {

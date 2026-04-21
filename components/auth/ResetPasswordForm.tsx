@@ -70,6 +70,15 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
     const checkSession = async () => {
       const supabase = createClient()
 
+      // If a valid session already exists (e.g., callback verifyOtp succeeded),
+      // do not retry OTP exchange with a possibly already-consumed token.
+      const { data: existingSessionData } = await supabase.auth.getSession()
+      if (existingSessionData.session) {
+        setIsSessionValid(true)
+        setIsChecking(false)
+        return
+      }
+
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
       const tokenHash = params.get('token_hash')
