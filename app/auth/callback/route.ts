@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
 import { supabaseAdmin } from '@/lib/supabase'
 import type { EmailOtpType } from '@supabase/supabase-js'
 
@@ -11,7 +11,27 @@ export async function GET(request: NextRequest) {
   const nextParam = searchParams.get('next') ?? '/dashboard'
   const next = nextParam.startsWith('/') ? nextParam : '/dashboard'
 
-  const supabase = await createClient()
+  // Create the redirect response first so we can write session cookies directly onto it.
+  // cookies() from next/headers does NOT merge into NextResponse objects returned from
+  // Route Handlers, so any session set via that path would be silently dropped.
+  const response = NextResponse.redirect(`${origin}${next}`)
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
@@ -41,5 +61,5 @@ export async function GET(request: NextRequest) {
       )
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  return response
 }
