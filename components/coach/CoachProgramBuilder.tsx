@@ -826,7 +826,9 @@ export default function CoachProgramBuilder({ clientId, latestPlan, templates, c
   }, [contraindicationNotes])
 
   const normalizedEquipmentAccess = useMemo(() => {
-    return initialEquipmentAccess.map(item => String(item ?? '').trim()).filter(Boolean)
+    return initialEquipmentAccess
+      .map(item => String(item ?? '').trim())
+      .filter(item => Boolean(item) && item.toLowerCase() !== 'none')
   }, [initialEquipmentAccess])
 
   const currentPhaseNumber = useMemo(() => {
