@@ -66,11 +66,18 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    // Check if user has a valid session (either from reset link or already logged in)
     const checkSession = async () => {
       const supabase = createClient()
-      const maxAttempts = 6
 
+      // Admin-generated recovery links redirect with ?code=... but no PKCE verifier in
+      // storage, so detectSessionInUrl skips them (it checks for a stored verifier first).
+      // Exchange the code manually here; the implicit-flow client skips the verifier check.
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code)
+      }
+
+      const maxAttempts = 6
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const { data } = await supabase.auth.getUser()
 
@@ -80,15 +87,12 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
           return
         }
 
-        // Give Supabase a short window to finalize recovery-session cookies.
         await new Promise(resolve => setTimeout(resolve, 300))
       }
 
-      // If no valid session and not forced, show guidance.
       if (!forceChange) {
         setError('No valid session. Please request a password reset from the login page.')
       }
-
       setIsChecking(false)
     }
 
