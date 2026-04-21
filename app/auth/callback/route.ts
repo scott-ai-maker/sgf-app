@@ -71,6 +71,14 @@ export async function GET(request: NextRequest) {
   if (user) {
     const admin = supabaseAdmin()
     const displayName = (user.user_metadata?.full_name || user.user_metadata?.name || '').toString().trim() || null
+    const { data: existingProfile } = await admin
+      .from('clients')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const role = existingProfile?.role === 'coach' ? 'coach' : 'client'
+
     await admin
       .from('clients')
       .upsert(
@@ -78,7 +86,7 @@ export async function GET(request: NextRequest) {
           id: user.id,
           email: user.email ?? '',
           full_name: displayName,
-          role: 'client',
+          role,
         },
         { onConflict: 'id' }
       )
