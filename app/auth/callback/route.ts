@@ -73,23 +73,33 @@ export async function GET(request: NextRequest) {
     const displayName = (user.user_metadata?.full_name || user.user_metadata?.name || '').toString().trim() || null
     const { data: existingProfile } = await admin
       .from('clients')
-      .select('role')
+      .select('id')
       .eq('id', user.id)
       .maybeSingle()
 
-    const role = existingProfile?.role === 'coach' ? 'coach' : 'client'
-
-    await admin
-      .from('clients')
-      .upsert(
-        {
-          id: user.id,
+    if (existingProfile) {
+      // Never change role here; only refresh profile fields for existing accounts.
+      await admin
+        .from('clients')
+        .update({
           email: user.email ?? '',
           full_name: displayName,
-          role,
-        },
-        { onConflict: 'id' }
-      )
+        })
+        .eq('id', user.id)
+    } else {
+      // Create first-time profiles as clients without mutating pre-existing rows.
+      await admin
+        .from('clients')
+        .upsert(
+          {
+            id: user.id,
+            email: user.email ?? '',
+            full_name: displayName,
+            role: 'client',
+          },
+          { onConflict: 'id', ignoreDuplicates: true }
+        )
+    }
 
     if (requestedCoachId) {
       const { data: coach } = await admin
