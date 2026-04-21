@@ -37,7 +37,8 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
       const fallback = raw && !data?.error
         ? `Request failed (${res.status}): ${raw.slice(0, 200)}`
         : `Failed to send welcome email (${res.status})`
-      setWelcomeError(data?.error ?? fallback)
+      const apiError = typeof data?.error === 'string' ? data.error : null
+      setWelcomeError(apiError ?? fallback)
       setWelcomeLoading(false)
       return
     }
