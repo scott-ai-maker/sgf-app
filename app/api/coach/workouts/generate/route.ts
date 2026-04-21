@@ -5,6 +5,7 @@ import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRe
 import {
   selectOptWorkoutBlueprint,
   OPT_SECTION_PRESCRIPTIONS,
+  getPhasePrescription,
   type ClientProfile,
   type ExerciseRecord,
 } from '@/lib/nasm-opt-exercise-selection'
@@ -160,6 +161,11 @@ async function buildIntelligentTemplateWorkouts({
   sessionsPerWeek: number
   equipmentAccess: string[]
   profile: Partial<ClientProfile> & {
+    sexe?: string | null
+    experience_level?: string | null
+    activity_level?: string | null
+    fitness_goal?: string | null
+    injuries_limitations?: string | null
     training_days_per_week?: number | null
     equipment_access?: string[] | null
   }
@@ -186,11 +192,11 @@ async function buildIntelligentTemplateWorkouts({
   // Build client profile for intelligent selection
   const clientProfile: ClientProfile = {
     age: Number(profile.age) || 30,
-    sexe: profile.sex,
-    experienceLevel: profile.experience_level,
-    activityLevel: profile.activity_level,
-    fitnessGoal: profile.fitness_goal,
-    injuries_limitations: profile.injuries_limitations,
+    sexe: profile.sexe ?? undefined,
+    experienceLevel: profile.experience_level ?? undefined,
+    activityLevel: profile.activity_level ?? undefined,
+    fitnessGoal: profile.fitness_goal ?? undefined,
+    injuries_limitations: profile.injuries_limitations ?? undefined,
     equipmentAccess: normalizedEquipmentAccess,
   }
 
