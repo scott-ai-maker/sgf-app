@@ -65,7 +65,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             marginBottom: 32,
           }}
         >
-          {forceChange ? 'Password update required' : 'Reset your password'}
+          {forceChange ? 'Update your password to continue' : 'Set a new password'}
         </p>
         <div
           style={{

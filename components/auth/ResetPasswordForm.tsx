@@ -11,6 +11,10 @@ function formatAuthErrorMessage(rawMessage: string) {
     return 'Email rate limit reached. Please wait a minute and try again.'
   }
 
+  if (msg.includes('invalid') || msg.includes('expired')) {
+    return 'This password reset link is invalid or has expired. Please request a new one.'
+  }
+
   return rawMessage
 }
 
@@ -28,6 +32,17 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontFamily: 'Raleway, sans-serif',
+  fontWeight: 600,
+  fontSize: 12,
+  color: 'var(--gray)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  marginBottom: 6,
+}
+
 interface ResetPasswordFormProps {
   forceChange?: boolean
   nextPath?: string
@@ -42,43 +57,33 @@ function validatePassword(password: string): string | undefined {
 
 export default function ResetPasswordForm({ forceChange = false, nextPath = '/dashboard' }: ResetPasswordFormProps) {
   const router = useRouter()
-  const [email, setEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [canChangePassword, setCanChangePassword] = useState(forceChange)
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isSessionValid, setIsSessionValid] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    if (forceChange) return
-
-    const supabase = createClient()
-    void supabase.auth.getUser().then(({ data }) => {
+    // Check if user has a valid session (either from reset link or already logged in)
+    const checkSession = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      
       if (data.user) {
-        setCanChangePassword(true)
+        setIsSessionValid(true)
+      } else {
+        // If no valid session and not forced, redirect to login
+        if (!forceChange) {
+          setError('No valid session. Please request a password reset from the login page.')
+        }
       }
-    })
-  }, [forceChange])
-
-  async function handleRequestResetSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
-    })
-
-    if (error) {
-      setError(formatAuthErrorMessage(error.message))
-    } else {
-      setSent(true)
+      setIsChecking(false)
     }
-    setLoading(false)
-  }
+
+    void checkSession()
+  }, [forceChange])
 
   async function handleChangePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -111,25 +116,45 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
       return
     }
 
-    setSuccessMessage('Password updated successfully. Redirecting...')
+    setSuccessMessage('✓ Password updated successfully. Redirecting...')
     setLoading(false)
-    router.push(nextPath)
-    router.refresh()
+    
+    // Brief delay to show success message
+    setTimeout(() => {
+      router.push(nextPath)
+      router.refresh()
+    }, 1000)
   }
 
-  if (sent) {
+  if (isChecking) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, textAlign: 'center' }}>
+      <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <p
           style={{
             fontFamily: 'Raleway, sans-serif',
-            fontSize: 15,
-            color: 'var(--success)',
-            lineHeight: 1.6,
+            fontSize: 14,
+            color: 'var(--gray)',
             margin: 0,
           }}
         >
-          Check your email — we sent a reset link to <strong>{email}</strong>.
+          Verifying your session...
+        </p>
+      </div>
+    )
+  }
+
+  if (!isSessionValid && !forceChange) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center' }}>
+        <p
+          style={{
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 13,
+            color: 'var(--error, #ff6b6b)',
+            margin: 0,
+          }}
+        >
+          {error}
         </p>
         <a
           href="/auth/login"
@@ -138,82 +163,20 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
             fontSize: 13,
             color: 'var(--gold)',
             textDecoration: 'none',
+            display: 'inline-block',
+            padding: '8px 16px',
+            border: '1px solid var(--navy-lt)',
+            borderRadius: 2,
           }}
         >
-          Back to Sign In
+          Go to Login
         </a>
       </div>
     )
   }
 
-  if (canChangePassword) {
-    return (
-      <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p
-          style={{
-            fontFamily: 'Raleway, sans-serif',
-            fontSize: 14,
-            color: 'var(--gray)',
-            margin: 0,
-            lineHeight: 1.6,
-          }}
-        >
-          Set a new password to continue.
-        </p>
-
-        <input
-          type="password"
-          value={newPassword}
-          onChange={e => setNewPassword(e.target.value)}
-          required
-          style={inputStyle}
-          placeholder="New password"
-        />
-
-        <input
-          type="password"
-          value={confirmPassword}
-          onChange={e => setConfirmPassword(e.target.value)}
-          required
-          style={inputStyle}
-          placeholder="Confirm new password"
-        />
-
-        {error && (
-          <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--error)', margin: 0 }}>
-            {error}
-          </p>
-        )}
-
-        {successMessage && (
-          <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--success)', margin: 0 }}>
-            {successMessage}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: '13px',
-            background: loading ? 'var(--navy-lt)' : 'var(--gold)',
-            color: loading ? 'var(--gray)' : '#0D1B2A',
-            border: 'none',
-            borderRadius: 2,
-            fontFamily: 'Bebas Neue, sans-serif',
-            fontSize: 18,
-            letterSpacing: '0.06em',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? '...' : 'Update Password'}
-        </button>
-      </form>
-    )
-  }
-
   return (
-    <form onSubmit={handleRequestResetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <p
         style={{
           fontFamily: 'Raleway, sans-serif',
@@ -223,40 +186,118 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
           lineHeight: 1.6,
         }}
       >
-        Enter your email and we&apos;ll send you a link to reset your password.
+        {forceChange
+          ? 'Update your password to continue accessing your account.'
+          : 'Enter your new password below. Make sure it\'s secure and different from your previous password.'}
       </p>
 
-      <input
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        required
-        style={inputStyle}
-        placeholder="you@example.com"
-      />
+      <div>
+        <label htmlFor="new-password" style={labelStyle}>
+          New Password
+        </label>
+        <input
+          id="new-password"
+          type="password"
+          value={newPassword}
+          onChange={e => setNewPassword(e.target.value)}
+          required
+          style={inputStyle}
+          placeholder="••••••••"
+          autoComplete="new-password"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="confirm-password" style={labelStyle}>
+          Confirm Password
+        </label>
+        <input
+          id="confirm-password"
+          type="password"
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+          required
+          style={inputStyle}
+          placeholder="••••••••"
+          autoComplete="new-password"
+        />
+      </div>
+
+      {newPassword && (
+        <ul
+          style={{
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 12,
+            color: 'var(--gray)',
+            margin: '8px 0',
+            paddingLeft: 20,
+            listStyle: 'none',
+          }}
+        >
+          <li style={{ marginBottom: 4 }}>
+            {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
+          </li>
+          <li style={{ marginBottom: 4 }}>
+            {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter
+          </li>
+          <li>
+            {/[0-9]/.test(newPassword) ? '✓' : '○'} One number
+          </li>
+        </ul>
+      )}
 
       {error && (
-        <p style={{ fontFamily: 'Raleway, sans-serif', fontSize: 13, color: 'var(--error)', margin: 0 }}>
+        <p
+          style={{
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 13,
+            color: 'var(--error, #ff6b6b)',
+            margin: 0,
+            padding: '8px 12px',
+            background: 'rgba(255, 107, 107, 0.1)',
+            borderRadius: 2,
+            border: '1px solid var(--error, #ff6b6b)',
+          }}
+        >
           {error}
+        </p>
+      )}
+
+      {successMessage && (
+        <p
+          style={{
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 13,
+            color: 'var(--success, #2ecc71)',
+            margin: 0,
+            padding: '8px 12px',
+            background: 'rgba(46, 204, 113, 0.1)',
+            borderRadius: 2,
+            border: '1px solid var(--success, #2ecc71)',
+          }}
+        >
+          {successMessage}
         </p>
       )}
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !newPassword || !confirmPassword}
         style={{
           padding: '13px',
-          background: loading ? 'var(--navy-lt)' : 'var(--gold)',
-          color: loading ? 'var(--gray)' : '#0D1B2A',
+          background:
+            loading || !newPassword || !confirmPassword ? 'var(--navy-lt)' : 'var(--gold)',
+          color: loading || !newPassword || !confirmPassword ? 'var(--gray)' : '#0D1B2A',
           border: 'none',
           borderRadius: 2,
           fontFamily: 'Bebas Neue, sans-serif',
           fontSize: 18,
           letterSpacing: '0.06em',
-          cursor: loading ? 'not-allowed' : 'pointer',
+          cursor: loading || !newPassword || !confirmPassword ? 'not-allowed' : 'pointer',
+          transition: 'background 0.15s',
         }}
       >
-        {loading ? '...' : 'Send Reset Link'}
+        {loading ? '...' : 'Update Password'}
       </button>
 
       <a
