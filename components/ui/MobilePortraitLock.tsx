@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from 'react'
 
+type PortableOrientationLock =
+  | 'any'
+  | 'natural'
+  | 'landscape'
+  | 'portrait'
+  | 'portrait-primary'
+  | 'portrait-secondary'
+  | 'landscape-primary'
+  | 'landscape-secondary'
+
 function canAttemptPortraitLock() {
   return typeof window !== 'undefined' && typeof screen !== 'undefined' && 'orientation' in screen
 }
@@ -30,7 +40,7 @@ export default function MobilePortraitLock() {
 
       try {
         const orientationApi = screen.orientation as ScreenOrientation & {
-          lock?: (orientation: OrientationLockType) => Promise<void>
+          lock?: (orientation: PortableOrientationLock) => Promise<void>
         }
 
         if (typeof orientationApi.lock === 'function') {
