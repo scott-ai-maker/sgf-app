@@ -23,10 +23,21 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
       method: 'POST',
     })
 
-    const data = await res.json().catch(() => null)
+    const raw = await res.text()
+    let data: Record<string, unknown> | null = null
+    if (raw) {
+      try {
+        data = JSON.parse(raw) as Record<string, unknown>
+      } catch {
+        data = null
+      }
+    }
 
     if (!res.ok) {
-      setWelcomeError(data?.error ?? 'Failed to send welcome email')
+      const fallback = raw && !data?.error
+        ? `Request failed (${res.status}): ${raw.slice(0, 200)}`
+        : `Failed to send welcome email (${res.status})`
+      setWelcomeError(data?.error ?? fallback)
       setWelcomeLoading(false)
       return
     }

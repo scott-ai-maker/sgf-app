@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWelcomeEmail } from '@/lib/marketing-email'
+import { getMissingEmailConfigKeys, sendWelcomeEmail } from '@/lib/marketing-email'
+
+function extractErrorMessage(err: unknown) {
+  if (typeof err === 'string' && err.trim()) return err
+  if (err instanceof Error && err.message) return err.message
+
+  if (typeof err === 'object' && err !== null) {
+    const asRecord = err as Record<string, unknown>
+
+    if (typeof asRecord.message === 'string' && asRecord.message.trim()) {
+      return asRecord.message
+    }
+
+    const nestedError = asRecord.error
+    if (typeof nestedError === 'object' && nestedError !== null) {
+      const nestedRecord = nestedError as Record<string, unknown>
+      if (typeof nestedRecord.message === 'string' && nestedRecord.message.trim()) {
+        return nestedRecord.message
+      }
+    }
+  }
+
+  return 'Failed to send email'
+}
 
 export async function POST(
   _req: NextRequest,
@@ -39,8 +62,12 @@ export async function POST(
     })
 
     if (result.skipped) {
+      const missing = getMissingEmailConfigKeys()
       return NextResponse.json(
-        { error: 'Email service is not configured on this environment (missing Resend settings).' },
+        {
+          error: `Email service is not configured on this environment. Missing: ${missing.join(', ') || 'unknown settings'}.`,
+          missing,
+        },
         { status: 503 }
       )
     }
@@ -53,7 +80,13 @@ export async function POST(
 
     return NextResponse.json({ success: true, email: client.email, providerMessageId: result.id })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to send email'
+    const message = extractErrorMessage(err)
+    console.error('Welcome email send failed', {
+      clientId: client.id,
+      email: client.email,
+      error: err,
+      message,
+    })
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
