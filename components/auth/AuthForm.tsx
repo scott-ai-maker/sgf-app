@@ -121,8 +121,9 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
   async function handleResetRequest(e: React.FormEvent) {
     e.preventDefault()
     
-    if (!validateEmail(email)) {
-      setFieldErrors({ email: validateEmail(email)! })
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setFieldErrors({ email: emailError })
       return
     }
 
