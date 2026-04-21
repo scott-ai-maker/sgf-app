@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline | Scott Gordon Fitness</title>
+    <style>
+      :root {
+        --navy: #0d1b2a;
+        --navy-mid: #122336;
+        --gold: #d4a017;
+        --white: #f5f0e8;
+        --gray: #8a99aa;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 80% 10%, rgba(212, 160, 23, 0.16), transparent 40%), var(--navy);
+        color: var(--white);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        padding: 24px;
+      }
+      .card {
+        width: min(520px, 100%);
+        border: 1px solid #1c3450;
+        background: var(--navy-mid);
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+        letter-spacing: 0.03em;
+      }
+      p {
+        margin: 0 0 14px;
+        color: var(--gray);
+        line-height: 1.4;
+      }
+      button {
+        border: none;
+        background: var(--gold);
+        color: #0d1b2a;
+        font-weight: 700;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>You are offline</h1>
+      <p>
+        Scott Gordon Fitness cannot reach the internet right now. Reconnect to continue logging workouts,
+        messaging, and syncing progress.
+      </p>
+      <button onclick="window.location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

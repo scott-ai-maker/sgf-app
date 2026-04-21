@@ -7,7 +7,7 @@ import {
   releaseClientFromCoach,
 } from '@/lib/coach-assignments'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendWelcomeEmail } from '@/lib/marketing-email'
+import { getMissingEmailConfigKeys, sendWelcomeEmail } from '@/lib/marketing-email'
 
 export async function PATCH(
   _req: NextRequest,
@@ -47,10 +47,11 @@ export async function PATCH(
         })
 
         if (result.skipped) {
+          const missing = getMissingEmailConfigKeys()
           welcomeEmail = {
             sent: false,
             skipped: true,
-            error: 'Email service is not configured on this environment.',
+            error: `Email service is not configured on this environment. Missing: ${missing.join(', ') || 'unknown settings'}.`,
           }
         } else {
           welcomeEmail = {

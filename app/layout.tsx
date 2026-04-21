@@ -1,14 +1,26 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import MobilePortraitLock from '@/components/ui/MobilePortraitLock'
+import ServiceWorkerRegistrar from '@/components/ui/ServiceWorkerRegistrar'
 
 export const metadata: Metadata = {
   title: 'Scott Gordon Fitness',
   description: 'Online personal coaching — personalized programming, real accountability, measurable results.',
   metadataBase: new URL('https://scottgordonfitness.com'),
+  applicationName: 'Scott Gordon Fitness',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/images/logo-mark-source.jpg',
     shortcut: '/images/logo-mark-source.jpg',
     apple: '/images/logo-mark-source.jpg',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'SGF',
+  },
+  formatDetection: {
+    telephone: false,
   },
   openGraph: {
     title: 'Scott Gordon Fitness',
@@ -28,10 +40,19 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#0D1B2A',
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <MobilePortraitLock />
+        <ServiceWorkerRegistrar />
+        {children}
+      </body>
     </html>
   )
 }

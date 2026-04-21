@@ -12,6 +12,51 @@ export default function RestTimer({ defaultSeconds = 90, onDone }: RestTimerProp
   const [remaining, setRemaining] = useState<number | null>(null)
   const [running, setRunning] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+
+  async function playDoneSound() {
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AudioContextClass) return
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass()
+      }
+
+      const ctx = audioContextRef.current
+      if (ctx.state === 'suspended') {
+        await ctx.resume()
+      }
+
+      const now = ctx.currentTime
+      const playBeep = (frequency: number, startAt: number, duration: number) => {
+        const oscillator = ctx.createOscillator()
+        const gain = ctx.createGain()
+
+        oscillator.type = 'sine'
+        oscillator.frequency.setValueAtTime(frequency, startAt)
+
+        gain.gain.setValueAtTime(0.0001, startAt)
+        gain.gain.exponentialRampToValueAtTime(0.2, startAt + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration)
+
+        oscillator.connect(gain)
+        gain.connect(ctx.destination)
+
+        oscillator.start(startAt)
+        oscillator.stop(startAt + duration)
+      }
+
+      playBeep(880, now, 0.18)
+      playBeep(1047, now + 0.24, 0.22)
+
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate([60, 40, 90])
+      }
+    } catch {
+      // Ignore audio failures (e.g., autoplay restrictions) and keep timer behavior intact.
+    }
+  }
 
   useEffect(() => {
     if (running && remaining !== null) {
@@ -20,6 +65,7 @@ export default function RestTimer({ defaultSeconds = 90, onDone }: RestTimerProp
           if (prev === null || prev <= 1) {
             setRunning(false)
             onDone?.()
+            void playDoneSound()
             return 0
           }
           return prev - 1
@@ -43,6 +89,14 @@ export default function RestTimer({ defaultSeconds = 90, onDone }: RestTimerProp
     setRunning(false)
     setRemaining(null)
   }
+
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        void audioContextRef.current.close()
+      }
+    }
+  }, [])
 
   const mins = remaining !== null ? Math.floor(remaining / 60) : Math.floor(targetSeconds / 60)
   const secs = remaining !== null ? remaining % 60 : targetSeconds % 60
