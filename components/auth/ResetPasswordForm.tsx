@@ -69,16 +69,26 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
     // Check if user has a valid session (either from reset link or already logged in)
     const checkSession = async () => {
       const supabase = createClient()
-      const { data } = await supabase.auth.getUser()
-      
-      if (data.user) {
-        setIsSessionValid(true)
-      } else {
-        // If no valid session and not forced, redirect to login
-        if (!forceChange) {
-          setError('No valid session. Please request a password reset from the login page.')
+      const maxAttempts = 6
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const { data } = await supabase.auth.getUser()
+
+        if (data.user) {
+          setIsSessionValid(true)
+          setIsChecking(false)
+          return
         }
+
+        // Give Supabase a short window to finalize recovery-session cookies.
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
+
+      // If no valid session and not forced, show guidance.
+      if (!forceChange) {
+        setError('No valid session. Please request a password reset from the login page.')
+      }
+
       setIsChecking(false)
     }
 
