@@ -933,6 +933,17 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
             >
               UNASSIGNED CLIENTS
             </h2>
+            <p
+              style={{
+                fontFamily: 'Raleway, sans-serif',
+                fontSize: 13,
+                color: 'var(--gray)',
+                marginTop: 0,
+                marginBottom: 14,
+              }}
+            >
+              Assigning a client sends a welcome email automatically. To resend later, open the client and use Commerce Tools.
+            </p>
 
             {!unassignedClients || unassignedClients.length === 0 ? (
           <div

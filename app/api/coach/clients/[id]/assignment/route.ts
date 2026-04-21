@@ -7,6 +7,7 @@ import {
   releaseClientFromCoach,
 } from '@/lib/coach-assignments'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendWelcomeEmail } from '@/lib/marketing-email'
 
 export async function PATCH(
   _req: NextRequest,
@@ -28,7 +29,45 @@ export async function PATCH(
 
   try {
     const client = await assignClientToCoach(admin, id, coachId)
-    return NextResponse.json({ client })
+
+    let welcomeEmail: {
+      sent: boolean
+      providerMessageId?: string | null
+      skipped?: boolean
+      error?: string
+    } | null = null
+
+    if (client.email) {
+      try {
+        const firstName = client.full_name?.split(' ')[0] ?? null
+        const result = await sendWelcomeEmail({
+          email: client.email,
+          firstName,
+          coachReplyToEmail: process.env.MARKETING_REPLY_TO_EMAIL,
+        })
+
+        if (result.skipped) {
+          welcomeEmail = {
+            sent: false,
+            skipped: true,
+            error: 'Email service is not configured on this environment.',
+          }
+        } else {
+          welcomeEmail = {
+            sent: true,
+            providerMessageId: result.id,
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to send welcome email'
+        welcomeEmail = {
+          sent: false,
+          error: message,
+        }
+      }
+    }
+
+    return NextResponse.json({ client, welcomeEmail })
   } catch (error) {
     const status = error instanceof CoachAssignmentError ? error.status : 500
     const message = error instanceof Error ? error.message : 'Unexpected assignment error'

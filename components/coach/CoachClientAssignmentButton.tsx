@@ -12,6 +12,7 @@ export default function CoachClientAssignmentButton({ clientId, mode }: CoachCli
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [statusTone, setStatusTone] = useState<'error' | 'success' | 'warning'>('error')
   const [confirming, setConfirming] = useState(false)
 
   async function handleConfirm() {
@@ -26,9 +27,24 @@ export default function CoachClientAssignmentButton({ clientId, mode }: CoachCli
     const payload = await res.json().catch(() => ({}))
 
     if (!res.ok) {
+      setStatusTone('error')
       setStatus(payload.error ?? 'Request failed')
       setBusy(false)
       return
+    }
+
+    if (isAssign && payload?.welcomeEmail) {
+      if (payload.welcomeEmail.sent) {
+        setStatusTone('success')
+        setStatus(
+          payload.welcomeEmail.providerMessageId
+            ? `Assigned. Welcome email sent (id: ${payload.welcomeEmail.providerMessageId}).`
+            : 'Assigned. Welcome email sent.'
+        )
+      } else {
+        setStatusTone('warning')
+        setStatus(`Assigned, but welcome email failed: ${payload.welcomeEmail.error ?? 'unknown error'}`)
+      }
     }
 
     setBusy(false)
@@ -111,7 +127,14 @@ export default function CoachClientAssignmentButton({ clientId, mode }: CoachCli
       </button>
 
       {status && (
-        <p style={{ margin: 0, fontFamily: 'Raleway, sans-serif', fontSize: 12, color: 'var(--error)' }}>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: 'Raleway, sans-serif',
+            fontSize: 12,
+            color: statusTone === 'success' ? 'var(--success)' : statusTone === 'warning' ? 'var(--gold)' : 'var(--error)',
+          }}
+        >
           {status}
         </p>
       )}

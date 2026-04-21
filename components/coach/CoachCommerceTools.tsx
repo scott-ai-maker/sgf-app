@@ -31,7 +31,10 @@ export default function CoachCommerceTools({ clientId }: CoachCommerceToolsProps
       return
     }
 
-    setWelcomeSuccess(`Welcome email sent to ${data?.email ?? 'client'}.`)
+    const messageId = typeof data?.providerMessageId === 'string' && data.providerMessageId.length > 0
+      ? ` (id: ${data.providerMessageId})`
+      : ''
+    setWelcomeSuccess(`Welcome email sent to ${data?.email ?? 'client'}${messageId}.`)
     setWelcomeLoading(false)
   }
 

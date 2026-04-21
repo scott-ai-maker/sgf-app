@@ -32,15 +32,28 @@ export async function POST(
   const firstName = client.full_name?.split(' ')[0] ?? null
 
   try {
-    await sendWelcomeEmail({
+    const result = await sendWelcomeEmail({
       email: client.email,
       firstName,
       coachReplyToEmail: process.env.MARKETING_REPLY_TO_EMAIL,
     })
+
+    if (result.skipped) {
+      return NextResponse.json(
+        { error: 'Email service is not configured on this environment (missing Resend settings).' },
+        { status: 503 }
+      )
+    }
+
+    console.info('Welcome email sent', {
+      clientId: client.id,
+      email: client.email,
+      providerMessageId: result.id,
+    })
+
+    return NextResponse.json({ success: true, email: client.email, providerMessageId: result.id })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send email'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  return NextResponse.json({ success: true, email: client.email })
 }
