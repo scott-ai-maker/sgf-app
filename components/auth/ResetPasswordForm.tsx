@@ -80,9 +80,10 @@ export default function ResetPasswordForm({ forceChange = false, nextPath = '/da
       }
 
       const params = new URLSearchParams(window.location.search)
+      const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash)
       const code = params.get('code')
-      const tokenHash = params.get('token_hash')
-      const type = params.get('type')
+      const tokenHash = params.get('token_hash') ?? hashParams.get('token_hash')
+      const type = params.get('type') ?? hashParams.get('type')
 
       // Recovery fallback: if callback cookie hydration lags, retry session establishment client-side.
       if (tokenHash && type) {

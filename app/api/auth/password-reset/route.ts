@@ -46,11 +46,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    // Build a server-side callback URL using the hashed_token instead of Supabase's action_link.
-    // action_link redirects through Supabase's servers and produces a PKCE code that requires a
-    // code verifier in browser storage — verifier that never exists for admin-generated links.
-    // token_hash goes directly to our callback which uses server-side verifyOtp (no PKCE needed).
-    const resetLink = `${baseUrl}/auth/callback?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery&next=/auth/reset-password`
+    // Build a scanner-safe reset URL by putting token params in the URL fragment.
+    // Most email link scanners only request the URL path/query and ignore fragments,
+    // which prevents accidental one-time token consumption before the user clicks.
+    const resetLink = `${baseUrl}/auth/reset-password#token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`
 
     const result = await sendPasswordResetEmail({
       email,
