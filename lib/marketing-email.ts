@@ -16,6 +16,11 @@ type WelcomeInput = {
   coachReplyToEmail?: string | null
 }
 
+type PasswordResetInput = {
+  email: string
+  resetLink: string
+}
+
 type QueueRow = {
   id: string
   email: string
@@ -244,6 +249,39 @@ export async function sendWelcomeEmail(input: WelcomeInput) {
       'If you have questions, reply to this email or message me in the dashboard.',
     ].join('\n'),
     replyTo,
+  })
+}
+
+export async function sendPasswordResetEmail(input: PasswordResetInput) {
+  const email = normalizeEmail(input.email)
+  if (!EMAIL_REGEX.test(email)) {
+    throw new Error('Invalid password reset email address')
+  }
+
+  if (!input.resetLink || !/^https?:\/\//.test(input.resetLink)) {
+    throw new Error('Invalid password reset link')
+  }
+
+  return sendEmail({
+    to: email,
+    subject: 'Reset your Scott Gordon Fitness password',
+    html: `<h2>Password reset request</h2>
+<p>We received a request to reset your password.</p>
+<p><a href="${input.resetLink}">Reset your password</a></p>
+<p>If the button does not work, copy and paste this URL into your browser:</p>
+<p>${input.resetLink}</p>
+<p>This link expires in 24 hours.</p>
+<p>If you did not request this, you can ignore this email.</p>`,
+    text: [
+      'Password reset request',
+      '',
+      'We received a request to reset your password.',
+      '',
+      `Reset your password: ${input.resetLink}`,
+      '',
+      'This link expires in 24 hours.',
+      'If you did not request this, you can ignore this email.',
+    ].join('\n'),
   })
 }
 

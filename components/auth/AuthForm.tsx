@@ -130,13 +130,26 @@ export default function AuthForm({ mode: initialMode, redirectPath = '/dashboard
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+    const res = await fetch('/api/auth/password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     })
 
-    if (error) {
-      setError(formatAuthErrorMessage(error.message))
+    if (!res.ok) {
+      const raw = await res.text()
+      let apiError: string | null = null
+
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as Record<string, unknown>
+          apiError = typeof parsed.error === 'string' ? parsed.error : null
+        } catch {
+          apiError = null
+        }
+      }
+
+      setError(apiError ?? 'Unable to send reset email right now. Please try again in a minute.')
       setLoading(false)
       return
     }
