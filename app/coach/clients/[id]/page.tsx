@@ -121,7 +121,7 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
       .limit(250),
     admin
       .from('fitness_profiles')
-      .select('equipment_access, cardio_equipment_access, injuries_limitations, preferred_units')
+      .select('equipment_access, cardio_equipment_access, injuries_limitations, preferred_units, training_days_per_week, preferred_training_days')
       .eq('user_id', id)
       .maybeSingle(),
     admin
@@ -491,6 +491,10 @@ export default async function CoachClientPage({ params, searchParams }: PageProp
             libraryEquipmentNames={filteredEquipment.map(item => String(item.name ?? '').trim()).filter(Boolean)}
             cardioEquipmentAccess={Array.isArray(fitnessProfileResult.data?.cardio_equipment_access)
               ? fitnessProfileResult.data.cardio_equipment_access
+              : []}
+            initialSessionsPerWeek={Number(fitnessProfileResult.data?.training_days_per_week ?? 0) || null}
+            preferredTrainingDays={Array.isArray(fitnessProfileResult.data?.preferred_training_days)
+              ? fitnessProfileResult.data.preferred_training_days
               : []}
           />
         )}

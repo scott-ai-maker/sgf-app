@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
-import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type CoachProgramExerciseInput, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
+import { buildStoredProgramPlan, type CoachProgramDraft, type EquipmentLibraryRecord, type ExerciseLibraryRecord, type CoachProgramPayload, type CoachProgramWorkoutInput, type CoachProgramExerciseInput, type ProgramWorkoutSnapshot, type WorkoutProgramTemplateRecord } from '@/lib/coach-programs'
 import {
   selectOptWorkoutBlueprint,
   OPT_SECTION_PRESCRIPTIONS,
@@ -9,9 +9,52 @@ import {
   type ClientProfile,
   type ExerciseRecord,
 } from '@/lib/nasm-opt-exercise-selection'
-import { generateIntelligentProgramming } from '@/lib/openai-program-generation'
+import { generateIntelligentProgramming, generateWeeklyFrequencyRecommendation } from '@/lib/openai-program-generation'
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
+const TRAINING_DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
+const STRICT_NASM_VOLUME_BLOCK_MODE = true
+
+const MONTHLY_PHASE_NOTES: Record<number, string[]> = {
+  1: [
+    'Week 1: Establish movement quality, posture, and strict stabilization tempo.',
+    'Week 2: Add a small workload increase while keeping balance and core control as the priority.',
+    'Week 3: Progress density conservatively without sacrificing tempo or joint alignment.',
+    'Week 4: Consolidate stabilization endurance and assess readiness before a phase change.',
+  ],
+  2: [
+    'Week 1: Pair stability and strength work with clean transitions and controlled eccentric work.',
+    'Week 2: Increase challenge through slightly higher total workload while preserving integrated movement quality.',
+    'Week 3: Push strength-endurance density with tight rest discipline and technical precision.',
+    'Week 4: Consolidate force production and movement efficiency before advancing intensity.',
+  ],
+  3: [
+    'Week 1: Set the hypertrophy baseline with full range of motion and consistent time under tension.',
+    'Week 2: Build total volume carefully while maintaining muscular control across every rep.',
+    'Week 3: Emphasize progressive overload within the prescribed hypertrophy range.',
+    'Week 4: Hold quality output, manage fatigue, and confirm recovery before the next block.',
+  ],
+  4: [
+    'Week 1: Establish maximal strength intent with pristine setup, bracing, and full recovery.',
+    'Week 2: Increase loading conservatively while maintaining bar path and joint positioning.',
+    'Week 3: Peak force production without sacrificing form or recovery quality.',
+    'Week 4: Consolidate strength adaptations and protect readiness for the next mesocycle.',
+  ],
+  5: [
+    'Week 1: Build explosive intent with perfect landings, deceleration, and rapid but controlled execution.',
+    'Week 2: Increase power demand through speed and quality rather than excess fatigue.',
+    'Week 3: Peak neural output with crisp contrast-style execution and full recovery.',
+    'Week 4: Keep power expression sharp while managing fatigue and preserving movement speed.',
+  ],
+}
+
+const NASM_VOLUME_GUARDRAILS: Record<number, { maxSetsPerSession: number; maxSetsPerWeek: number }> = {
+  1: { maxSetsPerSession: 24, maxSetsPerWeek: 96 },
+  2: { maxSetsPerSession: 26, maxSetsPerWeek: 104 },
+  3: { maxSetsPerSession: 30, maxSetsPerWeek: 120 },
+  4: { maxSetsPerSession: 22, maxSetsPerWeek: 88 },
+  5: { maxSetsPerSession: 20, maxSetsPerWeek: 80 },
+}
 
 function deriveMovementPattern(name: string, description?: string | null): string | undefined {
   const text = `${name} ${description ?? ''}`.toLowerCase()
@@ -57,6 +100,261 @@ function normalizeEquipmentAlias(item: string) {
   if (normalized === 'trx') return 'suspension'
 
   return normalized
+}
+
+function normalizePreferredTrainingDays(values: unknown) {
+  if (!Array.isArray(values)) return []
+
+  const seen = new Set<string>()
+
+  return values
+    .map(item => String(item ?? '').trim().toLowerCase())
+    .filter((item): item is (typeof TRAINING_DAY_ORDER)[number] => {
+      if (!TRAINING_DAY_ORDER.includes(item as (typeof TRAINING_DAY_ORDER)[number])) return false
+      if (seen.has(item)) return false
+      seen.add(item)
+      return true
+    })
+    .sort((left, right) => TRAINING_DAY_ORDER.indexOf(left) - TRAINING_DAY_ORDER.indexOf(right))
+}
+
+function getDefaultPreferredTrainingDays(count: number) {
+  const patterns: Record<number, string[]> = {
+    1: ['monday'],
+    2: ['monday', 'thursday'],
+    3: ['monday', 'wednesday', 'friday'],
+    4: ['monday', 'tuesday', 'thursday', 'friday'],
+    5: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    6: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+    7: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  }
+
+  const normalizedCount = Math.max(1, Math.min(7, count))
+  return (patterns[normalizedCount] ?? patterns[4]).slice(0, normalizedCount)
+}
+
+function startOfNextWeekUtc() {
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const jsDay = today.getUTCDay()
+  const dayOffset = jsDay === 0 ? 6 : jsDay - 1
+  const startOfCurrentWeek = new Date(today.getTime())
+  startOfCurrentWeek.setUTCDate(today.getUTCDate() - dayOffset)
+
+  const startOfNextWeek = new Date(startOfCurrentWeek.getTime())
+  startOfNextWeek.setUTCDate(startOfCurrentWeek.getUTCDate() + 7)
+  return startOfNextWeek
+}
+
+function formatDateOnly(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function addUtcDays(date: Date, days: number) {
+  const copy = new Date(date.getTime())
+  copy.setUTCDate(copy.getUTCDate() + days)
+  return copy
+}
+
+function getMonthlyPhaseWeekNote(phase: number, weekNumber: number) {
+  return MONTHLY_PHASE_NOTES[phase]?.[weekNumber - 1] ?? MONTHLY_PHASE_NOTES[1][weekNumber - 1] ?? null
+}
+
+function getFallbackRecommendedDaysPerWeek(goal: string | null | undefined, experienceLevel: string | null | undefined, hasLimitations: boolean) {
+  const normalizedGoal = String(goal ?? '').toLowerCase()
+  const normalizedExperience = String(experienceLevel ?? '').toLowerCase()
+
+  let base = 3
+  if (normalizedGoal.includes('fat') || normalizedGoal.includes('weight')) base = 4
+  if (normalizedGoal.includes('muscle') || normalizedGoal.includes('hypertrophy')) base = 4
+  if (normalizedGoal.includes('performance') || normalizedGoal.includes('athletic')) base = 5
+
+  if (normalizedExperience.includes('beginner')) base = Math.min(base, 3)
+  if (normalizedExperience.includes('advanced')) base = Math.min(6, base + 1)
+  if (hasLimitations) base = Math.max(2, base - 1)
+
+  return Math.max(2, Math.min(6, base))
+}
+
+function resolveSessionDurationMins({
+  templateDuration,
+  phase,
+  sessionsPerWeek,
+  recommendedDaysPerWeek,
+}: {
+  templateDuration: number | null
+  phase: number
+  sessionsPerWeek: number
+  recommendedDaysPerWeek: number
+}) {
+  const baseDuration = Math.min(60, Math.max(35, Number(templateDuration) || 60))
+  const prescription = getPhasePrescription(phase)
+  const intensityScale: Record<string, number> = {
+    low: 1,
+    moderate: 0.93,
+    high: 0.86,
+    maximum: 0.78,
+  }
+  const scaledDuration = baseDuration * (intensityScale[prescription.intensity] ?? 0.9)
+  const overage = Math.max(0, sessionsPerWeek - recommendedDaysPerWeek)
+  const overageReduction = overage * 5
+
+  return Math.max(30, Math.min(60, Math.round(scaledDuration - overageReduction)))
+}
+
+function buildMonthlyScheduledWorkouts({
+  baseWorkouts,
+  preferredTrainingDays,
+  nasmOptPhase,
+}: {
+  baseWorkouts: ProgramWorkoutSnapshot[]
+  preferredTrainingDays: string[]
+  nasmOptPhase: number
+}) {
+  const scheduleDays = preferredTrainingDays.length > 0
+    ? preferredTrainingDays
+    : getDefaultPreferredTrainingDays(baseWorkouts.length)
+  const monthStart = startOfNextWeekUtc()
+  const monthlyWorkouts: ProgramWorkoutSnapshot[] = []
+
+  for (let weekIndex = 0; weekIndex < 4; weekIndex += 1) {
+    const weekNumber = weekIndex + 1
+    const weekNote = getMonthlyPhaseWeekNote(nasmOptPhase, weekNumber)
+
+    for (let workoutIndex = 0; workoutIndex < baseWorkouts.length; workoutIndex += 1) {
+      const baseWorkout = baseWorkouts[workoutIndex]
+      if (!baseWorkout) continue
+
+      const dayKey = scheduleDays[workoutIndex] ?? scheduleDays[scheduleDays.length - 1] ?? 'monday'
+      const dayOffset = Math.max(0, TRAINING_DAY_ORDER.indexOf(dayKey as (typeof TRAINING_DAY_ORDER)[number]))
+      const scheduledDate = formatDateOnly(addUtcDays(monthStart, weekIndex * 7 + dayOffset))
+      const noteParts = [
+        weekNote,
+        `Scheduled for ${dayKey.charAt(0).toUpperCase()}${dayKey.slice(1)}.`,
+        baseWorkout.notes,
+      ].filter(Boolean)
+
+      monthlyWorkouts.push({
+        day: monthlyWorkouts.length + 1,
+        focus: `Week ${weekNumber} - ${baseWorkout.focus}`,
+        scheduledDate,
+        notes: noteParts.join('\n\n'),
+        exercises: baseWorkout.exercises.map(exercise => ({
+          ...exercise,
+          coachingCues: [...exercise.coachingCues],
+          primaryEquipment: [...exercise.primaryEquipment],
+        })),
+      })
+    }
+  }
+
+  return monthlyWorkouts
+}
+
+function parseSetBounds(sets: string) {
+  const normalized = String(sets ?? '').trim()
+  const rangeMatch = normalized.match(/(\d+)\s*[-/]\s*(\d+)/)
+  if (rangeMatch) {
+    const min = Math.max(1, Number(rangeMatch[1]))
+    const max = Math.max(min, Number(rangeMatch[2]))
+    return { min, max }
+  }
+
+  const singleMatch = normalized.match(/(\d+)/)
+  if (singleMatch) {
+    const value = Math.max(1, Number(singleMatch[1]))
+    return { min: value, max: value }
+  }
+
+  return { min: 1, max: 1 }
+}
+
+function formatSetBounds(min: number, max: number) {
+  return min === max ? String(min) : `${min}-${max}`
+}
+
+function getWorkoutSetVolume(workout: CoachProgramWorkoutInput) {
+  return workout.exercises.reduce((sum, exercise) => {
+    const bounds = parseSetBounds(exercise.sets)
+    return sum + bounds.max
+  }, 0)
+}
+
+function getWeeklySetVolume(workouts: CoachProgramWorkoutInput[]) {
+  return workouts.reduce((sum, workout) => sum + getWorkoutSetVolume(workout), 0)
+}
+
+function reduceWorkoutSetVolumeToCap(workout: CoachProgramWorkoutInput, cap: number) {
+  let current = getWorkoutSetVolume(workout)
+  if (current <= cap) return false
+
+  const blockPriority = ['clients-choice', 'skill-development', 'activation', 'resistance', 'warm-up', 'cool-down']
+  let changed = false
+
+  for (const block of blockPriority) {
+    for (const exercise of workout.exercises) {
+      if (current <= cap) break
+      if (String(exercise.block ?? '').trim() !== block) continue
+
+      const bounds = parseSetBounds(exercise.sets)
+      if (bounds.max <= bounds.min) continue
+
+      const nextMax = Math.max(bounds.min, bounds.max - 1)
+      exercise.sets = formatSetBounds(bounds.min, nextMax)
+      current -= 1
+      changed = true
+    }
+
+    if (current <= cap) break
+  }
+
+  return changed
+}
+
+function applyNasmVolumeGuardrails(
+  workouts: CoachProgramWorkoutInput[],
+  nasmOptPhase: number
+) {
+  const guardrail = NASM_VOLUME_GUARDRAILS[nasmOptPhase] ?? NASM_VOLUME_GUARDRAILS[1]
+  const notes: string[] = []
+  let applied = false
+
+  for (const workout of workouts) {
+    const before = getWorkoutSetVolume(workout)
+    if (before <= guardrail.maxSetsPerSession) continue
+
+    const changed = reduceWorkoutSetVolumeToCap(workout, guardrail.maxSetsPerSession)
+    if (changed) {
+      const after = getWorkoutSetVolume(workout)
+      notes.push(`Reduced ${workout.focus} from ${before} to ${after} working sets to stay within NASM session-volume guardrails.`)
+      applied = true
+    }
+  }
+
+  let weeklyVolume = workouts.reduce((sum, workout) => sum + getWorkoutSetVolume(workout), 0)
+  if (weeklyVolume > guardrail.maxSetsPerWeek && workouts.length > 0) {
+    const perWorkoutCap = Math.max(8, Math.floor(guardrail.maxSetsPerWeek / workouts.length))
+
+    for (const workout of workouts) {
+      if (weeklyVolume <= guardrail.maxSetsPerWeek) break
+      const before = getWorkoutSetVolume(workout)
+      const changed = reduceWorkoutSetVolumeToCap(workout, perWorkoutCap)
+      if (!changed) continue
+
+      const after = getWorkoutSetVolume(workout)
+      weeklyVolume -= (before - after)
+      notes.push(`Applied weekly volume control on ${workout.focus} (${before} -> ${after} sets) to avoid overtraining risk.`)
+      applied = true
+    }
+  }
+
+  return {
+    applied,
+    notes,
+    maxSetsPerSession: guardrail.maxSetsPerSession,
+    maxSetsPerWeek: guardrail.maxSetsPerWeek,
+    resultingWeeklySets: workouts.reduce((sum, workout) => sum + getWorkoutSetVolume(workout), 0),
+  }
 }
 
 function exerciseMatchesEquipment(exercise: ExerciseLibraryRecord, equipmentAccess: string[]) {
@@ -167,6 +465,7 @@ async function buildIntelligentTemplateWorkouts({
     fitness_goal?: string | null
     injuries_limitations?: string | null
     training_days_per_week?: number | null
+    preferred_training_days?: string[] | null
     equipment_access?: string[] | null
   }
   nasmOptPhase: number
@@ -313,6 +612,29 @@ export async function POST(req: NextRequest) {
     ? Math.max(1, Math.min(5, Math.round(nasmOptPhase)))
     : null
 
+  const fallbackRecommendedDaysPerWeek = getFallbackRecommendedDaysPerWeek(
+    profile.fitness_goal,
+    profile.experience_level,
+    Boolean(String(profile.injuries_limitations ?? '').trim())
+  )
+
+  const recommendation = await generateWeeklyFrequencyRecommendation({
+    clientProfile: {
+      age: Number(profile.age) || 30,
+      sexe: profile.sex,
+      experienceLevel: profile.experience_level,
+      activityLevel: profile.activity_level,
+      fitnessGoal: profile.fitness_goal,
+      injuries_limitations: profile.injuries_limitations,
+      equipmentAccess: Array.isArray(profile.equipment_access) ? profile.equipment_access : ['bodyweight'],
+    },
+    phase: selectedPhase ?? 1,
+  }).catch(() => ({
+    recommendedDaysPerWeek: fallbackRecommendedDaysPerWeek,
+    rationale: 'Fallback recommendation used from NASM-safe profile heuristics because AI recommendation was unavailable.',
+    caution: 'Use caution when prescribing more sessions than recommended; monitor recovery markers each week.',
+  }))
+
   const [templatesResult, exercisesResult, equipmentResult] = await Promise.all([
     admin
       .from('workout_program_templates')
@@ -345,9 +667,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not select a workout template.' }, { status: 400 })
   }
 
-  const resolvedSessionsPerWeek = Number.isFinite(sessionsPerWeek)
-    ? sessionsPerWeek
-    : Number(selectedTemplate.sessions_per_week ?? profile.training_days_per_week ?? 3)
+  const coachRequestedSessions = Number.isFinite(sessionsPerWeek)
+    ? Math.max(2, Math.min(7, Math.round(sessionsPerWeek)))
+    : null
+
+  const resolvedSessionsPerWeek = coachRequestedSessions
+    ?? Number(selectedTemplate.sessions_per_week ?? profile.training_days_per_week ?? recommendation.recommendedDaysPerWeek)
+
+  const normalizedPreferredTrainingDays = normalizePreferredTrainingDays(profile.preferred_training_days)
+  if (normalizedPreferredTrainingDays.length > 0 && resolvedSessionsPerWeek > normalizedPreferredTrainingDays.length) {
+    return NextResponse.json({
+      error: `Client only has ${normalizedPreferredTrainingDays.length} preferred training day${normalizedPreferredTrainingDays.length === 1 ? '' : 's'} configured. Reduce sessions per week or update the client's training availability.`,
+    }, { status: 400 })
+  }
+
+  const scheduledTrainingDays = normalizedPreferredTrainingDays.length > 0
+    ? normalizedPreferredTrainingDays.slice(0, resolvedSessionsPerWeek)
+    : getDefaultPreferredTrainingDays(resolvedSessionsPerWeek)
 
   const effectiveEquipmentAccess = requestedEquipmentAccess.length > 0
     ? requestedEquipmentAccess
@@ -369,14 +705,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unable to build a workout from the selected template.' }, { status: 400 })
   }
 
+  const phaseVolumeCaps = NASM_VOLUME_GUARDRAILS[selectedPhase ?? 1] ?? NASM_VOLUME_GUARDRAILS[1]
+  const projectedWeeklySets = getWeeklySetVolume(intelligentWorkouts)
+
+  if (
+    STRICT_NASM_VOLUME_BLOCK_MODE
+    && coachRequestedSessions !== null
+    && coachRequestedSessions > recommendation.recommendedDaysPerWeek
+    && projectedWeeklySets > phaseVolumeCaps.maxSetsPerWeek
+  ) {
+    return NextResponse.json({
+      error: `Blocked by NASM overtraining guardrail: projected weekly volume is ${projectedWeeklySets} sets for Phase ${selectedPhase ?? 1}, which exceeds the cap of ${phaseVolumeCaps.maxSetsPerWeek}. Reduce sessions/week or adjust volume before generating.`,
+      recommendation: {
+        recommendedDaysPerWeek: recommendation.recommendedDaysPerWeek,
+        maxSetsPerWeek: phaseVolumeCaps.maxSetsPerWeek,
+        projectedWeeklySets,
+      },
+    }, { status: 400 })
+  }
+
+  const volumeGuardrail = applyNasmVolumeGuardrails(intelligentWorkouts, selectedPhase ?? 1)
+
   const payload: CoachProgramPayload = {
     clientId,
-    name: `${selectedTemplate.title} - AI Personalized`,
+    name: `${selectedTemplate.title} - Monthly AI Personalized`,
     goal: selectedTemplate.goal ?? profile.fitness_goal ?? null,
     nasmOptPhase: Number(selectedTemplate.nasm_opt_phase ?? 1),
     phaseName: String(selectedTemplate.phase_name ?? 'Custom Phase'),
     sessionsPerWeek: Math.max(1, Math.min(7, resolvedSessionsPerWeek)),
-    estimatedDurationMins: Number(selectedTemplate.estimated_duration_mins ?? 60),
+    estimatedDurationMins: resolveSessionDurationMins({
+      templateDuration: Number(selectedTemplate.estimated_duration_mins ?? 60),
+      phase: selectedPhase ?? 1,
+      sessionsPerWeek: Math.max(1, Math.min(7, resolvedSessionsPerWeek)),
+      recommendedDaysPerWeek: recommendation.recommendedDaysPerWeek,
+    }),
     startDate: null,
     templateId: selectedTemplate.id,
     workouts: intelligentWorkouts,
@@ -510,6 +872,16 @@ export async function POST(req: NextRequest) {
     return phaseCues
   }
 
+  const monthlyWorkouts = buildMonthlyScheduledWorkouts({
+    baseWorkouts: storedPlan.workouts,
+    preferredTrainingDays: scheduledTrainingDays,
+    nasmOptPhase: payload.nasmOptPhase,
+  })
+
+  if (monthlyWorkouts.length === 0) {
+    return NextResponse.json({ error: 'Unable to create a month-long workout calendar.' }, { status: 400 })
+  }
+
   const draft: CoachProgramDraft = {
     clientId,
     name: payload.name,
@@ -523,7 +895,7 @@ export async function POST(req: NextRequest) {
     templateTitle: selectedTemplate.title,
     generatedAt: storedPlan.createdAt,
     generatedWithEquipmentAccess,
-    workouts: storedPlan.workouts,
+    workouts: monthlyWorkouts,
   }
 
   return NextResponse.json({
@@ -531,6 +903,20 @@ export async function POST(req: NextRequest) {
     template: {
       id: selectedTemplate.id,
       title: selectedTemplate.title,
+    },
+    recommendation: {
+      recommendedDaysPerWeek: recommendation.recommendedDaysPerWeek,
+      rationale: recommendation.rationale,
+      caution: recommendation.caution,
+      coachSelectedDaysPerWeek: payload.sessionsPerWeek,
+      cautionRequired: payload.sessionsPerWeek > recommendation.recommendedDaysPerWeek,
+      recommendedSessionDurationMins: payload.estimatedDurationMins,
+      volumeGuardrailApplied: volumeGuardrail.applied,
+      volumeGuardrailNotes: volumeGuardrail.notes,
+      maxSetsPerSession: volumeGuardrail.maxSetsPerSession,
+      maxSetsPerWeek: volumeGuardrail.maxSetsPerWeek,
+      resultingWeeklySets: volumeGuardrail.resultingWeeklySets,
+      strictVolumeBlockEnabled: STRICT_NASM_VOLUME_BLOCK_MODE,
     },
   })
 }

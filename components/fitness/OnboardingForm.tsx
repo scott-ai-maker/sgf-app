@@ -33,6 +33,29 @@ const CARDIO_EQUIPMENT_OPTIONS = [
   { key: 'hiking', label: 'Trails / Hiking' },
 ] as const
 
+const TRAINING_DAY_OPTIONS = [
+  { key: 'monday', label: 'Monday' },
+  { key: 'tuesday', label: 'Tuesday' },
+  { key: 'wednesday', label: 'Wednesday' },
+  { key: 'thursday', label: 'Thursday' },
+  { key: 'friday', label: 'Friday' },
+  { key: 'saturday', label: 'Saturday' },
+  { key: 'sunday', label: 'Sunday' },
+] as const
+
+function getDefaultPreferredTrainingDays(count: number) {
+  const patterns: Record<number, string[]> = {
+    2: ['monday', 'thursday'],
+    3: ['monday', 'wednesday', 'friday'],
+    4: ['monday', 'tuesday', 'thursday', 'friday'],
+    5: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    6: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+    7: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  }
+
+  return (patterns[count] ?? patterns[4]).slice(0, Math.max(2, Math.min(7, count)))
+}
+
 export default function OnboardingForm() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -55,6 +78,7 @@ export default function OnboardingForm() {
     hip: '',
     activityLevel: 'moderate',
     trainingDaysPerWeek: '4',
+    preferredTrainingDays: getDefaultPreferredTrainingDays(4),
     fitnessGoal: 'fat-loss',
     targetWeightKg: '',
     targetWeightLb: '',
@@ -93,6 +117,31 @@ export default function OnboardingForm() {
 
   function updateBooleanField(key: string, value: boolean) {
     setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  function updateTrainingDaysPerWeek(value: string) {
+    setForm(prev => {
+      const normalizedCount = Math.max(2, Math.min(7, Number(value) || 2))
+      const nextSelected = [...prev.preferredTrainingDays]
+
+      if (nextSelected.length > normalizedCount) {
+        nextSelected.splice(normalizedCount)
+      }
+
+      if (nextSelected.length < normalizedCount) {
+        for (const day of getDefaultPreferredTrainingDays(normalizedCount)) {
+          if (nextSelected.includes(day)) continue
+          nextSelected.push(day)
+          if (nextSelected.length === normalizedCount) break
+        }
+      }
+
+      return {
+        ...prev,
+        trainingDaysPerWeek: value,
+        preferredTrainingDays: nextSelected,
+      }
+    })
   }
 
   useEffect(() => {
@@ -151,6 +200,29 @@ export default function OnboardingForm() {
       return {
         ...prev,
         cardioEquipmentAccess: has ? prev.cardioEquipmentAccess.filter(item => item !== key) : [...prev.cardioEquipmentAccess, key],
+      }
+    })
+  }
+
+  function togglePreferredTrainingDay(key: string) {
+    setForm(prev => {
+      const has = prev.preferredTrainingDays.includes(key)
+
+      if (has) {
+        return {
+          ...prev,
+          preferredTrainingDays: prev.preferredTrainingDays.filter(item => item !== key),
+        }
+      }
+
+      const limit = Math.max(2, Math.min(7, Number(prev.trainingDaysPerWeek) || 2))
+      if (prev.preferredTrainingDays.length >= limit) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        preferredTrainingDays: [...prev.preferredTrainingDays, key],
       }
     })
   }
@@ -235,6 +307,7 @@ export default function OnboardingForm() {
       hipCm,
       activityLevel: form.activityLevel,
       trainingDaysPerWeek: form.trainingDaysPerWeek,
+      preferredTrainingDays: form.preferredTrainingDays,
       fitnessGoal: form.fitnessGoal,
       targetWeightKg,
       targetBodyfatPercent: form.targetBodyfatPercent,
@@ -316,6 +389,12 @@ export default function OnboardingForm() {
 
     if (!requestBody.equipmentAccess?.length) {
       setError('Select at least one equipment option.')
+      setSaving(false)
+      return
+    }
+
+    if (requestBody.preferredTrainingDays.length !== Number(requestBody.trainingDaysPerWeek)) {
+      setError('Select the same number of preferred training days as sessions per week.')
       setSaving(false)
       return
     }
@@ -552,7 +631,7 @@ export default function OnboardingForm() {
 
         <div>
           <label className="sgf-form-label">Training Days Per Week</label>
-          <input value={form.trainingDaysPerWeek} onChange={e => updateField('trainingDaysPerWeek', e.target.value)} className="sgf-form-input" type="number" min={2} max={7} required />
+          <input value={form.trainingDaysPerWeek} onChange={e => updateTrainingDaysPerWeek(e.target.value)} className="sgf-form-input" type="number" min={2} max={7} required />
         </div>
 
         <div>
@@ -597,6 +676,37 @@ export default function OnboardingForm() {
         <div>
           <label className="sgf-form-label">Target Body Fat (%)</label>
           <input value={form.targetBodyfatPercent} onChange={e => updateField('targetBodyfatPercent', e.target.value)} className="sgf-form-input" type="number" step="0.1" />
+        </div>
+      </div>
+
+      <div>
+        <label className="sgf-form-label">Preferred Training Days</label>
+        <p style={{ margin: '0 0 8px', color: 'var(--gray)', fontSize: 13 }}>
+          Pick exactly {form.trainingDaysPerWeek} day{form.trainingDaysPerWeek === '1' ? '' : 's'} so your monthly program lands on the days you can actually train.
+        </p>
+        <div className="sgf-form-grid" style={{ gap: 8 }}>
+          {TRAINING_DAY_OPTIONS.map(option => (
+            <label
+              key={option.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                border: '1px solid var(--navy-lt)',
+                background: 'var(--navy-mid)',
+                padding: '10px 12px',
+                fontFamily: 'Raleway, sans-serif',
+                fontSize: 14,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.preferredTrainingDays.includes(option.key)}
+                onChange={() => togglePreferredTrainingDay(option.key)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
         </div>
       </div>
 

@@ -10,10 +10,26 @@ import {
 
 const EXERCISE_LIBRARY_SOURCE = 'nasm_exercise_library'
 const EXCLUDED_EQUIPMENT_TERMS = ['chains', 'chain', 'safety collar', 'safety collars']
+const TRAINING_DAY_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 
 function isExcludedEquipmentName(name: string) {
   const normalized = String(name ?? '').trim().toLowerCase()
   return EXCLUDED_EQUIPMENT_TERMS.some(term => normalized.includes(term))
+}
+
+function normalizePreferredTrainingDays(value: unknown) {
+  if (!Array.isArray(value)) return []
+
+  const seen = new Set<string>()
+
+  return value
+    .map(item => String(item ?? '').trim().toLowerCase())
+    .filter((item): item is (typeof TRAINING_DAY_OPTIONS)[number] => {
+      if (!TRAINING_DAY_OPTIONS.includes(item as (typeof TRAINING_DAY_OPTIONS)[number])) return false
+      if (seen.has(item)) return false
+      seen.add(item)
+      return true
+    })
 }
 
 export async function GET() {
@@ -131,6 +147,16 @@ export async function POST(req: NextRequest) {
   const cardioEquipmentAccess = rawCardioEquipment
     .map((item: unknown) => String(item).trim())
     .filter(Boolean)
+  const trainingDaysPerWeek = body.trainingDaysPerWeek ? Number(body.trainingDaysPerWeek) : null
+  const preferredTrainingDays = normalizePreferredTrainingDays(body.preferredTrainingDays)
+
+  if (!trainingDaysPerWeek || trainingDaysPerWeek < 2 || trainingDaysPerWeek > 7) {
+    return NextResponse.json({ error: 'Training days per week must be between 2 and 7.' }, { status: 400 })
+  }
+
+  if (preferredTrainingDays.length !== trainingDaysPerWeek) {
+    return NextResponse.json({ error: 'Select the same number of preferred training days as sessions per week.' }, { status: 400 })
+  }
 
   const payload = {
     user_id: userId,
@@ -143,7 +169,8 @@ export async function POST(req: NextRequest) {
     neck_cm: body.neckCm ? Number(body.neckCm) : null,
     hip_cm: body.hipCm ? Number(body.hipCm) : null,
     activity_level: body.activityLevel ?? null,
-    training_days_per_week: body.trainingDaysPerWeek ? Number(body.trainingDaysPerWeek) : null,
+    training_days_per_week: trainingDaysPerWeek,
+    preferred_training_days: preferredTrainingDays,
     fitness_goal: body.fitnessGoal ?? null,
     target_weight_kg: body.targetWeightKg ? Number(body.targetWeightKg) : null,
     target_bodyfat_percent: body.targetBodyfatPercent ? Number(body.targetBodyfatPercent) : null,

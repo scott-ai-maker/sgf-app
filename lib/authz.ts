@@ -55,6 +55,7 @@ export async function requireSurfaceRole(expectedRole: AppRole) {
 
 async function ensureClientRecord(user: User): Promise<ClientRecord> {
   const admin = supabaseAdmin()
+  const metadataSurfaceRole = normalizeRole((user.user_metadata?.surface_role as string | undefined) ?? null)
 
   const { data: existing } = await admin
     .from('clients')
@@ -63,9 +64,29 @@ async function ensureClientRecord(user: User): Promise<ClientRecord> {
     .maybeSingle()
 
   if (existing) {
+    const dbRole = normalizeRole(existing.role)
+    const resolvedRole: AppRole = metadataSurfaceRole === 'coach' || dbRole === 'coach' ? 'coach' : 'client'
+
+    // Self-heal role drift where coach metadata and DB role diverge.
+    if (dbRole !== resolvedRole) {
+      await admin
+        .from('clients')
+        .update({ role: resolvedRole })
+        .eq('id', user.id)
+    }
+
+    if (metadataSurfaceRole !== resolvedRole) {
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...(user.user_metadata ?? {}),
+          surface_role: resolvedRole,
+        },
+      })
+    }
+
     return {
       id: existing.id,
-      role: (existing.role === 'coach' ? 'coach' : 'client') as AppRole,
+      role: resolvedRole,
       email: existing.email,
       designated_coach_id: existing.designated_coach_id,
     }
@@ -90,6 +111,13 @@ async function ensureClientRecord(user: User): Promise<ClientRecord> {
   if (error || !inserted) {
     throw new AuthzError('Failed to initialize client profile', 500)
   }
+
+  await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: {
+      ...(user.user_metadata ?? {}),
+      surface_role: 'client',
+    },
+  })
 
   return {
     id: inserted.id,

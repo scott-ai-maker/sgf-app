@@ -9,6 +9,31 @@ import {
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
+export async function GET() {
+  const supabase = await createClient()
+  const admin = supabaseAdmin()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { data: existing, error } = await admin
+    .from('clients')
+    .select('avatar_path')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const avatarUrl = await createSignedFitnessPhotoUrl(admin, existing?.avatar_path ?? null)
+  return NextResponse.json({ avatarUrl })
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const admin = supabaseAdmin()

@@ -61,6 +61,8 @@ interface CoachProgramWorkspaceProps {
   initialEquipmentAccess?: string[]
   libraryEquipmentNames?: string[]
   cardioEquipmentAccess?: string[]
+  initialSessionsPerWeek?: number | null
+  preferredTrainingDays?: string[]
 }
 
 export default function CoachProgramWorkspace({
@@ -75,6 +77,8 @@ export default function CoachProgramWorkspace({
   initialEquipmentAccess = [],
   libraryEquipmentNames = [],
   cardioEquipmentAccess = [],
+  initialSessionsPerWeek = null,
+  preferredTrainingDays = [],
 }: CoachProgramWorkspaceProps) {
   const [draftPlan, setDraftPlan] = useState<CoachProgramDraft | null>(null)
 
@@ -116,6 +120,8 @@ export default function CoachProgramWorkspace({
             clientId={clientId}
             initialEquipmentAccess={initialEquipmentAccess}
             libraryEquipmentNames={libraryEquipmentNames}
+            initialSessionsPerWeek={initialSessionsPerWeek}
+            preferredTrainingDays={preferredTrainingDays}
             onDraftGenerated={setDraftPlan}
           />
         </div>

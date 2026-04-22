@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const displayName = (user.user_metadata?.full_name || user.user_metadata?.name || '').toString().trim() || null
     const { data: existingProfile } = await admin
       .from('clients')
-      .select('id, avatar_path')
+      .select('id, role, avatar_path')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -90,6 +90,16 @@ export async function GET(request: NextRequest) {
           full_name: displayName,
         })
         .eq('id', user.id)
+
+      const roleFromProfile = existingProfile.role === 'coach' ? 'coach' : 'client'
+      if (user.user_metadata?.surface_role !== roleFromProfile) {
+        await admin.auth.admin.updateUserById(user.id, {
+          user_metadata: {
+            ...(user.user_metadata ?? {}),
+            surface_role: roleFromProfile,
+          },
+        })
+      }
     } else {
       // Create first-time profiles as clients without mutating pre-existing rows.
       await admin
@@ -104,6 +114,15 @@ export async function GET(request: NextRequest) {
           },
           { onConflict: 'id', ignoreDuplicates: true }
         )
+
+      if (user.user_metadata?.surface_role !== 'client') {
+        await admin.auth.admin.updateUserById(user.id, {
+          user_metadata: {
+            ...(user.user_metadata ?? {}),
+            surface_role: 'client',
+          },
+        })
+      }
     }
 
     if (requestedCoachId) {

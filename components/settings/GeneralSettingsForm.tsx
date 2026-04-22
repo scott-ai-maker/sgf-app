@@ -87,7 +87,19 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
   const displayAvatarUrl = avatarPreviewUrl ?? avatarUrl
 
   useEffect(() => {
+    let active = true
+
+    async function loadLatestAvatar() {
+      const response = await fetch('/api/account/avatar')
+      const payload = (await response.json().catch(() => null)) as { avatarUrl?: string | null } | null
+      if (!active || !response.ok) return
+      setAvatarUrl(payload?.avatarUrl ?? null)
+    }
+
+    void loadLatestAvatar()
+
     return () => {
+      active = false
       if (avatarPreviewUrl) {
         URL.revokeObjectURL(avatarPreviewUrl)
       }
@@ -316,8 +328,8 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
         <h2 style={{ margin: '0 0 16px', color: 'var(--white)', fontFamily: 'Bebas Neue, sans-serif', fontSize: 28, letterSpacing: '0.05em' }}>
           Profile
         </h2>
-        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: '160px minmax(0, 1fr)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', maxWidth: 320, width: '100%', justifySelf: 'center' }}>
             <div
               aria-label="Account avatar"
               style={{

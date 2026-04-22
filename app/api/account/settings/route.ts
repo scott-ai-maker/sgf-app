@@ -9,6 +9,20 @@ type SettingsPayload = {
   phone?: unknown
 }
 
+function resolveRoleFromSources({
+  dbRole,
+  metadataSurfaceRole,
+}: {
+  dbRole: unknown
+  metadataSurfaceRole: unknown
+}): AppRole {
+  if (dbRole === 'coach') return 'coach'
+  if (metadataSurfaceRole === 'coach') return 'coach'
+  return 'client'
+}
+
+type AppRole = 'client' | 'coach'
+
 function normalizeFullName(value: unknown) {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
@@ -33,11 +47,13 @@ function getAuthzErrorResponse(error: unknown) {
 
 export async function GET() {
   let userId = ''
+  let metadataSurfaceRole: unknown = null
 
   try {
     const authz = await getRequestAuthz()
     requireRole(authz.client.role, ['client', 'coach'])
     userId = authz.user.id
+    metadataSurfaceRole = authz.user.user_metadata?.surface_role
   } catch (error) {
     return getAuthzErrorResponse(error)
   }
@@ -58,14 +74,14 @@ export async function GET() {
       email: data?.email ?? '',
       fullName: data?.full_name ?? '',
       phone: data?.phone ?? '',
-      role: data?.role === 'coach' ? 'coach' : 'client',
+      role: resolveRoleFromSources({ dbRole: data?.role, metadataSurfaceRole }),
     },
   })
 }
 
 export async function PATCH(req: NextRequest) {
   let userId = ''
-  let role: 'client' | 'coach' = 'client'
+  let role: AppRole = 'client'
   let currentMetadata: Record<string, unknown> = {}
 
   try {
@@ -129,7 +145,7 @@ export async function PATCH(req: NextRequest) {
       email: data.email ?? '',
       fullName: data.full_name ?? '',
       phone: data.phone ?? '',
-      role: data.role === 'coach' ? 'coach' : role,
+      role: resolveRoleFromSources({ dbRole: data.role, metadataSurfaceRole: currentMetadata.surface_role ?? role }),
     },
   })
 }

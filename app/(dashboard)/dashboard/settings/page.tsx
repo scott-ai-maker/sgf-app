@@ -31,7 +31,7 @@ export default async function ClientSettingsPage({ searchParams }: ClientSetting
     email: profile?.email ?? user.email ?? '',
     fullName: profile?.full_name ?? '',
     phone: profile?.phone ?? '',
-    role: profile?.role === 'coach' ? 'coach' : 'client',
+    role: profile?.role === 'coach' || user.user_metadata?.surface_role === 'coach' ? 'coach' : 'client',
     avatarUrl,
     pendingEmail: user.new_email ?? null,
   } as const
@@ -53,7 +53,7 @@ export default async function ClientSettingsPage({ searchParams }: ClientSetting
         actions={<LogoutButton />}
       />
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px clamp(12px, 4vw, 24px)' }}>
         <h1
           style={{
             fontFamily: 'Bebas Neue, sans-serif',
@@ -93,7 +93,7 @@ export default async function ClientSettingsPage({ searchParams }: ClientSetting
           </div>
         )}
 
-        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 24 }}>
+        <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 'clamp(14px, 3vw, 24px)' }}>
           <GeneralSettingsForm initialProfile={initialProfile} settingsPath="/dashboard/settings" />
         </section>
       </div>

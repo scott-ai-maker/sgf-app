@@ -33,6 +33,17 @@ interface ProgrammingOutput {
   exerciseSpecificCues: Record<string, string[]>
 }
 
+interface WeeklyFrequencyRecommendationRequest {
+  clientProfile: ClientProfile
+  phase: number
+}
+
+interface WeeklyFrequencyRecommendation {
+  recommendedDaysPerWeek: number
+  rationale: string
+  caution: string
+}
+
 function getSystemPrompt(): string {
   return `You are a master NASM-certified personal trainer with 20+ years of professional experience. 
 You are expert in NASM's OPT (Optimum Performance Training) model and hold certifications in:
@@ -118,6 +129,82 @@ export async function generateIntelligentProgramming(
   }
 
   return parseNASMProgrammingResponse(content, request)
+}
+
+export async function generateWeeklyFrequencyRecommendation(
+  request: WeeklyFrequencyRecommendationRequest
+): Promise<WeeklyFrequencyRecommendation> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY environment variable is not set')
+  }
+
+  const profile = request.clientProfile
+  const injuries = String(profile.injuries_limitations ?? '').trim()
+  const prompt = `Return only valid JSON with keys: recommendedDaysPerWeek, rationale, caution.
+You are prescribing safe training frequency in NASM OPT Phase ${request.phase}.
+
+Client profile:
+- Age: ${Number(profile.age) || 30}
+- Experience: ${String(profile.experienceLevel ?? 'beginner')}
+- Activity level: ${String(profile.activityLevel ?? 'moderate')}
+- Goal: ${String(profile.fitnessGoal ?? 'general-fitness')}
+- Limitations: ${injuries || 'none'}
+
+Rules:
+1) recommendedDaysPerWeek must be an integer from 2 to 6.
+2) Keep recommendations conservative and recovery-aware.
+3) Caution must explicitly warn about risk when coach exceeds recommendation.
+4) Keep rationale and caution each under 220 characters.`
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: getSystemPrompt(),
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 350,
+      response_format: { type: 'json_object' },
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`OpenAI API error: ${response.status} - ${error}`)
+  }
+
+  const data = (await response.json()) as {
+    choices: Array<{ message: { content: string } }>
+  }
+  const content = data.choices?.[0]?.message?.content
+
+  if (!content) {
+    throw new Error('Empty response from OpenAI API')
+  }
+
+  const parsed = JSON.parse(content) as Partial<WeeklyFrequencyRecommendation>
+  const recommendedDaysPerWeek = Math.max(2, Math.min(6, Number(parsed.recommendedDaysPerWeek) || 3))
+  const rationale = String(parsed.rationale ?? '').trim() || 'Balanced weekly volume chosen to support adaptation and recovery for this client profile.'
+  const caution = String(parsed.caution ?? '').trim() || 'Use caution when prescribing more sessions than recommended; monitor soreness, sleep, and adherence closely.'
+
+  return {
+    recommendedDaysPerWeek,
+    rationale,
+    caution,
+  }
 }
 
 function buildUserPrompt(request: GenerationRequest): string {
