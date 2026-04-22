@@ -202,19 +202,28 @@ function resolveSessionDurationMins({
   return Math.max(30, Math.min(60, Math.round(scaledDuration - overageReduction)))
 }
 
+function parseDateOnlyUtc(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+}
+
 function buildMonthlyScheduledWorkouts({
   baseWorkouts,
   preferredTrainingDays,
   nasmOptPhase,
+  startDate,
 }: {
   baseWorkouts: ProgramWorkoutSnapshot[]
   preferredTrainingDays: string[]
   nasmOptPhase: number
+  startDate?: string | null
 }) {
   const scheduleDays = preferredTrainingDays.length > 0
     ? preferredTrainingDays
     : getDefaultPreferredTrainingDays(baseWorkouts.length)
-  const monthStart = startOfNextWeekUtc()
+  const monthStart = parseDateOnlyUtc(startDate) ?? startOfNextWeekUtc()
   const monthlyWorkouts: ProgramWorkoutSnapshot[] = []
 
   for (let weekIndex = 0; weekIndex < 4; weekIndex += 1) {
@@ -877,6 +886,7 @@ export async function POST(req: NextRequest) {
     baseWorkouts: storedPlan.workouts,
     preferredTrainingDays: scheduledTrainingDays,
     nasmOptPhase: payload.nasmOptPhase,
+    startDate: startDateOverride,
   })
 
   if (monthlyWorkouts.length === 0) {
