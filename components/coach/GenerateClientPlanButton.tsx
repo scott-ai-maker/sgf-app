@@ -318,6 +318,7 @@ export default function GenerateClientPlanButton({
         value={startDate}
         onChange={e => setStartDate(e.target.value)}
         type="date"
+        min={new Date().toISOString().slice(0, 10)}
         style={{
           padding: '8px 10px',
           border: '1px solid var(--navy-lt)',
