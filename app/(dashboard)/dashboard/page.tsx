@@ -60,6 +60,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           { href: '/dashboard/fitness', label: 'Fitness Lab' },
           { href: '/packages', label: 'Buy Sessions' },
           { href: '/dashboard/messages', label: 'Messages' },
+          { href: '/dashboard/settings', label: 'Settings' },
         ]}
         actions={<LogoutButton />}
       />

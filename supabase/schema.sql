@@ -61,6 +61,8 @@ alter table clients add column if not exists must_reset_password boolean not nul
 
 alter table clients add column if not exists designated_coach_id uuid references clients(id) on delete set null;
 
+alter table clients add column if not exists avatar_path text;
+
 -- ── PACKAGES ──────────────────────────────────────────────
 create table if not exists client_packages (
   id                uuid primary key default gen_random_uuid(),

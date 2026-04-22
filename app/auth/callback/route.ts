@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     const displayName = (user.user_metadata?.full_name || user.user_metadata?.name || '').toString().trim() || null
     const { data: existingProfile } = await admin
       .from('clients')
-      .select('id')
+      .select('id, avatar_path')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
             id: user.id,
             email: user.email ?? '',
             full_name: displayName,
+            avatar_path: null,
             role: 'client',
           },
           { onConflict: 'id', ignoreDuplicates: true }

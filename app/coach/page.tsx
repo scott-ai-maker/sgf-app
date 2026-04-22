@@ -582,6 +582,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachP
         links={[
           { href: '/coach#assigned-clients', label: 'Assigned Clients' },
           { href: '/coach?focus=unread-messages#assigned-clients', label: 'Unread' },
+          { href: '/coach/settings', label: 'Settings' },
         ]}
         actions={<LogoutButton />}
       />
