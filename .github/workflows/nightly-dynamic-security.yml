@@ -1,0 +1,110 @@
+name: Nightly Dynamic Security
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-dynamic-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  playwright-ui-smoke:
+    name: Playwright UI Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UI smoke tests
+        run: npm run test:ui
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-playwright-report
+          path: playwright-report/
+
+  authenticated-api-smoke:
+    name: Authenticated API Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SMOKE_COACH_PASSWORD: ${{ secrets.SMOKE_COACH_PASSWORD }}
+      SMOKE_ASSIGNED_CLIENT_PASSWORD: ${{ secrets.SMOKE_ASSIGNED_CLIENT_PASSWORD }}
+      SMOKE_UNASSIGNED_CLIENT_PASSWORD: ${{ secrets.SMOKE_UNASSIGNED_CLIENT_PASSWORD }}
+      SMOKE_BASE_URL: http://127.0.0.1:3000
+      SMOKE_ENABLE_BOOKING: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start app
+        run: |
+          npm run dev > /tmp/next-dev.log 2>&1 &
+          echo $! > /tmp/next-dev.pid
+
+      - name: Wait for app
+        run: |
+          for i in {1..60}; do
+            if curl -s --max-time 2 -o /dev/null "$SMOKE_BASE_URL"; then
+              echo "App ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App did not become ready in 60s"
+          cat /tmp/next-dev.log || true
+          exit 1
+
+      - name: Run authenticated smoke harness
+        run: node scripts/authenticated-smoke-harness.mjs
+
+      - name: Upload app log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-auth-smoke-next-dev-log
+          path: /tmp/next-dev.log
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [[ -f /tmp/next-dev.pid ]]; then
+            kill "$(cat /tmp/next-dev.pid)" || true
+          fi

@@ -41,7 +41,7 @@ function statusForBookingError(error: { message?: string | null; code?: string |
 export async function POST(req: NextRequest) {
   let userId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client'])
     userId = authz.user.id
   } catch (error) {

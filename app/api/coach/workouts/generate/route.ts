@@ -570,7 +570,7 @@ async function buildIntelligentTemplateWorkouts({
 export async function POST(req: NextRequest) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {

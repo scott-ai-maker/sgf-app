@@ -49,7 +49,7 @@ export async function PATCH(
 ) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {

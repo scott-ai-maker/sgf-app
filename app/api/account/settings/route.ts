@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest) {
   let currentMetadata: Record<string, unknown> = {}
 
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client', 'coach'])
     userId = authz.user.id
     role = authz.client.role

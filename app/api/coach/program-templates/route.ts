@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
 import { type CoachProgramWorkoutInput } from '@/lib/coach-programs'
+import { protectCSRF } from '@/lib/csrf'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface SaveTemplateRequest {
@@ -47,6 +48,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const csrf = await protectCSRF(request)
+    if (!csrf.valid) return csrf.error
+
     const supabase = await createClient()
 
     const {

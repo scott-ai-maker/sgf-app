@@ -67,6 +67,7 @@ describe('stripe checkout route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.STRIPE_SECRET_KEY = 'test_key'
+    process.env.APP_BASE_URL = 'http://localhost'
     getRequestAuthzMock.mockResolvedValue({
       user: { id: 'client-1' },
       client: { role: 'client' },

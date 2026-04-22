@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generatePredictionImage, uploadInitImageFromBuffer } from '@/lib/leonardo'
+import { protectCSRF } from '@/lib/csrf'
 import {
   createSignedFitnessPhotoUrl,
   extractPhotoPathFromLegacyUrl,
@@ -10,6 +11,9 @@ import {
 } from '@/lib/fitness-photos'
 
 export async function POST(req: NextRequest) {
+  const csrf = await protectCSRF(req)
+  if (!csrf.valid) return csrf.error
+
   const supabase = await createClient()
   const {
     data: { user },

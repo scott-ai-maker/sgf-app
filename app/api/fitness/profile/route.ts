@@ -81,7 +81,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   let userId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client'])
     userId = authz.user.id
   } catch (error) {
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   let userId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client'])
     userId = authz.user.id
   } catch (error) {

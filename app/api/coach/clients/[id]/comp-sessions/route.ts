@@ -13,7 +13,7 @@ export async function POST(
 ) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {

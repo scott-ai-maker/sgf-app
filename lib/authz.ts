@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
+import type { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { protectCSRF } from '@/lib/csrf'
 
 export type AppRole = 'client' | 'coach'
 
@@ -127,7 +129,14 @@ async function ensureClientRecord(user: User): Promise<ClientRecord> {
   }
 }
 
-export async function getRequestAuthz() {
+export async function getRequestAuthz(request?: NextRequest) {
+  if (request) {
+    const csrf = await protectCSRF(request)
+    if (!csrf.valid) {
+      throw new AuthzError('CSRF token validation failed', 403)
+    }
+  }
+
   const supabase = await createClient()
   const {
     data: { user },

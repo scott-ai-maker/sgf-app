@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendPasswordResetEmail, getMissingEmailConfigKeys } from '@/lib/marketing-email'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getTrustedAppBaseUrl } from '@/lib/app-base-url'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function getBaseUrl(req: NextRequest) {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.MARKETING_BASE_URL ||
-    req.nextUrl.origin
-  )
+  void req
+  return getTrustedAppBaseUrl()
 }
 
 function parseEmail(body: unknown) {
@@ -30,7 +28,13 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = supabaseAdmin()
-  const baseUrl = getBaseUrl(req)
+  let baseUrl: string
+  try {
+    baseUrl = getBaseUrl(req)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'App base URL is not configured'
+    return NextResponse.json({ error: message }, { status: 503 })
+  }
 
   try {
     const { data: linkData, error } = await admin.auth.admin.generateLink({

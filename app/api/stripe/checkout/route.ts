@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
+import { getTrustedAppBaseUrl } from '@/lib/app-base-url'
 import {
   calculateDiscountAmountCents,
   isDiscountCodeActive,
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Stripe is not configured. Missing STRIPE_SECRET_KEY.' }, { status: 500 })
     }
 
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client'])
     const userId = authz.user.id
 
@@ -78,7 +79,13 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin
+    let appUrl: string
+    try {
+      appUrl = getTrustedAppBaseUrl()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'App base URL is not configured'
+      return NextResponse.json({ error: message }, { status: 503 })
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

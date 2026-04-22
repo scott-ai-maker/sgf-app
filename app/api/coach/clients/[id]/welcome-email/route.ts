@@ -31,7 +31,7 @@ export async function POST(
   ctx: RouteContext<'/api/coach/clients/[id]/welcome-email'>
 ) {
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(_req)
     requireRole(authz.client.role, ['coach'])
   } catch (error) {
     const status = error instanceof AuthzError ? error.status : 500

@@ -15,7 +15,7 @@ export async function PATCH(
 ) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(_req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {
@@ -82,7 +82,7 @@ export async function DELETE(
 ) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(_req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {
