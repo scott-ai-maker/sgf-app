@@ -64,6 +64,10 @@ export async function GET(request: NextRequest) {
     redirectUrl.searchParams.set('type', type)
   }
 
+  if (type === 'email_change') {
+    redirectUrl.searchParams.set('email_updated', '1')
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()

@@ -7,7 +7,11 @@ import { createSignedFitnessPhotoUrl } from '@/lib/fitness-photos'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ClientSettingsPage() {
+interface ClientSettingsPageProps {
+  searchParams: Promise<{ email_updated?: string | string[] | undefined }>
+}
+
+export default async function ClientSettingsPage({ searchParams }: ClientSettingsPageProps) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -31,6 +35,11 @@ export default async function ClientSettingsPage() {
     avatarUrl,
     pendingEmail: user.new_email ?? null,
   } as const
+
+  const resolvedSearchParams = await searchParams
+  const emailUpdated = (Array.isArray(resolvedSearchParams.email_updated)
+    ? resolvedSearchParams.email_updated[0]
+    : resolvedSearchParams.email_updated) === '1'
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--navy)' }}>
@@ -67,6 +76,22 @@ export default async function ClientSettingsPage() {
         >
           Update your personal profile details for your client account.
         </p>
+
+        {emailUpdated && (
+          <div
+            style={{
+              marginBottom: 24,
+              border: '1px solid rgba(46, 204, 113, 0.45)',
+              background: 'rgba(46, 204, 113, 0.08)',
+              padding: '14px 16px',
+              color: 'var(--success)',
+              fontFamily: 'Raleway, sans-serif',
+              fontSize: 14,
+            }}
+          >
+            Email updated successfully. Your verified login email is now {initialProfile.email}.
+          </div>
+        )}
 
         <section style={{ border: '1px solid var(--navy-lt)', background: 'var(--navy-mid)', padding: 24 }}>
           <GeneralSettingsForm initialProfile={initialProfile} settingsPath="/dashboard/settings" />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
 type AppRole = 'client' | 'coach'
@@ -58,6 +58,8 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
   const [fullName, setFullName] = useState(initialProfile.fullName)
   const [phone, setPhone] = useState(initialProfile.phone)
   const [avatarUrl, setAvatarUrl] = useState(initialProfile.avatarUrl)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null)
   const [pendingEmail, setPendingEmail] = useState(initialProfile.pendingEmail)
   const [profileLoading, setProfileLoading] = useState(false)
   const [avatarLoading, setAvatarLoading] = useState(false)
@@ -81,6 +83,16 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
     .slice(0, 2)
     .map(part => part[0]?.toUpperCase() ?? '')
     .join('') || 'SG'
+
+  const displayAvatarUrl = avatarPreviewUrl ?? avatarUrl
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl)
+      }
+    }
+  }, [avatarPreviewUrl])
 
   async function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -112,15 +124,49 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
     setProfileLoading(false)
   }
 
-  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function clearAvatarSelection() {
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl)
+    }
+    setAvatarPreviewUrl(null)
+    setSelectedAvatarFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function handleAvatarSelection(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
+
+    const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp'])
+    if (!allowedTypes.has(file.type)) {
+      setAvatarMessage('Avatar must be PNG, JPEG, or WebP.')
+      clearAvatarSelection()
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarMessage('Avatar must be 5MB or smaller.')
+      clearAvatarSelection()
+      return
+    }
+
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl)
+    }
+
+    setAvatarMessage('Preview ready. Upload when you are happy with it.')
+    setSelectedAvatarFile(file)
+    setAvatarPreviewUrl(URL.createObjectURL(file))
+  }
+
+  async function handleAvatarUpload() {
+    if (!selectedAvatarFile) return
 
     setAvatarLoading(true)
     setAvatarMessage(null)
 
     const formData = new FormData()
-    formData.set('avatar', file)
+    formData.set('avatar', selectedAvatarFile)
 
     const response = await fetch('/api/account/avatar', {
       method: 'POST',
@@ -132,14 +178,13 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
     if (!response.ok) {
       setAvatarMessage(payload?.error ?? 'Unable to upload avatar.')
       setAvatarLoading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
 
     setAvatarUrl(payload?.avatarUrl ?? null)
     setAvatarMessage('Avatar updated successfully.')
     setAvatarLoading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    clearAvatarSelection()
   }
 
   async function handleRemoveAvatar() {
@@ -159,6 +204,7 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
     }
 
     setAvatarUrl(null)
+    clearAvatarSelection()
     setAvatarMessage('Avatar removed.')
     setAvatarLoading(false)
   }
@@ -279,8 +325,8 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
                 height: 120,
                 borderRadius: '50%',
                 border: '1px solid var(--navy-lt)',
-                background: avatarUrl
-                  ? `center / cover no-repeat url(${JSON.stringify(avatarUrl).slice(1, -1)})`
+                background: displayAvatarUrl
+                  ? `center / cover no-repeat url(${JSON.stringify(displayAvatarUrl).slice(1, -1)})`
                   : 'linear-gradient(135deg, rgba(212,160,23,0.18), rgba(18,35,54,0.9))',
                 display: 'flex',
                 alignItems: 'center',
@@ -292,16 +338,39 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
                 overflow: 'hidden',
               }}
             >
-              {!avatarUrl ? initials : null}
+              {!displayAvatarUrl ? initials : null}
             </div>
+            {avatarPreviewUrl && (
+              <p style={{ margin: 0, color: 'var(--gold)', fontSize: 12, textAlign: 'center' }}>
+                Preview selected. Upload to save it.
+              </p>
+            )}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              onChange={handleAvatarChange}
+              onChange={handleAvatarSelection}
               disabled={avatarLoading}
               style={{ width: '100%', color: 'var(--gray)', fontSize: 12 }}
             />
+            <button
+              type="button"
+              onClick={handleAvatarUpload}
+              disabled={avatarLoading || !selectedAvatarFile}
+              className="sgf-button sgf-button-primary"
+              style={{ width: '100%', opacity: avatarLoading || !selectedAvatarFile ? 0.6 : 1 }}
+            >
+              {avatarLoading ? 'Uploading...' : 'Upload Avatar'}
+            </button>
+            <button
+              type="button"
+              onClick={clearAvatarSelection}
+              disabled={avatarLoading || !selectedAvatarFile}
+              className="sgf-button"
+              style={{ width: '100%', opacity: avatarLoading || !selectedAvatarFile ? 0.6 : 1 }}
+            >
+              Clear Selection
+            </button>
             <button
               type="button"
               onClick={handleRemoveAvatar}
@@ -314,7 +383,23 @@ export default function GeneralSettingsForm({ initialProfile, settingsPath }: Ge
             <p style={{ margin: 0, color: 'var(--gray)', fontSize: 12, textAlign: 'center' }}>
               PNG, JPG, or WebP up to 5MB.
             </p>
-            {avatarMessage && <p style={{ margin: 0, color: avatarMessage.includes('success') || avatarMessage.includes('removed') ? 'var(--success)' : 'var(--error)', fontSize: 12, textAlign: 'center' }}>{avatarMessage}</p>}
+            {avatarMessage && (
+              <p
+                style={{
+                  margin: 0,
+                  color:
+                    avatarMessage.toLowerCase().includes('success') || avatarMessage.toLowerCase().includes('removed')
+                      ? 'var(--success)'
+                      : avatarMessage.toLowerCase().includes('preview')
+                        ? 'var(--gold)'
+                        : 'var(--error)',
+                  fontSize: 12,
+                  textAlign: 'center',
+                }}
+              >
+                {avatarMessage}
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
