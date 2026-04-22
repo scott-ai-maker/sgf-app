@@ -124,6 +124,7 @@ export default function GenerateClientPlanButton({
 
     return [...new Set(selectedValues)]
   })
+  const [startDate, setStartDate] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [recommendation, setRecommendation] = useState<GenerationRecommendation | null>(null)
@@ -164,6 +165,7 @@ export default function GenerateClientPlanButton({
         nasmOptPhase: Number(nasmOptPhase),
         equipmentAccess: selectedEquipment,
         experienceLevel,
+        startDate: startDate || null,
       }),
     })
 
@@ -308,6 +310,23 @@ export default function GenerateClientPlanButton({
           Use AI Recommendation ({recommendation.recommendedDaysPerWeek}/wk)
         </button>
       )}
+
+      <label style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13 }}>
+        Start date
+      </label>
+      <input
+        value={startDate}
+        onChange={e => setStartDate(e.target.value)}
+        type="date"
+        style={{
+          padding: '8px 10px',
+          border: '1px solid var(--navy-lt)',
+          background: 'var(--navy-mid)',
+          color: startDate ? 'var(--white)' : 'var(--gray)',
+          fontFamily: 'Raleway, sans-serif',
+          colorScheme: 'dark',
+        }}
+      />
 
       <div style={{ display: 'grid', gap: 8, width: '100%', minWidth: 240 }}>
         <span style={{ fontFamily: 'Raleway, sans-serif', color: 'var(--gray)', fontSize: 13 }}>

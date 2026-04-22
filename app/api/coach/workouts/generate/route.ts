@@ -578,6 +578,7 @@ export async function POST(req: NextRequest) {
     ? body.equipmentAccess.map((item: unknown) => String(item ?? '').trim().toLowerCase()).filter(Boolean)
     : []
   const experienceLevelOverride = String(body.experienceLevel ?? '').trim().toLowerCase() || null
+  const startDateOverride = String(body.startDate ?? '').trim() || null
 
   if (!clientId) {
     return NextResponse.json({ error: 'clientId is required' }, { status: 400 })
@@ -739,7 +740,7 @@ export async function POST(req: NextRequest) {
       sessionsPerWeek: Math.max(1, Math.min(7, resolvedSessionsPerWeek)),
       recommendedDaysPerWeek: recommendation.recommendedDaysPerWeek,
     }),
-    startDate: null,
+    startDate: startDateOverride,
     templateId: selectedTemplate.id,
     workouts: intelligentWorkouts,
   }
