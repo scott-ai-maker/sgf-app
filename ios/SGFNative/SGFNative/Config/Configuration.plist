@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>APIBaseURL</key>
+	<string>https://sgf-app-lovat.vercel.app</string>
+	<key>SupabaseURL</key>
+	<string>https://dgzdubbrneqfdleprjfr.supabase.co</string>
+	<key>SupabaseAnonKey</key>
+	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnemR1YmJybmVxZmRsZXByamZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDQ2NzcsImV4cCI6MjA5MTMyMDY3N30.sN-DrvvwNKmJeIj_w4zuib0PDdTVFrgV4za_Pk_s2I0</string>
+</dict>
+</plist>

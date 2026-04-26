@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, AuthzError } from '@/lib/authz'
-import { protectCSRF } from '@/lib/csrf'
 import {
   createSignedFitnessPhotoUrl,
   FITNESS_PHOTO_BUCKET,
@@ -39,18 +37,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const csrf = await protectCSRF(req)
-  if (!csrf.valid) return csrf.error
+  let userId = ''
 
-  const supabase = await createClient()
-  const admin = supabaseAdmin()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const authz = await getRequestAuthz(req)
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
+
+  const admin = supabaseAdmin()
 
   try {
     const formData = await req.formData()
@@ -69,24 +67,24 @@ export async function POST(req: NextRequest) {
     }
 
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-    const filename = `${user.id}/account-avatar-${Date.now()}.${ext}`
+    const filename = `${userId}/account-avatar-${Date.now()}.${ext}`
     const buffer = await file.arrayBuffer()
 
     const { data: existing } = await admin
       .from('clients')
       .select('avatar_path')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle()
 
     if (existing?.avatar_path) {
       await admin.storage.from(FITNESS_PHOTO_BUCKET).remove([existing.avatar_path])
     }
 
-    const { data: files } = await admin.storage.from(FITNESS_PHOTO_BUCKET).list(user.id)
+    const { data: files } = await admin.storage.from(FITNESS_PHOTO_BUCKET).list(userId)
     if (files && files.length > 0) {
       const staleFiles = files
         .filter(fileEntry => fileEntry.name.startsWith('account-avatar-'))
-        .map(fileEntry => `${user.id}/${fileEntry.name}`)
+        .map(fileEntry => `${userId}/${fileEntry.name}`)
 
       if (staleFiles.length > 0) {
         await admin.storage.from(FITNESS_PHOTO_BUCKET).remove(staleFiles)
@@ -107,7 +105,7 @@ export async function POST(req: NextRequest) {
     const { error: updateError } = await admin
       .from('clients')
       .update({ avatar_path: filename })
-      .eq('id', user.id)
+      .eq('id', userId)
 
     if (updateError) {
       throw new Error(updateError.message)
@@ -123,23 +121,23 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const csrf = await protectCSRF(req)
-  if (!csrf.valid) return csrf.error
+  let userId = ''
 
-  const supabase = await createClient()
-  const admin = supabaseAdmin()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const authz = await getRequestAuthz(req)
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
+
+  const admin = supabaseAdmin()
 
   const { data: existing, error } = await admin
     .from('clients')
     .select('avatar_path')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   if (error) {
@@ -153,7 +151,7 @@ export async function DELETE(req: NextRequest) {
   const { error: updateError } = await admin
     .from('clients')
     .update({ avatar_path: null })
-    .eq('id', user.id)
+    .eq('id', userId)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })

@@ -28,6 +28,19 @@ function normalizeRole(role: string | null | undefined): AppRole | null {
   return null
 }
 
+function getBearerToken(request?: NextRequest): string | null {
+  if (!request) return null
+
+  const header = request.headers.get('authorization') ?? request.headers.get('Authorization')
+  if (!header) return null
+
+  const [scheme, token] = header.split(' ')
+  if (scheme?.toLowerCase() !== 'bearer') return null
+
+  const normalized = String(token ?? '').trim()
+  return normalized.length > 0 ? normalized : null
+}
+
 function unauthorizedRedirect(expectedRole: AppRole, actualRole: AppRole | null): string {
   if (expectedRole === 'client') {
     return actualRole === 'coach' ? '/coach' : '/auth/login'
@@ -130,17 +143,37 @@ async function ensureClientRecord(user: User): Promise<ClientRecord> {
 }
 
 export async function getRequestAuthz(request?: NextRequest) {
+  const bearerToken = getBearerToken(request)
+
   if (request) {
-    const csrf = await protectCSRF(request)
-    if (!csrf.valid) {
-      throw new AuthzError('CSRF token validation failed', 403)
+    // Native mobile clients authenticate via bearer token and are not cookie-based,
+    // so CSRF checks are only required for browser session requests.
+    if (!bearerToken) {
+      const csrf = await protectCSRF(request)
+      if (!csrf.valid) {
+        throw new AuthzError('CSRF token validation failed', 403)
+      }
     }
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user: User | null = null
+
+  if (bearerToken) {
+    const admin = supabaseAdmin()
+    const { data, error } = await admin.auth.getUser(bearerToken)
+
+    if (error) {
+      throw new AuthzError('Unauthorized', 401)
+    }
+
+    user = data.user
+  } else {
+    const supabase = await createClient()
+    const {
+      data: { user: cookieUser },
+    } = await supabase.auth.getUser()
+    user = cookieUser
+  }
 
   if (!user) {
     throw new AuthzError('Unauthorized', 401)

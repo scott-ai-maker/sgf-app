@@ -1,0 +1,23 @@
+name: SGFNative
+options:
+  minimumXcodeGenVersion: 2.38.0
+settings:
+  base:
+    SWIFT_VERSION: 5.10
+    DEVELOPMENT_TEAM: ""
+targets:
+  SGFNative:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - SGFNative
+    info:
+      path: SGFNative/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.scottgordonfitness.sgf-native
+        PRODUCT_NAME: SGFNative
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0.0
