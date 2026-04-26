@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { getRequestAuthz, AuthzError } from '@/lib/authz'
 import { protectCSRF } from '@/lib/csrf'
 import {
   createSignedFitnessPhotoUrl,
@@ -10,21 +11,23 @@ import {
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
-export async function GET() {
-  const supabase = await createClient()
-  const admin = supabaseAdmin()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(req: NextRequest) {
+  let userId = ''
+  try {
+    const authz = await getRequestAuthz(req)
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
+
+  const admin = supabaseAdmin()
 
   const { data: existing, error } = await admin
     .from('clients')
     .select('avatar_path')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   if (error) {

@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRequestAuthz, AuthzError } from '@/lib/authz'
 import { supabaseAdmin } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   let userId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     userId = authz.user.id
   } catch (error) {
     const status = error instanceof AuthzError ? error.status : 500

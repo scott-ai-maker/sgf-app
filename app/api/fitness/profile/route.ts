@@ -32,21 +32,26 @@ function normalizePreferredTrainingDays(value: unknown) {
     })
 }
 
-export async function GET() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export async function GET(req: NextRequest) {
+  let userId = ''
+  try {
+    const authz = await getRequestAuthz(req)
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
+  }
 
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const admin = supabaseAdmin()
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from('fitness_profiles')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
-  const { data: equipmentData } = await supabase
+  const { data: equipmentData } = await admin
     .from('equipment_library_entries')
     .select('name')
     .eq('is_active', true)

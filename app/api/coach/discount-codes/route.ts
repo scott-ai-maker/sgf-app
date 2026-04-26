@@ -18,10 +18,10 @@ function isValidDiscountCodeFormat(value: string) {
   return /^[A-Z0-9-]{4,32}$/.test(value)
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {

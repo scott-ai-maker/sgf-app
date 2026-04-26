@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase-server'
 import { type CoachProgramWorkoutInput } from '@/lib/coach-programs'
 import { protectCSRF } from '@/lib/csrf'
 import { NextRequest, NextResponse } from 'next/server'
+import { getRequestAuthz, requireRole, AuthzError } from '@/lib/authz'
+import { supabaseAdmin } from '@/lib/supabase'
 
 interface SaveTemplateRequest {
   title: string
@@ -13,37 +15,31 @@ interface SaveTemplateRequest {
   workouts: CoachProgramWorkoutInput[]
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  let coachId = ''
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Fetch coach's templates
-    const { data: templates, error: fetchError } = await supabase
-      .from('coach_program_templates')
-      .select('*')
-      .eq('coach_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-
-    if (fetchError) {
-      console.error('Failed to fetch coach templates:', fetchError)
-      return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
-    }
-
-    return NextResponse.json({ templates: templates || [] })
+    const authz = await getRequestAuthz(req)
+    requireRole(authz.client.role, ['coach'])
+    coachId = authz.user.id
   } catch (error) {
-    console.error('Error in GET /api/coach/program-templates:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
   }
+
+  const admin = supabaseAdmin()
+  const { data: templates, error: fetchError } = await admin
+    .from('coach_program_templates')
+    .select('*')
+    .eq('coach_id', coachId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+
+  if (fetchError) {
+    return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 })
+  }
+
+  return NextResponse.json({ templates: templates || [] })
 }
 
 export async function POST(request: NextRequest) {

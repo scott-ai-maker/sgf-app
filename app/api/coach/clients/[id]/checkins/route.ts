@@ -3,12 +3,12 @@ import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } 
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   let coachId = ''
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['coach'])
     coachId = authz.user.id
   } catch (error) {

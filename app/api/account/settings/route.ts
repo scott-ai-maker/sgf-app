@@ -45,12 +45,12 @@ function getAuthzErrorResponse(error: unknown) {
   return NextResponse.json({ error: message }, { status })
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   let userId = ''
   let metadataSurfaceRole: unknown = null
 
   try {
-    const authz = await getRequestAuthz()
+    const authz = await getRequestAuthz(req)
     requireRole(authz.client.role, ['client', 'coach'])
     userId = authz.user.id
     metadataSurfaceRole = authz.user.user_metadata?.surface_role
