@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
   const beforePhotoPath = normalizePhotoPath(
     data.before_photo_path ?? extractPhotoPathFromLegacyUrl(data.before_photo_url)
   )
-  const signedBeforePhotoUrl = await createSignedFitnessPhotoUrl(supabase, beforePhotoPath)
+  const signedBeforePhotoUrl = await createSignedFitnessPhotoUrl(admin, beforePhotoPath)
 
   const profile = {
     ...data,
