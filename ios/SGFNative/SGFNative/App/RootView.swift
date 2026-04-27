@@ -31,8 +31,7 @@ struct RootView: View {
         }
         .onChange(of: sessionStore.state) { _, newState in
             guard case .signedIn = newState,
-                  let token = sessionStore.accessToken,
-                  (sessionStore.role == nil || sessionStore.role == "client") else { return }
+                  let token = sessionStore.accessToken else { return }
             Task { await checkOnboarding(token: token) }
         }
     }
@@ -41,6 +40,10 @@ struct RootView: View {
         checkingOnboarding = true
         defer { checkingOnboarding = false }
         do {
+            // Fetch dashboard first to establish role — coaches skip onboarding
+            let dashboard = try await APIClient(token: token).fetchDashboard()
+            sessionStore.setRole(dashboard.role)
+            guard dashboard.role == "client" else { return }
             let profile = try await APIClient(token: token).fetchFitnessProfile()
             needsOnboarding = (profile == nil)
         } catch {

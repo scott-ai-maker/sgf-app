@@ -195,6 +195,9 @@ struct WeeklyCheckinPayload: Encodable {
     let sorenessLevel: Int
     let energyLevel: Int
     let weightKg: Double?
+    let waistCm: Double?
+    let hipCm: Double?
+    let neckCm: Double?
     let notes: String?
 
     enum CodingKeys: String, CodingKey {
@@ -204,6 +207,9 @@ struct WeeklyCheckinPayload: Encodable {
         case sorenessLevel = "soreness_level"
         case energyLevel = "energy_level"
         case weightKg = "weight_kg"
+        case waistCm = "waist_cm"
+        case hipCm = "hip_cm"
+        case neckCm = "neck_cm"
         case notes
     }
 }
@@ -239,34 +245,151 @@ struct WorkoutPlan: Decodable, Identifiable {
 }
 
 struct WorkoutPlanJson: Decodable {
-    let workouts: [WorkoutDay]
-}
+    let workouts: [ProgramWorkout]
 
-struct WorkoutDay: Decodable, Identifiable {
-    var id: String { dayTag ?? name ?? UUID().uuidString }
-    let name: String?
-    let dayTag: String?
-    let exercises: [PlanExercise]
-
-    enum CodingKeys: String, CodingKey {
-        case name
-        case dayTag = "day_tag"
-        case exercises
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        workouts = (try? c.decode([ProgramWorkout].self, forKey: .workouts)) ?? []
     }
+
+    enum CodingKeys: String, CodingKey { case workouts }
 }
 
-struct PlanExercise: Decodable, Identifiable {
-    var id: String { "\(name ?? "")-\(sets ?? 0)-\(reps ?? "")" }
-    let name: String?
-    let sets: Int?
-    let reps: String?
-    let restSeconds: Int?
+struct ProgramWorkout: Decodable, Identifiable {
+    var id: String { "\(day)" }
+    let day: Int
+    let focus: String
+    let scheduledDate: String?
     let notes: String?
+    let exercises: [ProgramExercise]
+}
+
+struct ProgramExercise: Decodable, Identifiable {
+    var id: String { "\(name)-\(sets)-\(reps)" }
+    let name: String
+    let sets: String
+    let reps: String
+    let rest: String?
+    let tempo: String?
+    let notes: String?
+    let exerciseDescription: String?
+    let coachingCues: [String]
+    let imageUrl: String?
+    let videoUrl: String?
+    let openExternallyOnly: Bool
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = (try? c.decode(String.self, forKey: .name)) ?? "Exercise"
+        sets = (try? c.decode(String.self, forKey: .sets)) ?? "3"
+        reps = (try? c.decode(String.self, forKey: .reps)) ?? "10"
+        rest = try? c.decodeIfPresent(String.self, forKey: .rest)
+        tempo = try? c.decodeIfPresent(String.self, forKey: .tempo)
+        notes = try? c.decodeIfPresent(String.self, forKey: .notes)
+        exerciseDescription = try? c.decodeIfPresent(String.self, forKey: .exerciseDescription)
+        coachingCues = (try? c.decode([String].self, forKey: .coachingCues)) ?? []
+        imageUrl = try? c.decodeIfPresent(String.self, forKey: .imageUrl)
+        videoUrl = try? c.decodeIfPresent(String.self, forKey: .videoUrl)
+        openExternallyOnly = (try? c.decode(Bool.self, forKey: .openExternallyOnly)) ?? false
+    }
 
     enum CodingKeys: String, CodingKey {
-        case name, sets, reps, notes
-        case restSeconds = "rest_seconds"
+        case name, sets, reps, rest, tempo, notes, coachingCues, imageUrl, videoUrl, openExternallyOnly
+        case exerciseDescription = "description"
     }
+}
+
+struct WorkoutVideoEventRequest: Encodable {
+    let workoutPlanId: String?
+    let exerciseName: String
+    let videoUrl: String
+    let eventType: String
+    let watchSeconds: Int?
+    let metadata: [String: String]?
+}
+
+// MARK: - Workout Logging
+
+struct WorkoutLogsResponse: Decodable {
+    let logs: [WorkoutLog]
+}
+
+struct WorkoutLogResponse: Decodable {
+    let log: WorkoutLog
+}
+
+struct WorkoutLog: Decodable, Identifiable {
+    let id: String
+    let workoutPlanId: String?
+    let sessionDate: String
+    let sessionTitle: String
+    let completed: Bool
+    let exertionRpe: Int?
+    let notes: String?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case workoutPlanId = "workout_plan_id"
+        case sessionDate = "session_date"
+        case sessionTitle = "session_title"
+        case completed
+        case exertionRpe = "exertion_rpe"
+        case notes
+        case createdAt = "created_at"
+    }
+}
+
+struct WorkoutLogRequest: Encodable {
+    let workoutPlanId: String?
+    let sessionDate: String
+    let sessionTitle: String
+    let completed: Bool
+    let exertionRpe: Int?
+    let notes: String?
+}
+
+struct SetLogsResponse: Decodable {
+    let setLogs: [SetLog]
+}
+
+struct SetLogResponse: Decodable {
+    let setLog: SetLog
+}
+
+struct SetLog: Decodable, Identifiable {
+    let id: String
+    let workoutPlanId: String?
+    let sessionDate: String
+    let exerciseName: String
+    let setNumber: Int?
+    let reps: Int
+    let weightKg: Double?
+    let rpe: Double?
+    let notes: String?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case workoutPlanId = "workout_plan_id"
+        case sessionDate = "session_date"
+        case exerciseName = "exercise_name"
+        case setNumber = "set_number"
+        case reps
+        case weightKg = "weight_kg"
+        case rpe
+        case notes
+        case createdAt = "created_at"
+    }
+}
+
+struct SetLogRequest: Encodable {
+    let workoutPlanId: String
+    let sessionDate: String
+    let exerciseName: String
+    let setNumber: Int
+    let reps: Int
+    let weightKg: Double?
 }
 
 struct CoachClient: Decodable, Identifiable {
@@ -285,4 +408,71 @@ struct CoachClient: Decodable, Identifiable {
         case sessionsRemaining = "sessions_remaining"
         case lastCheckinDate = "last_checkin_date"
     }
+}
+
+// MARK: - Progress Summary
+
+struct WeightDataPoint: Decodable, Identifiable {
+    var id: String { weekStart }
+    let weekStart: String
+    let weightKg: Double
+
+    enum CodingKeys: String, CodingKey {
+        case weekStart = "weekStart"
+        case weightKg = "weightKg"
+    }
+}
+
+struct MeasurementDataPoint: Decodable, Identifiable {
+    var id: String { weekStart }
+    let weekStart: String
+    let waistCm: Double?
+    let hipCm: Double?
+    let neckCm: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case weekStart = "weekStart"
+        case waistCm = "waistCm"
+        case hipCm = "hipCm"
+        case neckCm = "neckCm"
+    }
+}
+
+struct WellnessDataPoint: Decodable, Identifiable {
+    var id: String { weekStart }
+    let weekStart: String
+    let sleepQuality: Int?
+    let energyLevel: Int?
+    let stressLevel: Int?
+    let sorenessLevel: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case weekStart = "weekStart"
+        case sleepQuality = "sleepQuality"
+        case energyLevel = "energyLevel"
+        case stressLevel = "stressLevel"
+        case sorenessLevel = "sorenessLevel"
+    }
+}
+
+struct PersonalRecord: Decodable, Identifiable {
+    var id: String { exerciseName }
+    let exerciseName: String
+    let weightKg: Double
+    let reps: Int?
+    let achievedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case exerciseName = "exerciseName"
+        case weightKg = "weightKg"
+        case reps = "reps"
+        case achievedAt = "achievedAt"
+    }
+}
+
+struct ProgressSummaryResponse: Decodable {
+    let weightTrend: [WeightDataPoint]
+    let measurementTrend: [MeasurementDataPoint]
+    let wellnessTrend: [WellnessDataPoint]
+    let personalRecords: [PersonalRecord]
 }

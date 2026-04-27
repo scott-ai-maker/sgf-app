@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0B3A7A17B875E30813197A35 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C936C6B349E64ADEFB5CDB3A /* PushNotificationManager.swift */; };
 		0D9EDD5405CC165C22F4CC81 /* SGFNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF3A9663570198781D606DB /* SGFNativeApp.swift */; };
+		1ADEF3ACC702966605B35B7C /* WorkoutSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF527879BFBF6AD77FB40528 /* WorkoutSessionView.swift */; };
 		2B3EFD8D9E1331ADE033ACC8 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AA74FC26D741AA8D3DD9BAE /* APIClient.swift */; };
 		3237D3785EC5FE9D4AF3DE34 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6A085327FA7433BAB14A59 /* AppConfig.swift */; };
 		3330F608615600AB35C420A9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2755A1AAF74C7DE37CBE73D2 /* SettingsView.swift */; };
@@ -22,9 +23,11 @@
 		9D1287FE4B0A8AFE3BBBAF98 /* Configuration.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0E3D9966674F936C4D3517AC /* Configuration.plist */; };
 		A0E7EEC010AD266A4B2A7999 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1556346F7E13081EDFE4116E /* Models.swift */; };
 		B3AA34D83AAFBD91D430C2D1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169E0CB8B5B32E61D81927AD /* MainTabView.swift */; };
+		B9E7230F60C2BF1179F53064 /* YouTubePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */; };
 		BD535F05443438F13CFF303F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C716ADA88EE4759C80642986 /* LoginView.swift */; };
 		C150AEAB86B969BA5C4580F1 /* CoachClientCheckinsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94C4C2EA44988566457536A /* CoachClientCheckinsView.swift */; };
 		C71DDE434B648CEEEA3AC775 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA199849F699BF3883B238 /* MessagesView.swift */; };
+		D3689CF6DEC36C345BC27E20 /* VideoThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 569626B5F87AF61314EAC206 /* VideoThumbnailCache.swift */; };
 		D4E1A74018D50A24233E50CA /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1518C0D793CBD111C784DF /* SessionStore.swift */; };
 		F6D15D1F010374CD3BCA7B5E /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A2569624F61B5F5F7DD92E /* DashboardView.swift */; };
 /* End PBXBuildFile section */
@@ -36,7 +39,9 @@
 		169E0CB8B5B32E61D81927AD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		18AA199849F699BF3883B238 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 		2755A1AAF74C7DE37CBE73D2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerView.swift; sourceTree = "<group>"; };
 		4F63C755D61B77340F8F8391 /* SGFNative.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SGFNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		569626B5F87AF61314EAC206 /* VideoThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoThumbnailCache.swift; sourceTree = "<group>"; };
 		59A2569624F61B5F5F7DD92E /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		8BAAB6755F97B81C62CEA143 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		9AA74FC26D741AA8D3DD9BAE /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -51,6 +56,7 @@
 		E14FE3962AE2F2E61BE085AA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		EADCD2D6A990C62F9CF690D6 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		FC1518C0D793CBD111C784DF /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		FF527879BFBF6AD77FB40528 /* WorkoutSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionView.swift; sourceTree = "<group>"; };
 		FF7F23A039D9E26B5A34619D /* CoachClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachClientsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -117,7 +123,10 @@
 			isa = PBXGroup;
 			children = (
 				079BDD3CE0E02145707647BB /* FitnessView.swift */,
+				569626B5F87AF61314EAC206 /* VideoThumbnailCache.swift */,
 				C9A99B8FC491A43270EFDBB4 /* WorkoutPlanView.swift */,
+				FF527879BFBF6AD77FB40528 /* WorkoutSessionView.swift */,
+				32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */,
 			);
 			path = Fitness;
 			sourceTree = "<group>";
@@ -284,7 +293,10 @@
 				D4E1A74018D50A24233E50CA /* SessionStore.swift in Sources */,
 				3330F608615600AB35C420A9 /* SettingsView.swift in Sources */,
 				3A773955738D650501E9F5BD /* SupabaseAuthService.swift in Sources */,
+				D3689CF6DEC36C345BC27E20 /* VideoThumbnailCache.swift in Sources */,
 				3E95D376D8F153F09D6D520C /* WorkoutPlanView.swift in Sources */,
+				1ADEF3ACC702966605B35B7C /* WorkoutSessionView.swift in Sources */,
+				B9E7230F60C2BF1179F53064 /* YouTubePlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

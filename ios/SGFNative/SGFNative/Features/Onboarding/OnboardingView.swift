@@ -144,9 +144,9 @@ struct OnboardingView: View {
                 }
                 TextField("Age", text: $age)
                     .keyboardType(.numberPad)
-                TextField(preferredUnits == "imperial" ? "Height (cm)" : "Height (cm)", text: $heightCm)
+                TextField(preferredUnits == "imperial" ? "Height (inches)" : "Height (cm)", text: $heightCm)
                     .keyboardType(.decimalPad)
-                TextField("Weight (kg)", text: $weightKg)
+                TextField(preferredUnits == "imperial" ? "Weight (lbs)" : "Weight (kg)", text: $weightKg)
                     .keyboardType(.decimalPad)
             }
 
@@ -404,6 +404,10 @@ struct OnboardingView: View {
             medications: medications.isEmpty ? nil : medications
         )
 
+        // Convert imperial inputs to metric before sending (backend always stores metric)
+        let heightCmValue: Double? = Double(heightCm).map { preferredUnits == "imperial" ? $0 * 2.54 : $0 }
+        let weightKgValue: Double? = Double(weightKg).map { preferredUnits == "imperial" ? $0 * 0.453592 : $0 }
+
         let payload = OnboardingPayload(
             intake: intake,
             preferredUnits: preferredUnits,
@@ -414,8 +418,8 @@ struct OnboardingView: View {
             activityLevel: activityLevel,
             age: Int(age),
             sex: sex,
-            heightCm: Double(heightCm),
-            weightKg: Double(weightKg),
+            heightCm: heightCmValue,
+            weightKg: weightKgValue,
             workoutLocation: workoutLocation,
             injuriesLimitations: injuriesLimitations.isEmpty ? nil : injuriesLimitations,
             equipmentAccess: workoutLocation == "home" ? ["bodyweight"] : ["barbell", "dumbbell", "cable_machine", "bench"]

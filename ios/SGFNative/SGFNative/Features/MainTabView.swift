@@ -43,7 +43,12 @@ struct MainTabView: View {
                         Label("Fitness", systemImage: "figure.strengthtraining.traditional")
                     }
 
-                WorkoutPlanView()
+                ProgressView()
+                    .tabItem {
+                        Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+                    }
+
+                ProgramView()
                     .tabItem {
                         Label("Program", systemImage: "dumbbell.fill")
                     }

@@ -11,7 +11,10 @@ struct FitnessView: View {
     @State private var stressLevel = 3
     @State private var sorenessLevel = 3
     @State private var energyLevel = 3
-    @State private var weightKg = ""
+    @State private var weightInput = ""
+    @State private var waistInput = ""
+    @State private var hipInput = ""
+    @State private var neckInput = ""
     @State private var notes = ""
 
     @State private var loading = false
@@ -39,7 +42,13 @@ struct FitnessView: View {
                             Stepper("Stress Level: \(stressLevel)", value: $stressLevel, in: 1...5)
                             Stepper("Soreness Level: \(sorenessLevel)", value: $sorenessLevel, in: 1...5)
                             Stepper("Energy Level: \(energyLevel)", value: $energyLevel, in: 1...5)
-                            TextField("Weight (kg)", text: $weightKg)
+                            TextField(sessionStore.preferredUnits == "imperial" ? "Weight (lbs)" : "Weight (kg)", text: $weightInput)
+                                .keyboardType(.decimalPad)
+                            TextField("Waist (cm)", text: $waistInput)
+                                .keyboardType(.decimalPad)
+                            TextField("Hips (cm)", text: $hipInput)
+                                .keyboardType(.decimalPad)
+                            TextField("Neck (cm)", text: $neckInput)
                                 .keyboardType(.decimalPad)
                             TextField("Notes", text: $notes)
 
@@ -65,6 +74,14 @@ struct FitnessView: View {
                                         Text("Sleep \(checkin.sleepQuality ?? 0), Stress \(checkin.stressLevel ?? 0), Soreness \(checkin.sorenessLevel ?? 0), Energy \(checkin.energyLevel ?? 0)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
+                                        if let wkg = checkin.weightKg {
+                                            let isImperial = sessionStore.preferredUnits == "imperial"
+                                            let displayed = isImperial ? wkg / 0.453592 : wkg
+                                            let unit = isImperial ? "lbs" : "kg"
+                                            Text(String(format: "Weight: %.1f %@", displayed, unit))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
                                     }
                                 }
                             }
@@ -121,6 +138,10 @@ struct FitnessView: View {
             profile = try await profileTask
             checkins = try await checkinsTask
             photos = try await photosTask
+            // Publish the unit preference so all views stay in sync
+            if let units = profile?.preferredUnits {
+                sessionStore.setPreferredUnits(units)
+            }
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }
@@ -132,7 +153,12 @@ struct FitnessView: View {
         guard let token = sessionStore.accessToken else { return }
 
         do {
-            let weightValue = Double(weightKg.trimmingCharacters(in: .whitespacesAndNewlines))
+            let raw = Double(weightInput.trimmingCharacters(in: .whitespacesAndNewlines))
+            // Convert to kg for storage; backend always stores metric
+            let weightValue = raw.map { sessionStore.preferredUnits == "imperial" ? $0 * 0.453592 : $0 }
+            let waistValue = Double(waistInput.trimmingCharacters(in: .whitespacesAndNewlines))
+            let hipValue = Double(hipInput.trimmingCharacters(in: .whitespacesAndNewlines))
+            let neckValue = Double(neckInput.trimmingCharacters(in: .whitespacesAndNewlines))
             let payload = WeeklyCheckinPayload(
                 weekStart: currentWeekStartISODate(),
                 sleepQuality: sleepQuality,
@@ -140,6 +166,9 @@ struct FitnessView: View {
                 sorenessLevel: sorenessLevel,
                 energyLevel: energyLevel,
                 weightKg: weightValue,
+                waistCm: waistValue,
+                hipCm: hipValue,
+                neckCm: neckValue,
                 notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes.trimmingCharacters(in: .whitespacesAndNewlines)
             )
             _ = try await APIClient(token: token).submitWeeklyCheckin(payload)

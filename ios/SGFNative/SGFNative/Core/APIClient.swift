@@ -162,6 +162,33 @@ struct APIClient {
         return response.plans
     }
 
+    func fetchWorkoutLogs(planId: String? = nil) async throws -> [WorkoutLog] {
+        var path = "/api/workouts/log"
+        if let planId, !planId.isEmpty {
+            path += "?planId=\(planId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? planId)"
+        }
+        let response: WorkoutLogsResponse = try await request(path: path, method: "GET", body: Optional<Int>.none)
+        return response.logs
+    }
+
+    func logWorkoutSession(_ payload: WorkoutLogRequest) async throws -> WorkoutLog {
+        let response: WorkoutLogResponse = try await request(path: "/api/workouts/log", method: "POST", body: payload)
+        return response.log
+    }
+
+    func logWorkoutSet(_ payload: SetLogRequest) async throws -> SetLog {
+        let response: SetLogResponse = try await request(path: "/api/workouts/log-set", method: "POST", body: payload)
+        return response.setLog
+    }
+
+    func logWorkoutVideoEvent(_ payload: WorkoutVideoEventRequest) async throws {
+        let _: EmptyDecodable = try await request(path: "/api/workouts/video-event", method: "POST", body: payload)
+    }
+
+    func fetchProgressSummary() async throws -> ProgressSummaryResponse {
+        try await request(path: "/api/fitness/progress-summary", method: "GET", body: Optional<Int>.none)
+    }
+
     func registerPushToken(_ deviceToken: String) async throws {
         struct Body: Encodable { let deviceToken: String; let platform: String }
         let _: EmptyDecodable = try await request(

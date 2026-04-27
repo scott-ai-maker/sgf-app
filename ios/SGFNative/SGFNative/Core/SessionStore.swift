@@ -17,6 +17,7 @@ final class SessionStore: ObservableObject {
 
     @Published private(set) var state: State = .loading
     @Published private(set) var role: String? = nil
+    @Published private(set) var preferredUnits: String = "imperial"
     @Published var lastError: String?
 
     private let authService = SupabaseAuthService()
@@ -24,6 +25,7 @@ final class SessionStore: ObservableObject {
     private let refreshKey = "sgf.refreshToken"
     private let userIdKey = "sgf.userId"
     private let userEmailKey = "sgf.userEmail"
+    private let unitsKey = "sgf.preferredUnits"
 
     var accessToken: String? {
         if case let .signedIn(session) = state {
@@ -43,6 +45,7 @@ final class SessionStore: ObservableObject {
             return
         }
 
+        preferredUnits = defaults.string(forKey: unitsKey) ?? "imperial"
         state = .signedIn(
             UserSession(
                 userId: userId,
@@ -79,13 +82,20 @@ final class SessionStore: ObservableObject {
         defaults.removeObject(forKey: refreshKey)
         defaults.removeObject(forKey: userIdKey)
         defaults.removeObject(forKey: userEmailKey)
+        defaults.removeObject(forKey: unitsKey)
         lastError = nil
         role = nil
+        preferredUnits = "imperial"
         state = .signedOut
     }
 
     func setRole(_ newRole: String) {
         role = newRole
+    }
+
+    func setPreferredUnits(_ units: String) {
+        preferredUnits = units
+        UserDefaults.standard.set(units, forKey: unitsKey)
     }
 
     private func persist(response: SupabaseAuthResponse) {
