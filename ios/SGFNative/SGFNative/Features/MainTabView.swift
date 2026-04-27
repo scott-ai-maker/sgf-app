@@ -43,20 +43,17 @@ struct MainTabView: View {
                         Label("Booking", systemImage: "calendar")
                     }
 
-                FitnessView()
-                    .tabItem {
-                        Label("Fitness", systemImage: "figure.strengthtraining.traditional")
+                NavigationStack {
+                    List {
+                        NavigationLink("My Program") { ProgramView() }
+                        NavigationLink("Progress") { ClientProgressView() }
+                        NavigationLink("Fitness") { FitnessView() }
                     }
-
-                ClientProgressView()
-                    .tabItem {
-                        Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-                    }
-
-                ProgramView()
-                    .tabItem {
-                        Label("Program", systemImage: "dumbbell.fill")
-                    }
+                    .navigationTitle("Train")
+                }
+                .tabItem {
+                    Label("Train", systemImage: "dumbbell.fill")
+                }
 
                 SettingsView()
                     .tabItem {
