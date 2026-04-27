@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRequestAuthz, AuthzError } from '@/lib/authz'
+import { getRequestAuthz, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   let userId = ''
   try {
     const authz = await getRequestAuthz(req)
-    userId = authz.user.id
+    if (authz.client.role === 'coach') {
+      const clientId = String(req.nextUrl.searchParams.get('clientId') ?? '').trim()
+      if (!clientId) {
+        return NextResponse.json({ error: 'clientId is required for coach progress views' }, { status: 400 })
+      }
+
+      await requireCoachAssignedClient(authz.user.id, clientId)
+      userId = clientId
+    } else {
+      userId = authz.user.id
+    }
   } catch (error) {
     const status = error instanceof AuthzError ? error.status : 500
     const message = error instanceof Error ? error.message : 'Unauthorized'

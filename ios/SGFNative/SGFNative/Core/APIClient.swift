@@ -185,8 +185,12 @@ struct APIClient {
         let _: EmptyDecodable = try await request(path: "/api/workouts/video-event", method: "POST", body: payload)
     }
 
-    func fetchProgressSummary() async throws -> ProgressSummaryResponse {
-        try await request(path: "/api/fitness/progress-summary", method: "GET", body: Optional<Int>.none)
+    func fetchProgressSummary(clientId: String? = nil) async throws -> ProgressSummaryResponse {
+        var path = "/api/fitness/progress-summary"
+        if let clientId, !clientId.isEmpty {
+            path += "?clientId=\(clientId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? clientId)"
+        }
+        return try await request(path: path, method: "GET", body: Optional<Int>.none)
     }
 
     func registerPushToken(_ deviceToken: String) async throws {
