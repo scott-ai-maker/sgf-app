@@ -37,6 +37,43 @@ function extractPlanExerciseNames(planJson: unknown) {
   return names
 }
 
+export async function GET(req: NextRequest) {
+  let userId = ''
+  try {
+    const authz = await getRequestAuthz(req)
+    requireRole(authz.client.role, ['client'])
+    userId = authz.user.id
+  } catch (error) {
+    const status = error instanceof AuthzError ? error.status : 500
+    const message = error instanceof Error ? error.message : 'Unauthorized'
+    return NextResponse.json({ error: message }, { status })
+  }
+
+  const planId = req.nextUrl.searchParams.get('planId')
+  const sessionDate = req.nextUrl.searchParams.get('sessionDate')
+  const exerciseName = req.nextUrl.searchParams.get('exerciseName')
+
+  let query = supabaseAdmin()
+    .from('workout_set_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('session_date', { ascending: false })
+    .order('set_number', { ascending: true })
+
+  if (planId) query = query.eq('workout_plan_id', planId)
+  if (sessionDate) query = query.eq('session_date', sessionDate)
+  if (exerciseName) {
+    query = query.eq('exercise_name', normalizeExerciseName(exerciseName)).limit(20)
+  } else {
+    query = query.limit(200)
+  }
+
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ setLogs: data ?? [] })
+}
+
 export async function POST(req: NextRequest) {
   let userId = ''
   try {
