@@ -8,6 +8,7 @@ struct CoachClientCheckinsView: View {
 
     @State private var checkins: [WeeklyCheckin] = []
     @State private var progressSummary: ProgressSummaryResponse?
+    @State private var videoAnalytics: CoachVideoAnalyticsResponse?
     @State private var loading = false
     @State private var error: String?
     @State private var feedbackDrafts: [String: String] = [:]
@@ -29,6 +30,10 @@ struct CoachClientCheckinsView: View {
                     LazyVStack(alignment: .leading, spacing: 16) {
                         if let progressSummary {
                             CoachProgressHeader(summary: progressSummary, isImperial: isImperial)
+
+                            if let videoAnalytics {
+                                CoachVideoAnalyticsCard(analytics: videoAnalytics)
+                            }
 
                             if !progressSummary.weightTrend.isEmpty {
                                 CoachWeightTrendCard(points: progressSummary.weightTrend, isImperial: isImperial)
@@ -110,8 +115,10 @@ struct CoachClientCheckinsView: View {
         do {
             async let checkinsTask = APIClient(token: token).fetchCoachClientCheckins(clientId: client.id)
             async let progressTask = APIClient(token: token).fetchProgressSummary(clientId: client.id)
+            async let videoTask = APIClient(token: token).fetchCoachClientVideoAnalytics(clientId: client.id)
             checkins = try await checkinsTask
             progressSummary = try await progressTask
+            videoAnalytics = try await videoTask
             if let firstExercise = progressSummary?.strengthTrend.first?.exerciseName,
                !progressSummary!.strengthTrend.contains(where: { $0.exerciseName == selectedStrengthExercise }) {
                 selectedStrengthExercise = firstExercise
@@ -144,6 +151,41 @@ struct CoachClientCheckinsView: View {
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }
+    }
+}
+
+private struct CoachVideoAnalyticsCard: View {
+    let analytics: CoachVideoAnalyticsResponse
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Video Engagement")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                CoachStatCard(title: "Starts", value: "\(analytics.summary.started)")
+                CoachStatCard(title: "Completions", value: "\(analytics.summary.completed)")
+                CoachStatCard(title: "Completion", value: String(format: "%.0f%%", analytics.summary.completionRate * 100))
+            }
+
+            if !analytics.exercises.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(analytics.exercises.prefix(5)) { row in
+                        HStack {
+                            Text(row.exerciseName)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(String(format: "%.0f%%", row.completionRate * 100))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 

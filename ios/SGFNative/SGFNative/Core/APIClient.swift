@@ -136,6 +136,10 @@ struct APIClient {
         return response.checkins
     }
 
+    func fetchCoachClientVideoAnalytics(clientId: String) async throws -> CoachVideoAnalyticsResponse {
+        try await request(path: "/api/coach/clients/\(clientId)/video-analytics", method: "GET", body: Optional<Int>.none)
+    }
+
     func patchCoachFeedback(clientId: String, checkinId: String, feedback: String) async throws -> WeeklyCheckin {
         struct Body: Encodable {
             let checkin_id: String

@@ -501,3 +501,24 @@ struct ProgressSummaryResponse: Decodable {
     let strengthTrend: [StrengthTrendSeries]
     let personalRecords: [PersonalRecord]
 }
+
+struct CoachVideoAnalyticsSummary: Decodable {
+    let started: Int
+    let completed: Int
+    let completionRate: Double
+    let avgWatchSeconds: Double
+}
+
+struct CoachVideoExerciseAnalytics: Decodable, Identifiable {
+    var id: String { exerciseName }
+    let exerciseName: String
+    let started: Int
+    let completed: Int
+    let completionRate: Double
+    let avgWatchSeconds: Double
+}
+
+struct CoachVideoAnalyticsResponse: Decodable {
+    let summary: CoachVideoAnalyticsSummary
+    let exercises: [CoachVideoExerciseAnalytics]
+}
