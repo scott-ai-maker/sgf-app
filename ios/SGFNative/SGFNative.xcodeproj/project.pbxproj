@@ -21,6 +21,7 @@
 		8973B24D253ACBDBDB6974E8 /* FitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079BDD3CE0E02145707647BB /* FitnessView.swift */; };
 		9A439C7F362AD04DF14BDBA2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAAB6755F97B81C62CEA143 /* RootView.swift */; };
 		9D1287FE4B0A8AFE3BBBAF98 /* Configuration.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0E3D9966674F936C4D3517AC /* Configuration.plist */; };
+		EE33B5C1F7D24A88C1234567 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE33B5C0F7D24A88C1234567 /* Assets.xcassets */; };
 		A0E7EEC010AD266A4B2A7999 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1556346F7E13081EDFE4116E /* Models.swift */; };
 		B3AA34D83AAFBD91D430C2D1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169E0CB8B5B32E61D81927AD /* MainTabView.swift */; };
 		B9E7230F60C2BF1179F53064 /* YouTubePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */; };
@@ -37,6 +38,7 @@
 /* Begin PBXFileReference section */
 		079BDD3CE0E02145707647BB /* FitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessView.swift; sourceTree = "<group>"; };
 		0E3D9966674F936C4D3517AC /* Configuration.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Configuration.plist; sourceTree = "<group>"; };
+		EE33B5C0F7D24A88C1234567 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1556346F7E13081EDFE4116E /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		169E0CB8B5B32E61D81927AD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		18AA199849F699BF3883B238 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				DBDCE2148948535E6F90E6C5 /* Info.plist */,
+				EE33B5C0F7D24A88C1234567 /* Assets.xcassets */,
 				3BE123C66340FC5C7DFD6305 /* App */,
 				C7F6966B4F17D8F5F4B6B024 /* Config */,
 				B990FAF38C5D236541BC59D4 /* Core */,
@@ -271,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9D1287FE4B0A8AFE3BBBAF98 /* Configuration.plist in Resources */,
+				EE33B5C1F7D24A88C1234567 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -318,6 +322,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = SGFNative/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "SGF Coaching";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -339,6 +344,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = SGFNative/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "SGF Coaching";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

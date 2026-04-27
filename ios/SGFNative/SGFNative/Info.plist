@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>SGF Coaching</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -18,5 +20,11 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to take progress photos for your coaching profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select progress photos from your photo library.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Used to save progress photos to your photo library.</string>
 </dict>
 </plist>
