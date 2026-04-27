@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await admin
     .from('exercise_library_entries')
-    .select('id, name, slug, description, coaching_cues, primary_equipment, muscle_groups, media_image_url, media_video_url, is_active, metadata_json, created_at')
+    .select('id, name, slug, description, coaching_cues, primary_equipment, muscle_groups, media_image_url, media_video_url, open_externally_only, is_active, metadata_json, created_at')
     .eq('is_active', true)
     .order('name', { ascending: true })
     .limit(500)
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     muscle_groups: e.muscle_groups,
     media_image_url: e.media_image_url,
     media_video_url: e.media_video_url,
+    open_externally_only: e.open_externally_only,
     is_active: e.is_active,
     metadata: e.metadata_json ?? {},
     created_at: e.created_at,

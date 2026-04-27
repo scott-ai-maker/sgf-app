@@ -542,6 +542,7 @@ create table if not exists exercise_library_entries (
   muscle_groups             text[] default array[]::text[],
   media_image_url           text,
   media_video_url           text,
+  open_externally_only      boolean not null default false,
   metadata_json             jsonb not null default '{}'::jsonb,
   is_active                 boolean not null default true,
   created_at                timestamptz default now(),
@@ -551,6 +552,9 @@ create table if not exists exercise_library_entries (
 -- Add muscle_groups column if it doesn't exist (for existing schemas)
 alter table exercise_library_entries
   add column if not exists muscle_groups text[] default array[]::text[];
+
+alter table exercise_library_entries
+  add column if not exists open_externally_only boolean not null default false;
 
 create unique index if not exists exercise_library_entries_source_id_idx
   on exercise_library_entries(source, source_id)
@@ -642,6 +646,18 @@ create table if not exists workout_set_logs (
   created_at                timestamptz default now()
 );
 
+create table if not exists workout_video_events (
+  id                        uuid primary key default gen_random_uuid(),
+  user_id                   uuid references auth.users(id) on delete cascade,
+  workout_plan_id           uuid references workout_plans(id) on delete set null,
+  exercise_name             text not null,
+  video_url                 text,
+  event_type                text not null check (event_type in ('started', 'completed')),
+  watch_seconds             int,
+  metadata_json             jsonb not null default '{}'::jsonb,
+  created_at                timestamptz default now()
+);
+
 create table if not exists body_composition_analyses (
   id                        uuid primary key default gen_random_uuid(),
   user_id                   uuid references auth.users(id) on delete cascade,
@@ -658,6 +674,7 @@ alter table coach_client_messages enable row level security;
 alter table workout_plans enable row level security;
 alter table workout_logs enable row level security;
 alter table workout_set_logs enable row level security;
+alter table workout_video_events enable row level security;
 alter table body_composition_analyses enable row level security;
 alter table workout_program_templates enable row level security;
 alter table coach_program_templates enable row level security;
@@ -741,6 +758,13 @@ drop policy if exists "User writes own workout set logs" on workout_set_logs;
 create policy "User writes own workout set logs" on workout_set_logs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "User reads own workout video events" on workout_video_events;
+create policy "User reads own workout video events" on workout_video_events
+  for select using (auth.uid() = user_id);
+drop policy if exists "User writes own workout video events" on workout_video_events;
+create policy "User writes own workout video events" on workout_video_events
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 drop policy if exists "User reads own body composition analyses" on body_composition_analyses;
 create policy "User reads own body composition analyses" on body_composition_analyses
   for select using (auth.uid() = user_id);
@@ -784,6 +808,8 @@ create index if not exists workout_plans_user_id_idx on workout_plans(user_id, c
 create index if not exists workout_logs_user_id_idx on workout_logs(user_id, session_date desc);
 create index if not exists workout_set_logs_user_id_idx on workout_set_logs(user_id, session_date desc);
 create index if not exists workout_set_logs_exercise_idx on workout_set_logs(user_id, exercise_name, session_date desc);
+create index if not exists workout_video_events_user_id_idx on workout_video_events(user_id, created_at desc);
+create index if not exists workout_video_events_plan_exercise_idx on workout_video_events(user_id, workout_plan_id, exercise_name, created_at desc);
 create index if not exists body_composition_user_id_idx on body_composition_analyses(user_id, created_at desc);
 create index if not exists workout_program_templates_active_idx on workout_program_templates(is_active, created_at desc);
 create index if not exists exercise_library_entries_name_idx on exercise_library_entries(name);
@@ -1017,6 +1043,9 @@ create table if not exists weekly_checkins (
   soreness_level        int check (soreness_level between 1 and 5),
   energy_level          int check (energy_level between 1 and 5),
   weight_kg             numeric(7,2),
+  waist_cm              numeric(6,1),
+  hip_cm                numeric(6,1),
+  neck_cm               numeric(6,1),
   notes                 text,
   coach_feedback        text,
   coach_rating_adjustment int check (coach_rating_adjustment between -2 and 2),
@@ -1024,6 +1053,10 @@ create table if not exists weekly_checkins (
   updated_at            timestamptz default now(),
   unique (user_id, week_start)
 );
+
+alter table weekly_checkins add column if not exists waist_cm numeric(6,1);
+alter table weekly_checkins add column if not exists hip_cm numeric(6,1);
+alter table weekly_checkins add column if not exists neck_cm numeric(6,1);
 
 -- ── PROGRESS PHOTOS ───────────────────────────────────────
 create table if not exists progress_photos (

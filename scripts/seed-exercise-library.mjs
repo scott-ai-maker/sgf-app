@@ -161,6 +161,68 @@ function inferEquipmentFromText(value) {
   return uniqueByLower(equipment)
 }
 
+const EMBED_CHECK_TIMEOUT_MS = 5000
+const embedPolicyCache = new Map()
+
+function isLikelyYoutubeUrl(value) {
+  const text = normalizeText(value).toLowerCase()
+  return text.includes('youtube.com') || text.includes('youtu.be')
+}
+
+async function detectOpenExternallyOnly(videoUrl) {
+  if (!isLikelyYoutubeUrl(videoUrl)) return false
+  if (embedPolicyCache.has(videoUrl)) return embedPolicyCache.get(videoUrl)
+
+  const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(videoUrl)}&format=json`
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), EMBED_CHECK_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(oembedUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'sgf-seed/1.0 (+https://sgf-app-lovat.vercel.app)' },
+    })
+
+    // YouTube returns auth/not-found statuses for videos that cannot be embedded.
+    const openExternallyOnly = [401, 403, 404].includes(response.status)
+    embedPolicyCache.set(videoUrl, openExternallyOnly)
+    return openExternallyOnly
+  } catch {
+    // If probing fails, default to false so import remains resilient.
+    embedPolicyCache.set(videoUrl, false)
+    return false
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function annotateVideoPlaybackPolicy(rows) {
+  const uniqueUrls = [...new Set(rows.map(row => normalizeText(row.media_video_url)).filter(Boolean))]
+
+  for (const url of uniqueUrls) {
+    // eslint-disable-next-line no-await-in-loop
+    await detectOpenExternallyOnly(url)
+  }
+
+  return rows.map(row => {
+    const url = normalizeText(row.media_video_url)
+    const openExternallyOnly = url ? Boolean(embedPolicyCache.get(url)) : false
+
+    return {
+      ...row,
+      open_externally_only: openExternallyOnly,
+      metadata_json: {
+        ...(row.metadata_json ?? {}),
+        videoPlaybackPolicy: {
+          checkedAt: new Date().toISOString(),
+          openExternallyOnly,
+          checker: 'youtube-oembed',
+        },
+      },
+    }
+  })
+}
+
 async function fetchNasmCatalog() {
   const response = await fetch('https://www.nasm.org/documents/exercises.json')
 
@@ -427,7 +489,7 @@ for (const item of catalog) {
   })
 }
 
-const exerciseRows = [...bySlug.values(), ...edgePlaylistEntries]
+const exerciseRows = await annotateVideoPlaybackPolicy([...bySlug.values(), ...edgePlaylistEntries])
 
 const equipmentNames = uniqueByLower(exerciseRows.flatMap(exercise => exercise.primary_equipment))
 

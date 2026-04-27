@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
   const sorenessLevel = body.soreness_level !== undefined ? Number(body.soreness_level) : null
   const energyLevel = body.energy_level !== undefined ? Number(body.energy_level) : null
   const weightKg = body.weight_kg !== undefined && body.weight_kg !== '' ? Number(body.weight_kg) : null
+  const waistCm = body.waist_cm !== undefined && body.waist_cm !== '' ? Number(body.waist_cm) : null
+  const hipCm = body.hip_cm !== undefined && body.hip_cm !== '' ? Number(body.hip_cm) : null
+  const neckCm = body.neck_cm !== undefined && body.neck_cm !== '' ? Number(body.neck_cm) : null
   const notes = body.notes !== undefined ? String(body.notes).trim() : null
 
   const payload = {
@@ -62,6 +65,9 @@ export async function POST(req: NextRequest) {
     soreness_level: sorenessLevel,
     energy_level: energyLevel,
     weight_kg: weightKg,
+    waist_cm: waistCm,
+    hip_cm: hipCm,
+    neck_cm: neckCm,
     notes,
     updated_at: new Date().toISOString(),
   }

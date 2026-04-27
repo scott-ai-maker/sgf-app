@@ -8,6 +8,7 @@ export interface ExerciseLibraryRecord {
   muscle_groups?: string[] | null
   media_image_url?: string | null
   media_video_url?: string | null
+  open_externally_only?: boolean | null
 }
 
 export interface EquipmentLibraryRecord {
@@ -111,6 +112,7 @@ export interface ProgramExerciseSnapshot {
   primaryEquipment: string[]
   imageUrl: string | null
   videoUrl: string | null
+  openExternallyOnly: boolean
 }
 
 export interface ProgramWorkoutSnapshot {
@@ -252,6 +254,7 @@ export function buildStoredProgramPlan(
             primaryEquipment: normalizeTextArray(match?.primary_equipment),
             imageUrl: normalizeOptionalText(match?.media_image_url),
             videoUrl: normalizeOptionalText(match?.media_video_url),
+            openExternallyOnly: Boolean(match?.open_externally_only),
           } satisfies ProgramExerciseSnapshot
         })
         .filter((exercise): exercise is ProgramExerciseSnapshot => Boolean(exercise))

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     exerciseIds.length
       ? admin
           .from('exercise_library_entries')
-          .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
+          .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url, open_externally_only')
           .eq('is_active', true)
           .eq('source', EXERCISE_LIBRARY_SOURCE)
           .in('id', exerciseIds)
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     exerciseNames.length
       ? admin
           .from('exercise_library_entries')
-          .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url')
+          .select('id, name, slug, description, coaching_cues, primary_equipment, media_image_url, media_video_url, open_externally_only')
           .eq('is_active', true)
           .eq('source', EXERCISE_LIBRARY_SOURCE)
           .in('name', exerciseNames)

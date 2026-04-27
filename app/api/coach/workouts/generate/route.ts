@@ -654,7 +654,7 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: false }),
     admin
       .from('exercise_library_entries')
-      .select('id, name, slug, description, coaching_cues, primary_equipment, muscle_groups, media_image_url, media_video_url, metadata_json')
+      .select('id, name, slug, description, coaching_cues, primary_equipment, muscle_groups, media_image_url, media_video_url, open_externally_only, metadata_json')
       .eq('is_active', true)
       .eq('source', EXERCISE_LIBRARY_SOURCE)
       .limit(3000),
