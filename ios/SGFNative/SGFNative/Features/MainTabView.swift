@@ -16,6 +16,11 @@ struct MainTabView: View {
                         Label("Clients", systemImage: "person.2.fill")
                     }
 
+                MessagesView()
+                    .tabItem {
+                        Label("Messages", systemImage: "bubble.left.and.bubble.right.fill")
+                    }
+
                 SettingsView()
                     .tabItem {
                         Label("Settings", systemImage: "gear")
