@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getRequestAuthz, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 export async function GET(req: NextRequest) {
   let authz
@@ -117,6 +118,20 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  const recipientUserId = authz.user.id === clientId ? coachId : clientId
+  void sendPushToUser({
+    userId: recipientUserId,
+    alert: {
+      title: authz.client.role === 'coach' ? 'New coach message' : 'New client message',
+      body: messageBody.slice(0, 140),
+    },
+    data: {
+      type: 'new_message',
+      clientId,
+      coachId,
+    },
+  }).catch(() => undefined)
 
   return NextResponse.json({ message: data })
 }

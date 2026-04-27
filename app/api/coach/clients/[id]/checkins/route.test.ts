@@ -7,6 +7,10 @@ const { getRequestAuthzMock, requireCoachAssignedClientMock, supabaseAdminMock }
   supabaseAdminMock: vi.fn(),
 }))
 
+const { sendPushToUserMock } = vi.hoisted(() => ({
+  sendPushToUserMock: vi.fn(),
+}))
+
 vi.mock('@/lib/authz', async () => {
   const actual = await vi.importActual<typeof import('@/lib/authz')>('@/lib/authz')
   return {
@@ -18,6 +22,10 @@ vi.mock('@/lib/authz', async () => {
 
 vi.mock('@/lib/supabase', () => ({
   supabaseAdmin: supabaseAdminMock,
+}))
+
+vi.mock('@/lib/push-notifications', () => ({
+  sendPushToUser: sendPushToUserMock,
 }))
 
 import { GET, PATCH } from '@/app/api/coach/clients/[id]/checkins/route'
@@ -85,7 +93,10 @@ function makePatchRequest(body: object, id = clientId) {
 }
 
 describe('GET /api/coach/clients/[id]/checkins', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sendPushToUserMock.mockResolvedValue({ delivered: 1, skipped: false })
+  })
 
   it('returns 401 when unauthenticated', async () => {
     getRequestAuthzMock.mockRejectedValue(new AuthzError('Unauthorized', 401))
@@ -114,7 +125,10 @@ describe('GET /api/coach/clients/[id]/checkins', () => {
 })
 
 describe('PATCH /api/coach/clients/[id]/checkins', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sendPushToUserMock.mockResolvedValue({ delivered: 1, skipped: false })
+  })
 
   it('returns 401 when unauthenticated', async () => {
     getRequestAuthzMock.mockRejectedValue(new AuthzError('Unauthorized', 401))
@@ -157,6 +171,17 @@ describe('PATCH /api/coach/clients/[id]/checkins', () => {
     const res = await PATCH(makePatchRequest({ checkin_id: 'ci-1', coach_feedback: 'Great week!' }), makeCtx())
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toMatchObject({ coach_feedback: 'Great week!' })
+    expect(sendPushToUserMock).toHaveBeenCalledWith({
+      userId: clientId,
+      alert: {
+        title: 'Coach feedback posted',
+        body: 'Great week!',
+      },
+      data: {
+        type: 'coach_feedback',
+        checkinId: 'ci-1',
+      },
+    })
   })
 
   it('returns 500 on db error', async () => {

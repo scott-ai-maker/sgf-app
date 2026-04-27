@@ -7,6 +7,10 @@ const { getRequestAuthzMock, requireCoachAssignedClientMock, supabaseAdminMock }
   supabaseAdminMock: vi.fn(),
 }))
 
+const { sendPushToUserMock } = vi.hoisted(() => ({
+  sendPushToUserMock: vi.fn(),
+}))
+
 vi.mock('@/lib/authz', async () => {
   const actual = await vi.importActual<typeof import('@/lib/authz')>('@/lib/authz')
   return {
@@ -18,6 +22,10 @@ vi.mock('@/lib/authz', async () => {
 
 vi.mock('@/lib/supabase', () => ({
   supabaseAdmin: supabaseAdminMock,
+}))
+
+vi.mock('@/lib/push-notifications', () => ({
+  sendPushToUser: sendPushToUserMock,
 }))
 
 import { GET, POST } from '@/app/api/messages/route'
@@ -63,6 +71,7 @@ describe('messages route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     supabaseAdminMock.mockReturnValue(createMessagesAdmin([{ id: 'msg-1', message_body: 'hello' }]))
+    sendPushToUserMock.mockResolvedValue({ delivered: 1, skipped: false })
   })
 
   it('returns unauthorized when message authz fails', async () => {
@@ -166,6 +175,18 @@ describe('messages route', () => {
         coach_id: 'coach-1',
         sender_id: 'client-1',
         message_body: 'Need to reschedule',
+      },
+    })
+    expect(sendPushToUserMock).toHaveBeenCalledWith({
+      userId: 'coach-1',
+      alert: {
+        title: 'New client message',
+        body: 'Need to reschedule',
+      },
+      data: {
+        type: 'new_message',
+        clientId: 'client-1',
+        coachId: 'coach-1',
       },
     })
   })

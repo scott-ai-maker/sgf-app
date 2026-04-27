@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRequestAuthz, requireRole, requireCoachAssignedClient, AuthzError } from '@/lib/authz'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendPushToUser } from '@/lib/push-notifications'
 
 export async function GET(
   req: NextRequest,
@@ -101,6 +102,20 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: 'Failed to update check-in' }, { status: 500 })
+  }
+
+  if (patch.coach_feedback) {
+    void sendPushToUser({
+      userId: clientId,
+      alert: {
+        title: 'Coach feedback posted',
+        body: patch.coach_feedback.slice(0, 140),
+      },
+      data: {
+        type: 'coach_feedback',
+        checkinId,
+      },
+    }).catch(() => undefined)
   }
 
   return NextResponse.json(data)
