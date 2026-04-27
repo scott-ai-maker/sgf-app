@@ -6,6 +6,7 @@ struct FitnessView: View {
     @State private var profile: FitnessProfile?
     @State private var checkins: [WeeklyCheckin] = []
     @State private var photos: [ProgressPhoto] = []
+    @State private var cardioLogs: [CardioLog] = []
 
     @State private var sleepQuality = 3
     @State private var stressLevel = 3
@@ -16,6 +17,13 @@ struct FitnessView: View {
     @State private var hipInput = ""
     @State private var neckInput = ""
     @State private var notes = ""
+    @State private var cardioActivityType = "Walk"
+    @State private var cardioDurationInput = ""
+    @State private var cardioDistanceInput = ""
+    @State private var cardioHeartRateInput = ""
+    @State private var cardioCaloriesInput = ""
+    @State private var cardioEffort = 5
+    @State private var cardioNotes = ""
 
     @State private var loading = false
     @State private var error: String?
@@ -65,6 +73,48 @@ struct FitnessView: View {
                             Section {
                                 Text(status)
                                     .foregroundStyle(.green)
+                            }
+                        }
+
+                        Section("Cardio Log") {
+                            TextField("Activity (e.g. Run, Bike, Walk)", text: $cardioActivityType)
+                            TextField("Duration (mins)", text: $cardioDurationInput)
+                                .keyboardType(.numberPad)
+
+                            let isImperial = sessionStore.preferredUnits == "imperial"
+                            TextField(isImperial ? "Distance (mi)" : "Distance (km)", text: $cardioDistanceInput)
+                                .keyboardType(.decimalPad)
+
+                            TextField("Avg Heart Rate", text: $cardioHeartRateInput)
+                                .keyboardType(.numberPad)
+                            TextField("Calories", text: $cardioCaloriesInput)
+                                .keyboardType(.numberPad)
+                            Stepper("Perceived Effort: \(cardioEffort)", value: $cardioEffort, in: 1...10)
+                            TextField("Cardio notes", text: $cardioNotes)
+
+                            Button("Log Cardio Session") {
+                                Task { await submitCardioLog() }
+                            }
+                        }
+
+                        if !cardioLogs.isEmpty {
+                            Section("Recent Cardio") {
+                                ForEach(cardioLogs.prefix(8)) { log in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("\(log.sessionDate) • \(log.activityType)")
+                                            .bold()
+                                        let distanceText: String = {
+                                            guard let km = log.distanceKm else { return "-" }
+                                            if sessionStore.preferredUnits == "imperial" {
+                                                return String(format: "%.2f mi", km / 1.60934)
+                                            }
+                                            return String(format: "%.2f km", km)
+                                        }()
+                                        Text("\(log.durationMins) mins • Distance: \(distanceText)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                             }
                         }
 
@@ -136,10 +186,12 @@ struct FitnessView: View {
             async let profileTask = APIClient(token: token).fetchFitnessProfile()
             async let checkinsTask = APIClient(token: token).fetchWeeklyCheckins()
             async let photosTask = APIClient(token: token).fetchProgressPhotos()
+            async let cardioTask = APIClient(token: token).fetchCardioLogs()
 
             profile = try await profileTask
             checkins = try await checkinsTask
             photos = try await photosTask
+            cardioLogs = try await cardioTask
             // Publish the unit preference so all views stay in sync
             if let units = profile?.preferredUnits {
                 sessionStore.setPreferredUnits(units)
@@ -180,6 +232,37 @@ struct FitnessView: View {
             )
             _ = try await APIClient(token: token).submitWeeklyCheckin(payload)
             status = "Check-in saved."
+            await loadProfile()
+        } catch {
+            self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
+        }
+    }
+
+    private func submitCardioLog() async {
+        guard let token = sessionStore.accessToken else { return }
+
+        do {
+            let isImperial = sessionStore.preferredUnits == "imperial"
+            let rawDistance = Double(cardioDistanceInput.trimmingCharacters(in: .whitespacesAndNewlines))
+            let distanceKm = rawDistance.map { isImperial ? $0 * 1.60934 : $0 }
+
+            let payload = CardioLogPayload(
+                sessionDate: currentWeekStartISODate(),
+                activityType: cardioActivityType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Cardio" : cardioActivityType.trimmingCharacters(in: .whitespacesAndNewlines),
+                durationMins: Int(cardioDurationInput.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+                distanceKm: distanceKm,
+                avgHeartRate: Int(cardioHeartRateInput.trimmingCharacters(in: .whitespacesAndNewlines)),
+                calories: Int(cardioCaloriesInput.trimmingCharacters(in: .whitespacesAndNewlines)),
+                perceivedEffort: cardioEffort,
+                notes: cardioNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : cardioNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            _ = try await APIClient(token: token).submitCardioLog(payload)
+            status = "Cardio session logged."
+            cardioDurationInput = ""
+            cardioDistanceInput = ""
+            cardioHeartRateInput = ""
+            cardioCaloriesInput = ""
+            cardioNotes = ""
             await loadProfile()
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription

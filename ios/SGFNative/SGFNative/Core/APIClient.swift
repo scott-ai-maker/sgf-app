@@ -126,6 +126,15 @@ struct APIClient {
         try await request(path: "/api/fitness/checkin", method: "POST", body: payload)
     }
 
+    func fetchCardioLogs() async throws -> [CardioLog] {
+        let response: CardioLogsResponse = try await request(path: "/api/fitness/cardio", method: "GET", body: Optional<Int>.none)
+        return response.logs
+    }
+
+    func submitCardioLog(_ payload: CardioLogPayload) async throws -> CardioLog {
+        try await request(path: "/api/fitness/cardio", method: "POST", body: payload)
+    }
+
     func fetchCoachClients() async throws -> [CoachClient] {
         let response: CoachClientsResponse = try await request(path: "/api/coach/clients", method: "GET", body: Optional<Int>.none)
         return response.clients

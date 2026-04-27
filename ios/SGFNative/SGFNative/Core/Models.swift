@@ -214,6 +214,56 @@ struct WeeklyCheckinPayload: Encodable {
     }
 }
 
+struct CardioLogsResponse: Decodable {
+    let logs: [CardioLog]
+}
+
+struct CardioLog: Decodable, Identifiable {
+    let id: String
+    let sessionDate: String
+    let activityType: String
+    let durationMins: Int
+    let distanceKm: Double?
+    let avgHeartRate: Int?
+    let calories: Int?
+    let perceivedEffort: Int?
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionDate = "session_date"
+        case activityType = "activity_type"
+        case durationMins = "duration_mins"
+        case distanceKm = "distance_km"
+        case avgHeartRate = "avg_heart_rate"
+        case calories
+        case perceivedEffort = "perceived_effort"
+        case notes
+    }
+}
+
+struct CardioLogPayload: Encodable {
+    let sessionDate: String
+    let activityType: String
+    let durationMins: Int
+    let distanceKm: Double?
+    let avgHeartRate: Int?
+    let calories: Int?
+    let perceivedEffort: Int?
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionDate = "session_date"
+        case activityType = "activity_type"
+        case durationMins = "duration_mins"
+        case distanceKm = "distance_km"
+        case avgHeartRate = "avg_heart_rate"
+        case calories
+        case perceivedEffort = "perceived_effort"
+        case notes
+    }
+}
+
 struct CoachClientsResponse: Decodable {
     let clients: [CoachClient]
 }
