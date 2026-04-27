@@ -25,6 +25,7 @@
 		B3AA34D83AAFBD91D430C2D1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169E0CB8B5B32E61D81927AD /* MainTabView.swift */; };
 		B9E7230F60C2BF1179F53064 /* YouTubePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */; };
 		CC11F3A2D5E74B88A1234567 /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC11F3A1D5E74B88A1234567 /* ProgressView.swift */; };
+		DD22B4C3E6F85C99B2345678 /* PhotoComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD22B4C2E6F85C99B2345678 /* PhotoComparisonView.swift */; };
 		BD535F05443438F13CFF303F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C716ADA88EE4759C80642986 /* LoginView.swift */; };
 		C150AEAB86B969BA5C4580F1 /* CoachClientCheckinsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94C4C2EA44988566457536A /* CoachClientCheckinsView.swift */; };
 		C71DDE434B648CEEEA3AC775 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA199849F699BF3883B238 /* MessagesView.swift */; };
@@ -42,6 +43,7 @@
 		2755A1AAF74C7DE37CBE73D2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubePlayerView.swift; sourceTree = "<group>"; };
 		CC11F3A1D5E74B88A1234567 /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressView.swift; sourceTree = "<group>"; };
+		DD22B4C2E6F85C99B2345678 /* PhotoComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoComparisonView.swift; sourceTree = "<group>"; };
 		4F63C755D61B77340F8F8391 /* SGFNative.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SGFNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		569626B5F87AF61314EAC206 /* VideoThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoThumbnailCache.swift; sourceTree = "<group>"; };
 		59A2569624F61B5F5F7DD92E /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 				FF527879BFBF6AD77FB40528 /* WorkoutSessionView.swift */,
 				32D93D7DC140A652550E1AE6 /* YouTubePlayerView.swift */,
 				CC11F3A1D5E74B88A1234567 /* ProgressView.swift */,
+				DD22B4C2E6F85C99B2345678 /* PhotoComparisonView.swift */,
 			);
 			path = Fitness;
 			sourceTree = "<group>";
@@ -301,6 +304,7 @@
 				1ADEF3ACC702966605B35B7C /* WorkoutSessionView.swift in Sources */,
 				B9E7230F60C2BF1179F53064 /* YouTubePlayerView.swift in Sources */,
 				CC11F3A2D5E74B88A1234567 /* ProgressView.swift in Sources */,
+				DD22B4C3E6F85C99B2345678 /* PhotoComparisonView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

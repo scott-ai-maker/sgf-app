@@ -140,7 +140,7 @@ struct FitnessView: View {
                         }
 
                         if !photos.isEmpty {
-                            Section("Progress Photos") {
+                            Section {
                                 ForEach(photos.prefix(12)) { photo in
                                     AsyncImage(url: URL(string: photo.photoURL)) { image in
                                         image
@@ -156,6 +156,17 @@ struct FitnessView: View {
                                             .font(.caption2)
                                             .padding(6)
                                             .background(.ultraThinMaterial)
+                                    }
+                                }
+                            } header: {
+                                HStack {
+                                    Text("Progress Photos")
+                                    Spacer()
+                                    if photos.count >= 2 {
+                                        NavigationLink("Compare") {
+                                            PhotoComparisonView(photos: photos)
+                                        }
+                                        .font(.subheadline)
                                     }
                                 }
                             }
