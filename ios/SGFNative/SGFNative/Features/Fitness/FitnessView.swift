@@ -42,13 +42,15 @@ struct FitnessView: View {
                             Stepper("Stress Level: \(stressLevel)", value: $stressLevel, in: 1...5)
                             Stepper("Soreness Level: \(sorenessLevel)", value: $sorenessLevel, in: 1...5)
                             Stepper("Energy Level: \(energyLevel)", value: $energyLevel, in: 1...5)
-                            TextField(sessionStore.preferredUnits == "imperial" ? "Weight (lbs)" : "Weight (kg)", text: $weightInput)
+                            let isImperial = sessionStore.preferredUnits == "imperial"
+                            let measureUnit = isImperial ? "in" : "cm"
+                            TextField(isImperial ? "Weight (lbs)" : "Weight (kg)", text: $weightInput)
                                 .keyboardType(.decimalPad)
-                            TextField("Waist (cm)", text: $waistInput)
+                            TextField("Waist (\(measureUnit))", text: $waistInput)
                                 .keyboardType(.decimalPad)
-                            TextField("Hips (cm)", text: $hipInput)
+                            TextField("Hips (\(measureUnit))", text: $hipInput)
                                 .keyboardType(.decimalPad)
-                            TextField("Neck (cm)", text: $neckInput)
+                            TextField("Neck (\(measureUnit))", text: $neckInput)
                                 .keyboardType(.decimalPad)
                             TextField("Notes", text: $notes)
 
@@ -156,9 +158,14 @@ struct FitnessView: View {
             let raw = Double(weightInput.trimmingCharacters(in: .whitespacesAndNewlines))
             // Convert to kg for storage; backend always stores metric
             let weightValue = raw.map { sessionStore.preferredUnits == "imperial" ? $0 * 0.453592 : $0 }
+            // Convert inches → cm for storage if imperial; backend always stores metric
+            let inchesToCm: (Double) -> Double = { $0 * 2.54 }
             let waistValue = Double(waistInput.trimmingCharacters(in: .whitespacesAndNewlines))
+                .map { sessionStore.preferredUnits == "imperial" ? inchesToCm($0) : $0 }
             let hipValue = Double(hipInput.trimmingCharacters(in: .whitespacesAndNewlines))
+                .map { sessionStore.preferredUnits == "imperial" ? inchesToCm($0) : $0 }
             let neckValue = Double(neckInput.trimmingCharacters(in: .whitespacesAndNewlines))
+                .map { sessionStore.preferredUnits == "imperial" ? inchesToCm($0) : $0 }
             let payload = WeeklyCheckinPayload(
                 weekStart: currentWeekStartISODate(),
                 sleepQuality: sleepQuality,

@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-struct ProgressView: View {
+struct ClientProgressView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
     @State private var summary: ProgressSummaryResponse?
@@ -33,7 +33,7 @@ struct ProgressView: View {
                             }
 
                             if !summary.measurementTrend.isEmpty {
-                                MeasurementsChartCard(points: summary.measurementTrend)
+                                MeasurementsChartCard(points: summary.measurementTrend, isImperial: isImperial)
                             }
 
                             if !summary.wellnessTrend.isEmpty {
@@ -156,6 +156,13 @@ private struct WeightChartCard: View {
 
 private struct MeasurementsChartCard: View {
     let points: [MeasurementDataPoint]
+    let isImperial: Bool
+
+    private var unit: String { isImperial ? "in" : "cm" }
+
+    private func display(_ cm: Double) -> Double {
+        isImperial ? cm / 2.54 : cm
+    }
 
     struct SeriesPoint: Identifiable {
         let id: String
@@ -167,9 +174,9 @@ private struct MeasurementsChartCard: View {
     private var seriesData: [SeriesPoint] {
         var result: [SeriesPoint] = []
         for p in points {
-            if let v = p.waistCm { result.append(.init(id: "w-\(p.weekStart)", week: shortDate(p.weekStart), value: v, series: "Waist")) }
-            if let v = p.hipCm   { result.append(.init(id: "h-\(p.weekStart)", week: shortDate(p.weekStart), value: v, series: "Hips")) }
-            if let v = p.neckCm  { result.append(.init(id: "n-\(p.weekStart)", week: shortDate(p.weekStart), value: v, series: "Neck")) }
+            if let v = p.waistCm { result.append(.init(id: "w-\(p.weekStart)", week: shortDate(p.weekStart), value: display(v), series: "Waist")) }
+            if let v = p.hipCm   { result.append(.init(id: "h-\(p.weekStart)", week: shortDate(p.weekStart), value: display(v), series: "Hips")) }
+            if let v = p.neckCm  { result.append(.init(id: "n-\(p.weekStart)", week: shortDate(p.weekStart), value: display(v), series: "Neck")) }
         }
         return result
     }
@@ -179,14 +186,14 @@ private struct MeasurementsChartCard: View {
             Chart(seriesData) { point in
                 LineMark(
                     x: .value("Week", point.week),
-                    y: .value("cm", point.value)
+                    y: .value(unit, point.value)
                 )
                 .foregroundStyle(by: .value("Measurement", point.series))
                 .interpolationMethod(.catmullRom)
 
                 PointMark(
                     x: .value("Week", point.week),
-                    y: .value("cm", point.value)
+                    y: .value(unit, point.value)
                 )
                 .foregroundStyle(by: .value("Measurement", point.series))
                 .symbolSize(30)
@@ -195,7 +202,7 @@ private struct MeasurementsChartCard: View {
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
                     AxisValueLabel {
-                        if let v = value.as(Double.self) { Text(String(format: "%.0fcm", v)).font(.caption2) }
+                        if let v = value.as(Double.self) { Text(String(format: "%.1f\(unit)", v)).font(.caption2) }
                     }
                     AxisGridLine()
                 }
