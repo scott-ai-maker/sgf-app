@@ -5,6 +5,7 @@ struct ClientProgressView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
     @State private var summary: ProgressSummaryResponse?
+    @State private var selectedStrengthExercise = ""
     @State private var loading = false
     @State private var error: String?
 
@@ -38,6 +39,14 @@ struct ClientProgressView: View {
 
                             if !summary.wellnessTrend.isEmpty {
                                 WellnessChartCard(points: summary.wellnessTrend)
+                            }
+
+                            if !summary.strengthTrend.isEmpty {
+                                StrengthChartCard(
+                                    series: summary.strengthTrend,
+                                    selectedExercise: $selectedStrengthExercise,
+                                    isImperial: isImperial
+                                )
                             }
 
                             if !summary.personalRecords.isEmpty {
@@ -77,10 +86,89 @@ struct ClientProgressView: View {
         error = nil
         do {
             summary = try await APIClient(token: token).fetchProgressSummary()
+            if let firstExercise = summary?.strengthTrend.first?.exerciseName,
+               !summary!.strengthTrend.contains(where: { $0.exerciseName == selectedStrengthExercise }) {
+                selectedStrengthExercise = firstExercise
+            }
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }
         loading = false
+    }
+}
+
+// MARK: - Strength Chart Card
+
+private struct StrengthChartCard: View {
+    let series: [StrengthTrendSeries]
+    @Binding var selectedExercise: String
+    let isImperial: Bool
+
+    private var selectedSeries: StrengthTrendSeries? {
+        if let exact = series.first(where: { $0.exerciseName == selectedExercise }) {
+            return exact
+        }
+        return series.first
+    }
+
+    private var unit: String { isImperial ? "lbs" : "kg" }
+
+    private func displayWeight(_ kg: Double) -> Double {
+        isImperial ? kg / 0.453592 : kg
+    }
+
+    var body: some View {
+        ProgressCard(title: "Strength Progress", systemImage: "chart.line.uptrend.xyaxis") {
+            VStack(alignment: .leading, spacing: 12) {
+                Picker("Exercise", selection: $selectedExercise) {
+                    ForEach(series) { item in
+                        Text(item.exerciseName).tag(item.exerciseName)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                if let selectedSeries {
+                    Chart(selectedSeries.points) { point in
+                        LineMark(
+                            x: .value("Session", shortDate(point.sessionDate)),
+                            y: .value(unit, displayWeight(point.bestWeightKg))
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(Color.orange)
+
+                        PointMark(
+                            x: .value("Session", shortDate(point.sessionDate)),
+                            y: .value(unit, displayWeight(point.bestWeightKg))
+                        )
+                        .foregroundStyle(Color.orange)
+                        .annotation(position: .top, alignment: .center) {
+                            if let reps = point.bestReps {
+                                Text("\(reps)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { value in
+                            AxisValueLabel {
+                                if let numeric = value.as(Double.self) {
+                                    Text(String(format: "%.0f", numeric)).font(.caption2)
+                                }
+                            }
+                            AxisGridLine()
+                        }
+                    }
+                    .frame(height: 180)
+                }
+            }
+        } trailing: {
+            if let latest = selectedSeries?.points.last {
+                Text(String(format: "%.1f %@", displayWeight(latest.bestWeightKg), unit))
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
+        }
     }
 }
 

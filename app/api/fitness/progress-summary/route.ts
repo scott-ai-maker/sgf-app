@@ -110,10 +110,48 @@ export async function GET(req: NextRequest) {
     if (personalRecords.length >= 20) break
   }
 
+  const strengthByExercise = new Map<
+    string,
+    Array<{ sessionDate: string; bestWeightKg: number; bestReps: number | null }>
+  >()
+
+  for (const row of setLogs ?? []) {
+    const exerciseName = row.exercise_name?.trim()
+    const sessionDate = row.created_at?.slice(0, 10)
+    if (!exerciseName || !sessionDate || row.weight_kg == null) continue
+
+    const existingSeries = strengthByExercise.get(exerciseName) ?? []
+    const existingPoint = existingSeries.find((point) => point.sessionDate === sessionDate)
+    if (!existingPoint) {
+      existingSeries.push({
+        sessionDate,
+        bestWeightKg: row.weight_kg,
+        bestReps: row.reps ?? null,
+      })
+      strengthByExercise.set(exerciseName, existingSeries)
+      continue
+    }
+
+    if (row.weight_kg > existingPoint.bestWeightKg) {
+      existingPoint.bestWeightKg = row.weight_kg
+      existingPoint.bestReps = row.reps ?? null
+    }
+  }
+
+  const strengthTrend = Array.from(strengthByExercise.entries())
+    .map(([exerciseName, points]) => ({
+      exerciseName,
+      points: points.sort((left, right) => left.sessionDate.localeCompare(right.sessionDate)),
+    }))
+    .filter((series) => series.points.length >= 2)
+    .sort((left, right) => right.points.length - left.points.length)
+    .slice(0, 6)
+
   return NextResponse.json({
     weightTrend,
     measurementTrend,
     wellnessTrend,
+    strengthTrend,
     personalRecords,
   })
 }

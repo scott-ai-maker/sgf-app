@@ -470,9 +470,34 @@ struct PersonalRecord: Decodable, Identifiable {
     }
 }
 
+struct StrengthTrendPoint: Decodable, Identifiable {
+    var id: String { sessionDate }
+    let sessionDate: String
+    let bestWeightKg: Double
+    let bestReps: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionDate = "sessionDate"
+        case bestWeightKg = "bestWeightKg"
+        case bestReps = "bestReps"
+    }
+}
+
+struct StrengthTrendSeries: Decodable, Identifiable {
+    var id: String { exerciseName }
+    let exerciseName: String
+    let points: [StrengthTrendPoint]
+
+    enum CodingKeys: String, CodingKey {
+        case exerciseName = "exerciseName"
+        case points = "points"
+    }
+}
+
 struct ProgressSummaryResponse: Decodable {
     let weightTrend: [WeightDataPoint]
     let measurementTrend: [MeasurementDataPoint]
     let wellnessTrend: [WellnessDataPoint]
+    let strengthTrend: [StrengthTrendSeries]
     let personalRecords: [PersonalRecord]
 }
