@@ -1101,3 +1101,21 @@ create index if not exists weekly_checkins_user_week_idx on weekly_checkins(user
 create index if not exists progress_photos_user_taken_idx on progress_photos(user_id, taken_at desc);
 create index if not exists cardio_logs_user_date_idx on cardio_logs(user_id, session_date desc);
 create index if not exists exercise_skips_user_date_idx on exercise_skips(user_id, session_date desc);
+
+-- ── PUSH TOKENS ──────────────────────────────────────────
+create table if not exists push_tokens (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  device_token  text not null unique,
+  platform      text not null default 'ios',
+  updated_at    timestamptz default now(),
+  created_at    timestamptz default now()
+);
+
+alter table push_tokens enable row level security;
+
+drop policy if exists "User manages own push tokens" on push_tokens;
+create policy "User manages own push tokens" on push_tokens
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists push_tokens_user_id_idx on push_tokens(user_id);

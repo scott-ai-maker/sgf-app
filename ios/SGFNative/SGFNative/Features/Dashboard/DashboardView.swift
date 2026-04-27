@@ -87,7 +87,9 @@ struct DashboardView: View {
         error = nil
 
         do {
-            dashboard = try await APIClient(token: token).fetchDashboard()
+            let loaded = try await APIClient(token: token).fetchDashboard()
+            dashboard = loaded
+            sessionStore.setRole(loaded.role)
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }

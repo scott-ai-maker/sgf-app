@@ -1,37 +1,58 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @EnvironmentObject private var sessionStore: SessionStore
+
     var body: some View {
-        TabView {
-            DashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "house.fill")
-                }
+        if sessionStore.role == "coach" {
+            TabView {
+                DashboardView()
+                    .tabItem {
+                        Label("Dashboard", systemImage: "house.fill")
+                    }
 
-            MessagesView()
-                .tabItem {
-                    Label("Messages", systemImage: "bubble.left.and.bubble.right.fill")
-                }
+                CoachClientsView()
+                    .tabItem {
+                        Label("Clients", systemImage: "person.2.fill")
+                    }
 
-            BookingView()
-                .tabItem {
-                    Label("Booking", systemImage: "calendar")
-                }
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+            }
+        } else {
+            TabView {
+                DashboardView()
+                    .tabItem {
+                        Label("Dashboard", systemImage: "house.fill")
+                    }
 
-            FitnessView()
-                .tabItem {
-                    Label("Fitness", systemImage: "figure.strengthtraining.traditional")
-                }
+                MessagesView()
+                    .tabItem {
+                        Label("Messages", systemImage: "bubble.left.and.bubble.right.fill")
+                    }
 
-            CoachClientsView()
-                .tabItem {
-                    Label("Coach", systemImage: "person.2.fill")
-                }
+                BookingView()
+                    .tabItem {
+                        Label("Booking", systemImage: "calendar")
+                    }
 
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
+                FitnessView()
+                    .tabItem {
+                        Label("Fitness", systemImage: "figure.strengthtraining.traditional")
+                    }
+
+                WorkoutPlanView()
+                    .tabItem {
+                        Label("Program", systemImage: "dumbbell.fill")
+                    }
+
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+            }
         }
     }
 }

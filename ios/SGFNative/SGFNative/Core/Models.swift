@@ -42,7 +42,7 @@ struct DashboardMetrics: Decodable {
     let unassignedClients: Int?
 }
 
-struct ClientPackage: Decodable, Identifiable {
+struct ClientPackage: Decodable, Identifiable, Hashable {
     let id: String
     let packageName: String
     let sessionsRemaining: Int
@@ -210,6 +210,63 @@ struct WeeklyCheckinPayload: Encodable {
 
 struct CoachClientsResponse: Decodable {
     let clients: [CoachClient]
+}
+
+struct WorkoutPlansResponse: Decodable {
+    let plans: [WorkoutPlan]
+}
+
+struct WorkoutPlan: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let goal: String?
+    let nasmOptPhase: Int
+    let phaseName: String
+    let sessionsPerWeek: Int
+    let estimatedDurationMins: Int
+    let planJson: WorkoutPlanJson
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, goal
+        case nasmOptPhase = "nasm_opt_phase"
+        case phaseName = "phase_name"
+        case sessionsPerWeek = "sessions_per_week"
+        case estimatedDurationMins = "estimated_duration_mins"
+        case planJson = "plan_json"
+        case createdAt = "created_at"
+    }
+}
+
+struct WorkoutPlanJson: Decodable {
+    let workouts: [WorkoutDay]
+}
+
+struct WorkoutDay: Decodable, Identifiable {
+    var id: String { dayTag ?? name ?? UUID().uuidString }
+    let name: String?
+    let dayTag: String?
+    let exercises: [PlanExercise]
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case dayTag = "day_tag"
+        case exercises
+    }
+}
+
+struct PlanExercise: Decodable, Identifiable {
+    var id: String { "\(name ?? "")-\(sets ?? 0)-\(reps ?? "")" }
+    let name: String?
+    let sets: Int?
+    let reps: String?
+    let restSeconds: Int?
+    let notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, sets, reps, notes
+        case restSeconds = "rest_seconds"
+    }
 }
 
 struct CoachClient: Decodable, Identifiable {

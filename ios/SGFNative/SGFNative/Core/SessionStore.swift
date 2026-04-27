@@ -2,13 +2,13 @@ import Foundation
 
 @MainActor
 final class SessionStore: ObservableObject {
-    enum State {
+    enum State: Equatable {
         case loading
         case signedOut
         case signedIn(UserSession)
     }
 
-    struct UserSession {
+    struct UserSession: Equatable {
         let userId: String
         let email: String?
         let accessToken: String
@@ -16,6 +16,7 @@ final class SessionStore: ObservableObject {
     }
 
     @Published private(set) var state: State = .loading
+    @Published private(set) var role: String? = nil
     @Published var lastError: String?
 
     private let authService = SupabaseAuthService()
@@ -79,7 +80,12 @@ final class SessionStore: ObservableObject {
         defaults.removeObject(forKey: userIdKey)
         defaults.removeObject(forKey: userEmailKey)
         lastError = nil
+        role = nil
         state = .signedOut
+    }
+
+    func setRole(_ newRole: String) {
+        role = newRole
     }
 
     private func persist(response: SupabaseAuthResponse) {

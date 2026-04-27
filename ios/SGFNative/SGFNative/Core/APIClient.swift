@@ -136,6 +136,41 @@ struct APIClient {
         return response.checkins
     }
 
+    func patchCoachFeedback(clientId: String, checkinId: String, feedback: String) async throws -> WeeklyCheckin {
+        struct Body: Encodable {
+            let checkin_id: String
+            let coach_feedback: String
+        }
+        return try await request(
+            path: "/api/coach/clients/\(clientId)/checkins",
+            method: "PATCH",
+            body: Body(checkin_id: checkinId, coach_feedback: feedback)
+        )
+    }
+
+    func fetchClientPackages() async throws -> [ClientPackage] {
+        let dashboard = try await fetchDashboard()
+        return dashboard.packages ?? []
+    }
+
+    func submitOnboarding<T: Encodable>(_ payload: T) async throws {
+        let _: EmptyDecodable = try await request(path: "/api/fitness/profile", method: "POST", body: payload)
+    }
+
+    func fetchWorkoutPlans() async throws -> [WorkoutPlan] {
+        let response: WorkoutPlansResponse = try await request(path: "/api/workouts/plans", method: "GET", body: Optional<Int>.none)
+        return response.plans
+    }
+
+    func registerPushToken(_ deviceToken: String) async throws {
+        struct Body: Encodable { let deviceToken: String; let platform: String }
+        let _: EmptyDecodable = try await request(
+            path: "/api/account/push-token",
+            method: "POST",
+            body: Body(deviceToken: deviceToken, platform: "ios")
+        )
+    }
+
     private func request<T: Decodable, B: Encodable>(path: String, method: String, body: B?) async throws -> T {
         var rawBody: Data? = nil
         if let body {

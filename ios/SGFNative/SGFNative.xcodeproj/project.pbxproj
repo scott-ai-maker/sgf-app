@@ -7,11 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B3A7A17B875E30813197A35 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C936C6B349E64ADEFB5CDB3A /* PushNotificationManager.swift */; };
 		0D9EDD5405CC165C22F4CC81 /* SGFNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF3A9663570198781D606DB /* SGFNativeApp.swift */; };
 		2B3EFD8D9E1331ADE033ACC8 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AA74FC26D741AA8D3DD9BAE /* APIClient.swift */; };
 		3237D3785EC5FE9D4AF3DE34 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE6A085327FA7433BAB14A59 /* AppConfig.swift */; };
 		3330F608615600AB35C420A9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2755A1AAF74C7DE37CBE73D2 /* SettingsView.swift */; };
 		3A773955738D650501E9F5BD /* SupabaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60ECF26A91BF1BBCE455955 /* SupabaseAuthService.swift */; };
+		3E95D376D8F153F09D6D520C /* WorkoutPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9A99B8FC491A43270EFDBB4 /* WorkoutPlanView.swift */; };
+		568057AC2BAAB88854F6171C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14FE3962AE2F2E61BE085AA /* OnboardingView.swift */; };
 		719451B6F40058E8BC6C2D1A /* CoachClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7F23A039D9E26B5A34619D /* CoachClientsView.swift */; };
 		7B14045B8C1CBB8166928B49 /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EADCD2D6A990C62F9CF690D6 /* BookingView.swift */; };
 		8973B24D253ACBDBDB6974E8 /* FitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079BDD3CE0E02145707647BB /* FitnessView.swift */; };
@@ -41,8 +44,11 @@
 		BBF3A9663570198781D606DB /* SGFNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SGFNativeApp.swift; sourceTree = "<group>"; };
 		C60ECF26A91BF1BBCE455955 /* SupabaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthService.swift; sourceTree = "<group>"; };
 		C716ADA88EE4759C80642986 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		C936C6B349E64ADEFB5CDB3A /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		C9A99B8FC491A43270EFDBB4 /* WorkoutPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanView.swift; sourceTree = "<group>"; };
 		DBDCE2148948535E6F90E6C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		DE6A085327FA7433BAB14A59 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		E14FE3962AE2F2E61BE085AA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		EADCD2D6A990C62F9CF690D6 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		FC1518C0D793CBD111C784DF /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		FF7F23A039D9E26B5A34619D /* CoachClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachClientsView.swift; sourceTree = "<group>"; };
@@ -99,10 +105,19 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
+		AF75552435166D79F1D1CEFA /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				E14FE3962AE2F2E61BE085AA /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
 		B1231BB0996EEA55550F3FAF /* Fitness */ = {
 			isa = PBXGroup;
 			children = (
 				079BDD3CE0E02145707647BB /* FitnessView.swift */,
+				C9A99B8FC491A43270EFDBB4 /* WorkoutPlanView.swift */,
 			);
 			path = Fitness;
 			sourceTree = "<group>";
@@ -121,6 +136,7 @@
 				9AA74FC26D741AA8D3DD9BAE /* APIClient.swift */,
 				DE6A085327FA7433BAB14A59 /* AppConfig.swift */,
 				1556346F7E13081EDFE4116E /* Models.swift */,
+				C936C6B349E64ADEFB5CDB3A /* PushNotificationManager.swift */,
 				FC1518C0D793CBD111C784DF /* SessionStore.swift */,
 				C60ECF26A91BF1BBCE455955 /* SupabaseAuthService.swift */,
 			);
@@ -137,6 +153,7 @@
 				9D574A34E287CC39496434C0 /* Dashboard */,
 				B1231BB0996EEA55550F3FAF /* Fitness */,
 				EF72BEF3E63419EE8523FE9B /* Messages */,
+				AF75552435166D79F1D1CEFA /* Onboarding */,
 				1C5E10B737D85EAEAA3727A2 /* Settings */,
 			);
 			path = Features;
@@ -210,6 +227,7 @@
 				TargetAttributes = {
 					57246D221E8B53C68471FF9B = {
 						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -259,11 +277,14 @@
 				B3AA34D83AAFBD91D430C2D1 /* MainTabView.swift in Sources */,
 				C71DDE434B648CEEEA3AC775 /* MessagesView.swift in Sources */,
 				A0E7EEC010AD266A4B2A7999 /* Models.swift in Sources */,
+				568057AC2BAAB88854F6171C /* OnboardingView.swift in Sources */,
+				0B3A7A17B875E30813197A35 /* PushNotificationManager.swift in Sources */,
 				9A439C7F362AD04DF14BDBA2 /* RootView.swift in Sources */,
 				0D9EDD5405CC165C22F4CC81 /* SGFNativeApp.swift in Sources */,
 				D4E1A74018D50A24233E50CA /* SessionStore.swift in Sources */,
 				3330F608615600AB35C420A9 /* SettingsView.swift in Sources */,
 				3A773955738D650501E9F5BD /* SupabaseAuthService.swift in Sources */,
+				3E95D376D8F153F09D6D520C /* WorkoutPlanView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -345,6 +366,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
@@ -408,6 +430,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
