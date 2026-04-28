@@ -93,9 +93,27 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Brand header
+                HStack(spacing: 10) {
+                    Image("BrandLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                    Text("Scott Gordon Fitness")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color(red: 13.0/255, green: 27.0/255, blue: 42.0/255))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
                 ProgressView(value: Double(step + 1), total: Double(totalSteps))
+                    .tint(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255))
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, 4)
 
                 TabView(selection: $step) {
                     personalStep.tag(0)
