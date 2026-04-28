@@ -460,25 +460,29 @@ private func shortDate(_ iso: String) -> String {
 private struct InsightBanner: View {
     let text: String
 
+    private let gold = Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255)
+    private let navy = Color(red: 13.0/255, green: 27.0/255, blue: 42.0/255)
+
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 10) {
+            Rectangle()
+                .fill(gold)
+                .frame(width: 3)
+                .clipShape(Capsule())
             Image(systemName: "lightbulb.fill")
                 .font(.caption)
-                .foregroundStyle(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255))
+                .foregroundStyle(gold)
                 .padding(.top, 1)
             Text(text)
                 .font(.caption)
-                .foregroundStyle(Color(red: 13.0/255, green: 27.0/255, blue: 42.0/255).opacity(0.75))
+                .foregroundStyle(navy)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(10)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.15))
+        .background(Color(red: 248.0/255, green: 244.0/255, blue: 232.0/255))
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.45), lineWidth: 1)
-        )
     }
 }
 
