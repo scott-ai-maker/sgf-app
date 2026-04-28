@@ -121,6 +121,7 @@ private struct StrengthChartCard: View {
     var body: some View {
         ProgressCard(title: "Strength Progress", systemImage: "chart.line.uptrend.xyaxis") {
             VStack(alignment: .leading, spacing: 12) {
+                InsightBanner(text: strengthInsight(selectedSeries, isImperial: isImperial))
                 Picker("Exercise", selection: $selectedExercise) {
                     ForEach(series) { item in
                         Text(item.exerciseName).tag(item.exerciseName)
@@ -194,7 +195,9 @@ private struct WeightChartCard: View {
 
     var body: some View {
         ProgressCard(title: "Weight", systemImage: "scalemass.fill") {
-            Chart(points) { point in
+            VStack(alignment: .leading, spacing: 12) {
+                InsightBanner(text: weightInsight(points, isImperial: isImperial))
+                Chart(points) { point in
                 LineMark(
                     x: .value("Week", shortDate(point.weekStart)),
                     y: .value(unit, displayWeight(point.weightKg))
@@ -231,6 +234,7 @@ private struct WeightChartCard: View {
                 }
             }
             .frame(height: 180)
+            }
         } trailing: {
             if let last = points.last {
                 Text(String(format: "%.1f %@", displayWeight(last.weightKg), unit))
@@ -272,7 +276,9 @@ private struct MeasurementsChartCard: View {
 
     var body: some View {
         ProgressCard(title: "Measurements", systemImage: "ruler.fill") {
-            Chart(seriesData) { point in
+            VStack(alignment: .leading, spacing: 12) {
+                InsightBanner(text: measurementsInsight(points, isImperial: isImperial))
+                Chart(seriesData) { point in
                 LineMark(
                     x: .value("Week", point.week),
                     y: .value(unit, point.value)
@@ -297,6 +303,7 @@ private struct MeasurementsChartCard: View {
                 }
             }
             .frame(height: 180)
+            }
         } trailing: {
             EmptyView()
         }
@@ -328,7 +335,9 @@ private struct WellnessChartCard: View {
 
     var body: some View {
         ProgressCard(title: "Wellness Trends", systemImage: "waveform.path.ecg") {
-            Chart(seriesData) { point in
+            VStack(alignment: .leading, spacing: 12) {
+                InsightBanner(text: wellnessInsight(points))
+                Chart(seriesData) { point in
                 LineMark(
                     x: .value("Week", point.week),
                     y: .value("Score", point.value)
@@ -347,6 +356,7 @@ private struct WellnessChartCard: View {
                 }
             }
             .frame(height: 160)
+            }
         } trailing: {
             EmptyView()
         }
@@ -443,4 +453,104 @@ private func shortDate(_ iso: String) -> String {
     out.locale = Locale(identifier: "en_US_POSIX")
     out.dateFormat = "MMM d"
     return out.string(from: date)
+}
+
+// MARK: - Insight Banner
+
+private struct InsightBanner: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lightbulb.fill")
+                .font(.caption)
+                .foregroundStyle(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255))
+                .padding(.top, 1)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(Color(red: 13.0/255, green: 27.0/255, blue: 42.0/255).opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.1),
+            in: RoundedRectangle(cornerRadius: 8)
+        )
+    }
+}
+
+// MARK: - Insight generators
+
+private func weightInsight(_ points: [WeightDataPoint], isImperial: Bool) -> String {
+    guard points.count >= 2 else {
+        return "Keep logging your weight after each check-in to unlock trend analysis."
+    }
+    let unit = isImperial ? "lbs" : "kg"
+    let factor = isImperial ? (1.0 / 0.453592) : 1.0
+    let first = points.first!.weightKg * factor
+    let last  = points.last!.weightKg  * factor
+    let diff  = last - first
+    let weeks = max(1, points.count - 1)
+    let perWeek = diff / Double(weeks)
+    let sign = diff < 0 ? "↓" : "↑"
+    let absDiff = abs(diff)
+    if abs(perWeek) < 0.1 {
+        return "Your weight has been stable — great consistency over \(weeks) week\(weeks == 1 ? "" : "s")."
+    }
+    return String(format: "%@ %.1f %@ total over %d week%@ (avg %.2f %@/wk).",
+                  sign, absDiff, unit, weeks, weeks == 1 ? "" : "s", abs(perWeek), unit)
+}
+
+private func wellnessInsight(_ points: [WellnessDataPoint]) -> String {
+    guard points.count >= 2 else {
+        return "Complete weekly check-ins to see your sleep, energy, and stress trends here."
+    }
+    let recent = Array(points.suffix(4))
+    let avgEnergy = recent.compactMap { $0.energyLevel }.map(Double.init).reduce(0, +) / Double(max(1, recent.compactMap { $0.energyLevel }.count))
+    let avgStress = recent.compactMap { $0.stressLevel }.map(Double.init).reduce(0, +) / Double(max(1, recent.compactMap { $0.stressLevel }.count))
+    if avgEnergy >= 4 && avgStress <= 2 {
+        return "Strong recent form — high energy and low stress over the past 4 weeks."
+    } else if avgStress >= 4 {
+        return "Stress has been elevated lately. Communicate with your coach if recovery is suffering."
+    } else if avgEnergy <= 2 {
+        return "Energy has been low recently — make sure you're prioritising sleep and nutrition."
+    }
+    return String(format: "Recent avg energy %.1f/5, stress %.1f/5 over the last %d check-ins.", avgEnergy, avgStress, recent.count)
+}
+
+private func strengthInsight(_ series: StrengthTrendSeries?, isImperial: Bool) -> String {
+    guard let series, series.points.count >= 2 else {
+        return "Log workouts to track strength trends for each exercise."
+    }
+    let unit = isImperial ? "lbs" : "kg"
+    let factor = isImperial ? (1.0 / 0.453592) : 1.0
+    let first = series.points.first!.bestWeightKg * factor
+    let last  = series.points.last!.bestWeightKg  * factor
+    let diff  = last - first
+    if diff > 0 {
+        return String(format: "%.0f %@ gain on %@ since you started — keep pushing.", diff, unit, series.exerciseName)
+    } else if diff < 0 {
+        return String(format: "%.0f %@ drop on %@. Deload periods are normal — consistency wins.", abs(diff), unit, series.exerciseName)
+    }
+    return "\(series.exerciseName) weight has held steady. Aim for progressive overload on reps or sets."
+}
+
+private func measurementsInsight(_ points: [MeasurementDataPoint], isImperial: Bool) -> String {
+    guard points.count >= 2 else {
+        return "Log body measurements in your weekly check-in to track body composition changes."
+    }
+    let unit = isImperial ? "in" : "cm"
+    let factor = isImperial ? (1.0 / 2.54) : 1.0
+    let firstWaist = points.first?.waistCm
+    let lastWaist  = points.last?.waistCm
+    if let f = firstWaist, let l = lastWaist {
+        let diff = (l - f) * factor
+        if diff < -0.5 {
+            return String(format: "Waist down %.1f %@ — body composition is moving in the right direction.", abs(diff), unit)
+        } else if diff > 0.5 {
+            return String(format: "Waist up %.1f %@. Review nutrition if fat loss is the goal.", diff, unit)
+        }
+    }
+    return "Waist measurements are holding steady. Keep checking in weekly for a clearer picture."
 }
