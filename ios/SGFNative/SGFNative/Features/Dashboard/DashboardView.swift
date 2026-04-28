@@ -9,8 +9,38 @@ struct DashboardView: View {
     private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
 
     @State private var dashboard: DashboardResponse?
+    @State private var coachClients: [CoachClient] = []
+    @State private var composeTarget: CoachClient?
     @State private var loading = false
     @State private var error: String?
+
+    private var needsAttentionClients: [CoachClient] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoBasic = ISO8601DateFormatter()
+        return coachClients.filter { client in
+            let noRecentCheckin: Bool = {
+                guard let s = client.lastCheckinDate,
+                      let d = iso.date(from: s) ?? isoBasic.date(from: s) else { return true }
+                return d < cutoff
+            }()
+            return noRecentCheckin || client.sessionsRemaining <= 2 || client.onboardingCompletedAt == nil
+        }
+        .sorted { urgencyScore($0, cutoff: cutoff, iso: iso, isoBasic: isoBasic) > urgencyScore($1, cutoff: cutoff, iso: iso, isoBasic: isoBasic) }
+    }
+
+    private func urgencyScore(_ c: CoachClient, cutoff: Date, iso: ISO8601DateFormatter, isoBasic: ISO8601DateFormatter) -> Int {
+        var score = 0
+        if c.onboardingCompletedAt == nil { score += 4 }
+        if let s = c.lastCheckinDate, let d = iso.date(from: s) ?? isoBasic.date(from: s) {
+            if d < cutoff { score += 2 }
+        } else {
+            score += 3
+        }
+        if c.sessionsRemaining <= 2 { score += 1 }
+        return score
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,6 +51,25 @@ struct DashboardView: View {
                     ContentUnavailableView("Could not load dashboard", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if let dashboard {
                     List {
+                        if dashboard.role == "coach" && !needsAttentionClients.isEmpty {
+                            Section {
+                                ForEach(needsAttentionClients) { client in
+                                    NeedsAttentionRow(client: client) {
+                                        composeTarget = client
+                                    }
+                                    .listRowBackground(cardWhite)
+                                }
+                            } header: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundStyle(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255))
+                                    Text("Needs Attention")
+                                        .foregroundStyle(textNavy)
+                                        .textCase(nil)
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                        }
                         Section {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(dashboard.role == "coach" ? "Coach Overview" : "Client Overview")
@@ -109,6 +158,10 @@ struct DashboardView: View {
             .refreshable {
                 await loadDashboard()
             }
+            .sheet(item: $composeTarget) { client in
+                QuickMessageSheet(client: client)
+                    .environmentObject(sessionStore)
+            }
         }
     }
 
@@ -125,10 +178,147 @@ struct DashboardView: View {
             let loaded = try await APIClient(token: token).fetchDashboard()
             dashboard = loaded
             sessionStore.setRole(loaded.role)
+            if loaded.role == "coach" {
+                coachClients = (try? await APIClient(token: token).fetchCoachClients()) ?? []
+            }
         } catch {
             self.error = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }
 
         loading = false
+    }
+}
+
+// MARK: - Needs Attention Row
+
+private struct NeedsAttentionRow: View {
+    let client: CoachClient
+    let onMessage: () -> Void
+
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+    private let gold = Color(red: 212.0 / 255.0, green: 160.0 / 255.0, blue: 23.0 / 255.0)
+
+    private var riskTags: [String] {
+        var tags: [String] = []
+        if client.onboardingCompletedAt == nil { tags.append("Not onboarded") }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoBasic = ISO8601DateFormatter()
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        if let s = client.lastCheckinDate, let d = iso.date(from: s) ?? isoBasic.date(from: s) {
+            if d < cutoff {
+                let days = Calendar.current.dateComponents([.day], from: d, to: Date()).day ?? 0
+                tags.append("No check-in \(days)d")
+            }
+        } else {
+            tags.append("Never checked in")
+        }
+        if client.sessionsRemaining <= 2 { tags.append("\(client.sessionsRemaining) sessions left") }
+        return tags
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(client.fullName ?? client.email ?? "Unknown")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(textNavy)
+                HStack(spacing: 6) {
+                    ForEach(riskTags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(gold.opacity(0.15), in: Capsule())
+                            .foregroundStyle(gold)
+                    }
+                }
+            }
+            Spacer()
+            Button(action: onMessage) {
+                Label("Message", systemImage: "bubble.left.fill")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 13.0/255, green: 27.0/255, blue: 42.0/255), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Quick Message Sheet
+
+private struct QuickMessageSheet: View {
+    let client: CoachClient
+    @EnvironmentObject private var sessionStore: SessionStore
+    @Environment(\.dismiss) private var dismiss
+
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let surfaceIvory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
+
+    @State private var draft = ""
+    @State private var sending = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("To: \(client.fullName ?? client.email ?? "client")")
+                    .font(.subheadline)
+                    .foregroundStyle(textNavy.opacity(0.7))
+                    .padding(.horizontal)
+
+                TextEditor(text: $draft)
+                    .padding(8)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                    .frame(minHeight: 120)
+                    .padding(.horizontal)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal)
+                }
+
+                Spacer()
+            }
+            .padding(.top, 16)
+            .background(surfaceIvory)
+            .navigationTitle("Quick Message")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") {
+                        Task { await send() }
+                    }
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
+                }
+            }
+        }
+    }
+
+    private func send() async {
+        guard let token = sessionStore.accessToken else { return }
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        sending = true
+        do {
+            _ = try await APIClient(token: token).sendMessage(text, clientId: client.id)
+            dismiss()
+        } catch {
+            errorMessage = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
+        }
+        sending = false
     }
 }
