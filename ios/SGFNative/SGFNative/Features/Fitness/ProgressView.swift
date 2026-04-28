@@ -31,14 +31,20 @@ struct ClientProgressView: View {
                                     points: summary.weightTrend,
                                     isImperial: isImperial
                                 )
+                            } else {
+                                InsightBanner(text: weightInsight([], isImperial: isImperial))
                             }
 
                             if !summary.measurementTrend.isEmpty {
                                 MeasurementsChartCard(points: summary.measurementTrend, isImperial: isImperial)
+                            } else {
+                                InsightBanner(text: measurementsInsight([], isImperial: isImperial))
                             }
 
                             if !summary.wellnessTrend.isEmpty {
                                 WellnessChartCard(points: summary.wellnessTrend)
+                            } else {
+                                InsightBanner(text: wellnessInsight([]))
                             }
 
                             if !summary.strengthTrend.isEmpty {
@@ -47,6 +53,8 @@ struct ClientProgressView: View {
                                     selectedExercise: $selectedStrengthExercise,
                                     isImperial: isImperial
                                 )
+                            } else {
+                                InsightBanner(text: strengthInsight(nil, isImperial: isImperial))
                             }
 
                             if !summary.personalRecords.isEmpty {
@@ -54,17 +62,6 @@ struct ClientProgressView: View {
                                     records: summary.personalRecords,
                                     isImperial: isImperial
                                 )
-                            }
-
-                            if summary.weightTrend.isEmpty
-                                && summary.wellnessTrend.isEmpty
-                                && summary.personalRecords.isEmpty {
-                                ContentUnavailableView(
-                                    "No data yet",
-                                    systemImage: "chart.xyaxis.line",
-                                    description: Text("Complete check-ins and workouts to see your progress here.")
-                                )
-                                .padding(.top, 60)
                             }
                         }
                         .padding(.horizontal, 16)
