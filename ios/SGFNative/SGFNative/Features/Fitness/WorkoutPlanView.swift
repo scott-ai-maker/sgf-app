@@ -112,7 +112,7 @@ struct ProgramView: View {
             .padding(.top, 8)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0))
     }
 
     @ViewBuilder
@@ -121,6 +121,7 @@ struct ProgramView: View {
             HStack {
                 Text("Recent Sessions")
                     .font(.headline)
+                    .foregroundStyle(Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0))
                     .padding(.leading, 20)
                 Spacer()
                 Button("View All") { showHistory = true }
@@ -138,6 +139,7 @@ struct ProgramView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Full Program")
                 .font(.headline)
+                .foregroundStyle(Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0))
                 .padding(.leading, 20)
             ForEach(plan.planJson.workouts) { workout in
                 NavigationLink {
@@ -213,7 +215,7 @@ private struct PlanHeaderCard: View {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
         .padding(.horizontal, 16)
     }

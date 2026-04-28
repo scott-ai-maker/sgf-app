@@ -70,6 +70,7 @@ struct ClientProgressView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 20)
                     }
+                    .background(Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0))
                 } else {
                     ContentUnavailableView("No data yet", systemImage: "chart.xyaxis.line")
                 }
@@ -418,13 +419,15 @@ private struct ProgressCard<Content: View, Trailing: View>: View {
             HStack {
                 Label(title, systemImage: systemImage)
                     .font(.headline)
+                    .foregroundStyle(Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0))
                 Spacer()
                 trailing()
             }
             content()
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
     }
 }
 
