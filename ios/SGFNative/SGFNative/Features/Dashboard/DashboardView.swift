@@ -16,6 +16,24 @@ struct DashboardView: View {
                     ContentUnavailableView("Could not load dashboard", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if let dashboard {
                     List {
+                        Section {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(dashboard.role == "coach" ? "Coach Overview" : "Client Overview")
+                                    .font(.headline)
+
+                                if dashboard.role == "coach" {
+                                    Text("You are in coach mode. Client package/session counts appear when signed in as a client account.")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Sessions remaining: \(dashboard.metrics.sessionsRemaining ?? 0) • Upcoming: \(dashboard.metrics.upcomingSessionCount ?? 0)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 6)
+                        }
+
                         Section("Account") {
                             Text(dashboard.user.email)
                             Text("Role: \(dashboard.role)")
