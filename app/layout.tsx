@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   applicationName: 'Scott Gordon Fitness',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/images/logo-mark-source.jpg',
-    shortcut: '/images/logo-mark-source.jpg',
-    apple: '/images/logo-mark-source.jpg',
+    icon: [{ url: '/favicon.ico', sizes: '32x32' }, { url: '/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    shortcut: '/favicon.ico',
+    apple: '/images/icon-192.png',
   },
   appleWebApp: {
     capable: true,

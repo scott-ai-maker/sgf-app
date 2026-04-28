@@ -39,7 +39,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             margin: '0 auto 14px',
             borderRadius: 2,
             border: '1px solid var(--navy-lt)',
-            backgroundImage: "url('/images/logo-mark-source.jpg')",
+            backgroundImage: "url('/images/logo-mark-source.png')",
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}

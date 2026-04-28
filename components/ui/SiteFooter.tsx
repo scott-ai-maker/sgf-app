@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Camera, CirclePlay, Users, BriefcaseBusiness } from 'lucide-react'
 
-const BRAND_LOGO = '/images/logo-mark-source.jpg'
+const BRAND_LOGO = '/images/logo-mark-source.png'
 
 const SOCIAL_LINKS = [
   { name: 'Instagram', href: 'https://instagram.com/scottgordonfitness', Icon: Camera },

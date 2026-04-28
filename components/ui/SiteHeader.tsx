@@ -12,7 +12,7 @@ type SiteHeaderProps = {
   actions?: React.ReactNode
 }
 
-const BRAND_LOGO = '/images/logo-mark-source.jpg'
+const BRAND_LOGO = '/images/logo-mark-source.png'
 
 export default function SiteHeader({
   fixed = false,
