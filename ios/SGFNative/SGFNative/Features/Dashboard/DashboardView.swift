@@ -81,9 +81,7 @@ struct DashboardView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(textSlate)
                                 } else {
-                                    Text("Sessions remaining: \(dashboard.metrics.sessionsRemaining ?? 0) • Upcoming: \(dashboard.metrics.upcomingSessionCount ?? 0)")
-                                        .font(.subheadline)
-                                        .foregroundStyle(textSlate)
+                                    ClientHeroCard(dashboard: dashboard)
                                 }
                             }
                             .padding(.vertical, 6)
@@ -320,5 +318,100 @@ private struct QuickMessageSheet: View {
             errorMessage = (error as? APIClientError)?.localizedDescription ?? error.localizedDescription
         }
         sending = false
+    }
+}
+
+// MARK: - Client Hero Card
+
+private struct ClientHeroCard: View {
+    let dashboard: DashboardResponse
+
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+    private let gold = Color(red: 212.0 / 255.0, green: 160.0 / 255.0, blue: 23.0 / 255.0)
+
+    private var sessionsRemaining: Int {
+        dashboard.metrics.sessionsRemaining ?? 0
+    }
+
+    private var nextSession: UpcomingSession? {
+        dashboard.upcomingSessions?
+            .sorted { $0.scheduledAt < $1.scheduledAt }
+            .first
+    }
+
+    private var nextSessionFormatted: String? {
+        guard let s = nextSession else { return nil }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoBasic = ISO8601DateFormatter()
+        guard let date = iso.date(from: s.scheduledAt) ?? isoBasic.date(from: s.scheduledAt) else {
+            return s.scheduledAt
+        }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "EEE, MMM d 'at' h:mm a"
+        return f.string(from: date)
+    }
+
+    private var todayAction: (icon: String, text: String) {
+        if sessionsRemaining == 0 {
+            return ("cart.badge.plus", "Purchase a package to book sessions")
+        } else if nextSession == nil {
+            return ("calendar.badge.plus", "Book your next session")
+        } else {
+            return ("checkmark.circle", "Check in with your coach this week")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Sessions remaining
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(sessionsRemaining)")
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .foregroundStyle(sessionsRemaining > 2 ? textNavy : gold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("sessions")
+                        .font(.subheadline)
+                        .foregroundStyle(textSlate)
+                    Text("remaining")
+                        .font(.subheadline)
+                        .foregroundStyle(textSlate)
+                }
+            }
+
+            Divider()
+
+            // Next session
+            HStack(spacing: 10) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(textNavy)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Next session")
+                        .font(.caption)
+                        .foregroundStyle(textSlate)
+                    Text(nextSessionFormatted ?? "No sessions booked")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(textNavy)
+                }
+            }
+
+            // Today's action
+            HStack(spacing: 10) {
+                Image(systemName: todayAction.icon)
+                    .foregroundStyle(gold)
+                    .frame(width: 20)
+                Text(todayAction.text)
+                    .font(.subheadline)
+                    .foregroundStyle(textNavy)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(gold.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .padding(.vertical, 4)
     }
 }
