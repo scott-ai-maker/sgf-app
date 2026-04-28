@@ -99,7 +99,6 @@ struct OnboardingView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 7))
                     Text("Scott Gordon Fitness")
                         .font(.subheadline)
                         .fontWeight(.semibold)

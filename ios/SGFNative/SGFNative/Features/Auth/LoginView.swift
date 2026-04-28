@@ -22,7 +22,6 @@ struct LoginView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 110, height: 110)
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
                         .shadow(color: gold.opacity(0.4), radius: 16, x: 0, y: 6)
                         .padding(.top, 60)
                         .padding(.bottom, 16)
