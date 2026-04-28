@@ -4,6 +4,7 @@ private enum SGFTheme {
     static let navy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
     static let navyMid = Color(red: 18.0 / 255.0, green: 35.0 / 255.0, blue: 54.0 / 255.0)
     static let gold = Color(red: 212.0 / 255.0, green: 160.0 / 255.0, blue: 23.0 / 255.0)
+    static let ivory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
 }
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -71,6 +72,11 @@ struct SGFNativeApp: App {
 
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
+
+        // Keep center content light: off-white canvas with white cards.
+        UITableView.appearance().backgroundColor = UIColor(SGFTheme.ivory)
+        UITableViewCell.appearance().backgroundColor = UIColor.white
+        UICollectionView.appearance().backgroundColor = UIColor(SGFTheme.ivory)
     }
 }
 
