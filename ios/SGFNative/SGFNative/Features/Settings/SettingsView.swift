@@ -4,6 +4,10 @@ import PhotosUI
 struct SettingsView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
+    private let surfaceIvory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
+    private let cardWhite = Color.white
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+
     @State private var profile: SettingsProfile?
     @State private var avatarURL: String?
     @State private var avatarBusy = false
@@ -37,7 +41,7 @@ struct SettingsView: View {
                                 .frame(width: 64, height: 64)
                                 .overlay {
                                     Image(systemName: "person.fill")
-                                        .foregroundStyle(.secondary)
+                                    .foregroundStyle(textSlate)
                                 }
                         }
 
@@ -95,6 +99,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(surfaceIvory)
+            .listRowBackground(cardWhite)
             .navigationTitle("Settings")
             .task {
                 await load()

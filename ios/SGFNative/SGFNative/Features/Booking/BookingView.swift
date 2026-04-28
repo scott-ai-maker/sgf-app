@@ -3,6 +3,11 @@ import SwiftUI
 struct BookingView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
+    private let surfaceIvory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
+    private let cardWhite = Color.white
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+
     @State private var packages: [ClientPackage] = []
     @State private var selectedPackage: ClientPackage?
     @State private var slots: [SessionSlot] = []
@@ -54,9 +59,10 @@ struct BookingView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("\(slot.date) \(slot.time)")
+                                        .foregroundStyle(textNavy)
                                     Text(slot.datetime)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(textSlate)
                                 }
                                 Spacer()
                                 if selectedSlot?.id == slot.id {
@@ -67,6 +73,9 @@ struct BookingView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(surfaceIvory)
+                    .listRowBackground(cardWhite)
 
                     Button("Book Selected Slot") {
                         Task {
@@ -78,6 +87,7 @@ struct BookingView: View {
                     .padding(.bottom, 8)
                 }
             }
+            .background(surfaceIvory)
             .navigationTitle("Book Session")
             .task {
                 await load()

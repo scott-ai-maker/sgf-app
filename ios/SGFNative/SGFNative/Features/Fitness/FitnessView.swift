@@ -3,6 +3,11 @@ import SwiftUI
 struct FitnessView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
+    private let surfaceIvory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
+    private let cardWhite = Color.white
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+
     @State private var profile: FitnessProfile?
     @State private var checkins: [WeeklyCheckin] = []
     @State private var photos: [ProgressPhoto] = []
@@ -112,7 +117,7 @@ struct FitnessView: View {
                                         }()
                                         Text("\(log.durationMins) mins • Distance: \(distanceText)")
                                             .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(textSlate)
                                     }
                                 }
                             }
@@ -125,14 +130,14 @@ struct FitnessView: View {
                                         Text(checkin.weekStart).bold()
                                         Text("Sleep \(checkin.sleepQuality ?? 0), Stress \(checkin.stressLevel ?? 0), Soreness \(checkin.sorenessLevel ?? 0), Energy \(checkin.energyLevel ?? 0)")
                                             .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(textSlate)
                                         if let wkg = checkin.weightKg {
                                             let isImperial = sessionStore.preferredUnits == "imperial"
                                             let displayed = isImperial ? wkg / 0.453592 : wkg
                                             let unit = isImperial ? "lbs" : "kg"
                                             Text(String(format: "Weight: %.1f %@", displayed, unit))
                                                 .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(textSlate)
                                         }
                                     }
                                 }
@@ -154,6 +159,7 @@ struct FitnessView: View {
                                     .overlay(alignment: .bottomLeading) {
                                         Text(photo.takenAt)
                                             .font(.caption2)
+                                            .foregroundStyle(textNavy)
                                             .padding(6)
                                             .background(.ultraThinMaterial)
                                     }
@@ -161,6 +167,7 @@ struct FitnessView: View {
                             } header: {
                                 HStack {
                                     Text("Progress Photos")
+                                        .foregroundStyle(textNavy)
                                     Spacer()
                                     if photos.count >= 2 {
                                         NavigationLink("Compare") {
@@ -172,10 +179,14 @@ struct FitnessView: View {
                             }
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(surfaceIvory)
+                    .listRowBackground(cardWhite)
                 } else {
                     ContentUnavailableView("No profile yet", systemImage: "figure.run")
                 }
             }
+            .background(surfaceIvory)
             .navigationTitle("Fitness")
             .task {
                 await loadProfile()

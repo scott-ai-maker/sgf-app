@@ -3,6 +3,11 @@ import SwiftUI
 struct MessagesView: View {
     @EnvironmentObject private var sessionStore: SessionStore
 
+    private let surfaceIvory = Color(red: 245.0 / 255.0, green: 240.0 / 255.0, blue: 232.0 / 255.0)
+    private let cardWhite = Color.white
+    private let textNavy = Color(red: 13.0 / 255.0, green: 27.0 / 255.0, blue: 42.0 / 255.0)
+    private let textSlate = Color(red: 106.0 / 255.0, green: 116.0 / 255.0, blue: 130.0 / 255.0)
+
     @State private var messages: [Message] = []
     @State private var draft = ""
     @State private var loading = false
@@ -25,11 +30,15 @@ struct MessagesView: View {
                 List(messages) { message in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(message.messageBody)
+                            .foregroundStyle(textNavy)
                         Text(message.createdAt)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(textSlate)
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(surfaceIvory)
+                .listRowBackground(cardWhite)
 
                 HStack {
                     TextField("Message", text: $draft, axis: .vertical)
@@ -45,6 +54,7 @@ struct MessagesView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
+            .background(surfaceIvory)
             .navigationTitle("Messages")
             .task {
                 await loadMessages()
