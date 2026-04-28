@@ -473,9 +473,11 @@ private struct InsightBanner: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.1),
-            in: RoundedRectangle(cornerRadius: 8)
+        .background(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color(red: 212.0/255, green: 160.0/255, blue: 23.0/255).opacity(0.45), lineWidth: 1)
         )
     }
 }
