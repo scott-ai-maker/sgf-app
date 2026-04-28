@@ -80,11 +80,16 @@ struct DashboardView: View {
                                     Text("You are in coach mode. Client package/session counts appear when signed in as a client account.")
                                         .font(.subheadline)
                                         .foregroundStyle(textSlate)
-                                } else {
-                                    ClientHeroCard(dashboard: dashboard)
                                 }
                             }
                             .padding(.vertical, 6)
+                        }
+
+                        if dashboard.role != "coach" {
+                            Section {
+                                ClientHeroCard(dashboard: dashboard)
+                                    .listRowBackground(cardWhite)
+                            }
                         }
 
                         Section("Account") {
@@ -410,7 +415,8 @@ private struct ClientHeroCard: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(gold.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+            .background(gold.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(gold.opacity(0.35), lineWidth: 1))
         }
         .padding(.vertical, 4)
     }
